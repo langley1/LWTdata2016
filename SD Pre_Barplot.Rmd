@@ -1188,10 +1188,21 @@ pre_SDs_table<- as.table(pre_SDs_table)
         #arrange(desc(Freq))
 pre_SDs_table
 
-x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2.5), cex.names = 0.75, las=2, col="#69b3a2") #I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
+x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2.5), cex.names = 0.8, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
 x
 ```
+### Saving the image as a jpeg
+```{r}
+pdf(file = "/New User/Desktop/SD Plot.pdf",   # The directory you want to save the file in
+    width = 4, # The width of the plot in inches
+    height = 4) # The height of the plot in inches
 
+jpeg("SDplot.jpg", width = 900, height = 500)
+x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2), cex.lab = 1.25, font.lab= 2, cex.names = 1, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
+x
+
+dev.off()
+```
 
 ## Creating a DF for the pre-release Shannon Diversity Index values so that I can use the barplot() function more easily
 ```{r}
@@ -1217,9 +1228,6 @@ text(seq(1.5, end_point, by = 2), par("usr")[3]-0.25,
      labels = paste(rownames(BD_df)), cex = 0.75)
 ```
 
-
-
-
 ### Creating a table by hand of the confirmed dead/presumed dead/presumed emigrated for males/females/infants
 ```{r}
 info<- matrix(c(7,1,0,4,11,3,3,0,3,0,2,0,21,4,5,4), ncol=4, byrow = T)
@@ -1229,9 +1237,10 @@ info<- as.table(info)
 info
 ```
 
+### Using formattable() function to create a nicer table
 ```{r}
 summary<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Summary%20Table.csv")
-summary<- read.csv(summary, header = T)
+summary<- read.csv(summary, header = T) #Had to create an excel table and import as df to use formattable()
 
 formattable(summary)
 
@@ -1246,11 +1255,7 @@ formattable(summary,
             list(`Vervets` = formatter(
               "span", style = ~ style(color = "grey",font.weight = "bold"))
 ))
-
-
 ```
-
-
 
 
 ```{r}
