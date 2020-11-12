@@ -1,0 +1,1267 @@
+---
+title: "2016 release"
+output: html_document
+---
+
+install.packages("curl")
+install.packages("dplyr")
+install.packages("tidyverse")
+install.packages("gplots")
+install.packages("corrplot")
+install.packages("ggplot2")
+install.packages("vegan")
+install.packages("data.table")
+install.packages("tidyr")
+install.packages("formattable")
+
+```{r}
+library(curl)
+library(dplyr)
+library(tidyverse)
+library(gplots)
+library(corrplot)
+library(ggplot2)
+library(vegan)
+library(data.table)
+library(tidyr)
+library(formattable)
+```
+
+## Importing the pre-focals datasheet
+```{r}
+pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_FOCALS.csv")
+pre_focals<- read.csv(pre_focals, header = T)
+head(pre_focals)
+nrow(pre_focals)
+summary(pre_focals)
+names(pre_focals)
+unique(pre_focals$FOCAL.ID)
+n_distinct(pre_focals$FOCAL.ID)
+unique(pre_focals$AGE)
+sort(table(pre_focals$BEHAVIOUR), decreasing = TRUE)
+n_distinct(pre_focals$FOCAL.REFERENCE.CODE) #1012 total focals
+```
+
+## Creating an Age/Sex plot
+```{r}
+age_sex_plot <- ggplot(pre_focals, aes(SEX, group = AGE)) + 
+          geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
+          scale_y_continuous(labels=scales::percent) +
+          ylab("relative frequencies") +
+          facet_grid(~AGE)
+age_sex_plot #There are more female than male adults, almost all subadults are males, and more juveniles are females... overall more females than males 
+```
+
+## POPs
+## Filtering out Pops from the pre-focals dataset
+```{r}
+Pops<- pre_focals %>% filter(FOCAL.ID == "PO")
+head(Pops)
+n_distinct(Pops$FOCAL.REFERENCE.CODE) #56 distinct focals
+unique(Pops$FOCAL.REFERENCE.CODE)
+```
+
+### Testing to see if I get the same SD value if I 1) do three focals separately and then find the average SD and 2)combine all three focals into one df and then find the SD for that 
+```{r}
+#These three chunks are each focal separately
+Pops_behaviorcount<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE == "10101") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount
+
+Pops_behaviorcount2<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE == "10407") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount2
+
+Pops_behaviorcount3<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE == "20109") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount3
+
+#Finding SD for each focal
+SD1<- diversity(Pops_behaviorcount$count)
+SD2<- diversity(Pops_behaviorcount2$count)
+SD3<- diversity(Pops_behaviorcount3$count)
+
+SD1
+SD2
+SD3
+SDs<- c(SD1,SD2,SD3) #combining the focals
+AvgSD<- mean(SDs)
+AvgSD #1.145476
+
+#Now I'm filtering out all 3 focals so that it counts the behaviors across all three
+Pops_behaviorcount4<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE %in% c("10101","10407","20109")) %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount4
+
+#finding the SD for this one df
+SD4<- diversity(Pops_behaviorcount4$count)
+SD4 #1.307044
+
+#The SD values are DIFFERENT for the two methods! 
+```
+
+### Getting one SD value for all of Pops 56 focals... I don't think this is a reliable value?
+```{r}
+Pops_behaviorcountTEST2<- Pops %>% 
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcountTEST2
+
+DIVTEST<- diversity(Pops_behaviorcountTEST2$count)
+DIVTEST #1.459
+```
+
+### Playing around with the two behavior columns for one of Pop's focals, I need to somehow incorporate the behaviors from the Behavior.2 column into my SD calculations (don't know how to do this yet)
+```{r}
+Pops_behaviorcount2<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE == "10407") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount2
+
+Pops_behaviorcount3<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE == "10407") %>%
+  group_by(BEHAVIOUR.2) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount3
+```
+
+### Practicing running SD calculations by "hand" first
+```{r}
+sum(Pops_behaviorcount$count) #20
+pI <- Pops_behaviorcount$count/sum(Pops_behaviorcount$count)
+pI
+H.I <- -sum(pI*log(pI))
+H.I #0.7999
+test<- diversity(Pops_behaviorcount$count)
+test #0.7999, they match
+```
+
+### Since I can't find SD for each of the 56 focals (don't know how to do it at least), I'm going to find a SD for each month during pre-release observations
+```{r}
+#Month 6
+Pops_behaviorcount_month6<- Pops %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount_month6
+
+Pop_month6_SD<- diversity(Pops_behaviorcount_month6$count)
+Pop_month6_SD
+
+#Month 7
+Pops_behaviorcount_month7<- Pops %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount_month7
+
+Pop_month7_SD<- diversity(Pops_behaviorcount_month7$count)
+Pop_month7_SD
+
+#Month 8
+Pops_behaviorcount_month8<- Pops %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount_month8
+
+Pop_month8_SD<- diversity(Pops_behaviorcount_month8$count)
+Pop_month8_SD
+
+#Month 9
+Pops_behaviorcount_month9<- Pops %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Pops_behaviorcount_month9
+
+Pop_month9_SD<- diversity(Pops_behaviorcount_month9$count)
+Pop_month9_SD
+```
+
+### Averaging the SDs across Pop's 4 months pre-release
+```{r}
+Pops_pre_allSDs<- c(Pop_month6_SD,Pop_month7_SD,Pop_month8_SD,Pop_month9_SD)
+Pops_pre_allSDs
+Pop_pre_avgSDs<- mean(Pops_pre_allSDs)
+Pop_pre_avgSDs #1.377789
+```
+
+## ZIP
+## Filtering out Zip from the pre-focals dataset
+```{r}
+Zip<- pre_focals %>% filter(FOCAL.ID == "ZI")
+n_distinct(Zip$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Zip during pre-release observations
+```{r}
+#Month 6
+Zip_behaviorcount_month6<- Zip %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Zip_behaviorcount_month6
+
+Zip_month6_SD<- diversity(Zip_behaviorcount_month6$count)
+Zip_month6_SD
+
+#Month 7
+Zip_behaviorcount_month7<- Zip %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Zip_behaviorcount_month7
+
+Zip_month7_SD<- diversity(Zip_behaviorcount_month7$count)
+Zip_month7_SD
+
+#Month 8
+Zip_behaviorcount_month8<- Zip %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Zip_behaviorcount_month8
+
+Zip_month8_SD<- diversity(Zip_behaviorcount_month8$count)
+Zip_month8_SD
+
+#Month 9
+Zip_behaviorcount_month9<- Zip %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Zip_behaviorcount_month9
+
+Zip_month9_SD<- diversity(Zip_behaviorcount_month9$count)
+Zip_month9_SD
+```
+
+### Averaging the SDs across Zip's 4 months pre-release
+```{r}
+Zip_pre_allSDs<- c(Zip_month6_SD,Zip_month7_SD,Zip_month8_SD,Zip_month9_SD)
+Zip_pre_avgSDs<- mean(Zip_pre_allSDs)
+Zip_pre_avgSDs
+```
+
+## JACK
+## Filtering out Jack from the pre-focals dataset
+```{r}
+Jack<- pre_focals %>% filter(FOCAL.ID == "JA")
+n_distinct(Jack$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Jack during pre-release observations
+```{r}
+#Month 6
+Jack_behaviorcount_month6<- Jack %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Jack_behaviorcount_month6
+
+Jack_month6_SD<- diversity(Jack_behaviorcount_month6$count)
+Jack_month6_SD
+
+#Month 7
+Jack_behaviorcount_month7<- Jack %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Jack_behaviorcount_month7
+
+Jack_month7_SD<- diversity(Jack_behaviorcount_month7$count)
+Jack_month7_SD
+
+#Month 8
+Jack_behaviorcount_month8<- Jack %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Jack_behaviorcount_month8
+
+Jack_month8_SD<- diversity(Jack_behaviorcount_month8$count)
+Jack_month8_SD
+
+#Month 9
+Jack_behaviorcount_month9<- Jack %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Jack_behaviorcount_month9
+
+Jack_month9_SD<- diversity(Jack_behaviorcount_month9$count)
+Jack_month9_SD
+```
+
+### Averaging the SDs across Jack's 4 months pre-release
+```{r}
+Jack_pre_allSDs<- c(Jack_month6_SD,Jack_month7_SD,Jack_month8_SD,Jack_month9_SD)
+Jack_pre_avgSDs<- mean(Jack_pre_allSDs)
+Jack_pre_avgSDs
+```
+
+## BLUE
+## Filtering out Blue from the pre-focals dataset
+```{r}
+Blue<- pre_focals %>% filter(FOCAL.ID == "BL")
+n_distinct(Blue$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Blue during pre-release observations
+```{r}
+#Month 6
+Blue_behaviorcount_month6<- Blue %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Blue_behaviorcount_month6
+
+Blue_month6_SD<- diversity(Blue_behaviorcount_month6$count)
+Blue_month6_SD
+
+#Month 7
+Blue_behaviorcount_month7<- Blue %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Blue_behaviorcount_month7
+
+Blue_month7_SD<- diversity(Blue_behaviorcount_month7$count)
+Blue_month7_SD
+
+#Month 8
+Blue_behaviorcount_month8<- Blue %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Blue_behaviorcount_month8
+
+Blue_month8_SD<- diversity(Blue_behaviorcount_month8$count)
+Blue_month8_SD
+
+#Month 9
+Blue_behaviorcount_month9<- Blue %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Blue_behaviorcount_month9
+
+Blue_month9_SD<- diversity(Blue_behaviorcount_month9$count)
+Blue_month9_SD
+```
+
+### Averaging the SDs across Blue's 4 months pre-release
+```{r}
+Blue_pre_allSDs<- c(Blue_month6_SD,Blue_month7_SD,Blue_month8_SD,Blue_month9_SD)
+Blue_pre_avgSDs<- mean(Blue_pre_allSDs)
+Blue_pre_avgSDs
+```
+
+## ALEX
+## Filtering out Alex from the pre-focals dataset
+```{r}
+Alex<- pre_focals %>% filter(FOCAL.ID == "AL")
+n_distinct(Alex$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Alex during pre-release observations
+```{r}
+#Month 6
+Alex_behaviorcount_month6<- Alex %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Alex_behaviorcount_month6
+
+Alex_month6_SD<- diversity(Alex_behaviorcount_month6$count)
+Alex_month6_SD
+
+#Month 7
+Alex_behaviorcount_month7<- Alex %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Alex_behaviorcount_month7
+
+Alex_month7_SD<- diversity(Alex_behaviorcount_month7$count)
+Alex_month7_SD
+
+#Month 8
+Alex_behaviorcount_month8<- Alex %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Alex_behaviorcount_month8
+
+Alex_month8_SD<- diversity(Alex_behaviorcount_month8$count)
+Alex_month8_SD
+
+#Month 9
+Alex_behaviorcount_month9<- Alex %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Alex_behaviorcount_month9
+
+Alex_month9_SD<- diversity(Alex_behaviorcount_month9$count)
+Alex_month9_SD
+```
+
+### Averaging the SDs across Alex's 4 months pre-release
+```{r}
+Alex_pre_allSDs<- c(Alex_month6_SD,Alex_month7_SD,Alex_month8_SD,Alex_month9_SD)
+Alex_pre_avgSDs<- mean(Alex_pre_allSDs)
+Alex_pre_avgSDs
+```
+
+## BART
+## Filtering out Bart from the pre-focals dataset
+```{r}
+Bart<- pre_focals %>% filter(FOCAL.ID == "BA")
+n_distinct(Bart$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Bart during pre-release observations
+```{r}
+#Month 6
+Bart_behaviorcount_month6<- Bart %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bart_behaviorcount_month6
+
+Bart_month6_SD<- diversity(Bart_behaviorcount_month6$count)
+Bart_month6_SD
+
+#Month 7
+Bart_behaviorcount_month7<- Bart %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bart_behaviorcount_month7
+
+Bart_month7_SD<- diversity(Bart_behaviorcount_month7$count)
+Bart_month7_SD
+
+#Month 8
+Bart_behaviorcount_month8<- Bart %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bart_behaviorcount_month8
+
+Bart_month8_SD<- diversity(Bart_behaviorcount_month8$count)
+Bart_month8_SD
+
+#Month 9
+Bart_behaviorcount_month9<- Bart %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bart_behaviorcount_month9
+
+Bart_month9_SD<- diversity(Bart_behaviorcount_month9$count)
+Bart_month9_SD
+```
+
+## NEVILLE
+## Filtering out Nev from the pre-focals dataset
+```{r}
+Nev<- pre_focals %>% filter(FOCAL.ID == "NE")
+n_distinct(Nev$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Neville during pre-release observations
+```{r}
+#Month 6
+Nev_behaviorcount_month6<- Nev %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Nev_behaviorcount_month6
+
+Nev_month6_SD<- diversity(Nev_behaviorcount_month6$count)
+Nev_month6_SD
+
+#Month 7
+Nev_behaviorcount_month7<- Nev %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Nev_behaviorcount_month7
+
+Nev_month7_SD<- diversity(Nev_behaviorcount_month7$count)
+Nev_month7_SD
+
+#Month 8
+Nev_behaviorcount_month8<- Nev %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Nev_behaviorcount_month8
+
+Nev_month8_SD<- diversity(Nev_behaviorcount_month8$count)
+Nev_month8_SD
+
+#Month 9
+Nev_behaviorcount_month9<- Nev %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Nev_behaviorcount_month9
+
+Nev_month9_SD<- diversity(Nev_behaviorcount_month9$count)
+Nev_month9_SD
+```
+
+### Averaging the SDs across Nev's 4 months pre-release
+```{r}
+Nev_pre_allSDs<- c(Nev_month6_SD,Nev_month7_SD,Nev_month8_SD,Nev_month9_SD)
+Nev_pre_avgSDs<- mean(Nev_pre_allSDs)
+Nev_pre_avgSDs
+```
+
+## AUGUSTINE
+## Filtering out Aug from the pre-focals dataset
+```{r}
+Aug<- pre_focals %>% filter(FOCAL.ID == "AU")
+n_distinct(Aug$FOCAL.REFERENCE.CODE) #58 distinct focals
+```
+
+### Getting SD for each month for Aug during pre-release observations
+```{r}
+#Month 6
+Aug_behaviorcount_month6<- Aug %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Aug_behaviorcount_month6
+
+Aug_month6_SD<- diversity(Aug_behaviorcount_month6$count)
+Aug_month6_SD
+
+#Month 7
+Aug_behaviorcount_month7<- Aug %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Aug_behaviorcount_month7
+
+Aug_month7_SD<- diversity(Aug_behaviorcount_month7$count)
+Aug_month7_SD
+
+#Month 8
+Aug_behaviorcount_month8<- Aug %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Aug_behaviorcount_month8
+
+Aug_month8_SD<- diversity(Aug_behaviorcount_month8$count)
+Aug_month8_SD
+
+#Month 9
+Aug_behaviorcount_month9<- Aug %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Aug_behaviorcount_month9
+
+Aug_month9_SD<- diversity(Aug_behaviorcount_month9$count)
+Aug_month9_SD
+```
+
+### Averaging the SDs across Aug's 4 months pre-release
+```{r}
+Aug_pre_allSDs<- c(Aug_month6_SD,Aug_month7_SD,Aug_month8_SD,Aug_month9_SD)
+Aug_pre_avgSDs<- mean(Aug_pre_allSDs)
+Aug_pre_avgSDs
+```
+
+## AMY
+## Filtering out Amy from the pre-focals dataset
+```{r}
+Amy<- pre_focals %>% filter(FOCAL.ID == "AM")
+n_distinct(Amy$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Amy during pre-release observations
+```{r}
+#Month 6
+Amy_behaviorcount_month6<- Amy %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Amy_behaviorcount_month6
+
+Amy_month6_SD<- diversity(Amy_behaviorcount_month6$count)
+Amy_month6_SD
+
+#Month 7
+Amy_behaviorcount_month7<- Amy %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Amy_behaviorcount_month7
+
+Amy_month7_SD<- diversity(Amy_behaviorcount_month7$count)
+Amy_month7_SD
+
+#Month 8
+Amy_behaviorcount_month8<- Amy %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Amy_behaviorcount_month8
+
+Amy_month8_SD<- diversity(Amy_behaviorcount_month8$count)
+Amy_month8_SD
+
+#Month 9
+Amy_behaviorcount_month9<- Amy %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Amy_behaviorcount_month9
+
+Amy_month9_SD<- diversity(Amy_behaviorcount_month9$count)
+Amy_month9_SD
+```
+
+### Averaging the SDs across Amy's 4 months pre-release
+```{r}
+Amy_pre_allSDs<- c(Amy_month6_SD,Amy_month7_SD,Amy_month8_SD,Amy_month9_SD)
+Amy_pre_avgSDs<- mean(Amy_pre_allSDs)
+Amy_pre_avgSDs
+```
+
+## MAY
+## Filtering out May from the pre-focals dataset
+```{r}
+May<- pre_focals %>% filter(FOCAL.ID == "MA")
+n_distinct(May$FOCAL.REFERENCE.CODE) #57 distinct focals
+```
+
+### Getting SD for each month for May during pre-release observations
+```{r}
+#Month 6
+May_behaviorcount_month6<- May %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+May_behaviorcount_month6
+
+May_month6_SD<- diversity(May_behaviorcount_month6$count)
+May_month6_SD
+
+#Month 7
+May_behaviorcount_month7<- May %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+May_behaviorcount_month7
+
+May_month7_SD<- diversity(May_behaviorcount_month7$count)
+May_month7_SD
+
+#Month 8
+May_behaviorcount_month8<- May %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+May_behaviorcount_month8
+
+May_month8_SD<- diversity(May_behaviorcount_month8$count)
+May_month8_SD
+
+#Month 9
+May_behaviorcount_month9<- May %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+May_behaviorcount_month9
+
+May_month9_SD<- diversity(May_behaviorcount_month9$count)
+May_month9_SD
+```
+
+### Averaging the SDs across May's 4 months pre-release
+```{r}
+May_pre_allSDs<- c(May_month6_SD,May_month7_SD,May_month8_SD,May_month9_SD)
+May_pre_avgSDs<- mean(May_pre_allSDs)
+May_pre_avgSDs
+```
+
+## TONI
+## Filtering out Toni from the pre-focals dataset
+```{r}
+Toni<- pre_focals %>% filter(FOCAL.ID == "TO")
+n_distinct(Toni$FOCAL.REFERENCE.CODE) #55 distinct focals
+```
+
+### Getting SD for each month for Toni during pre-release observations
+```{r}
+#Month 6
+Toni_behaviorcount_month6<- Toni %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Toni_behaviorcount_month6
+
+Toni_month6_SD<- diversity(Toni_behaviorcount_month6$count)
+Toni_month6_SD
+
+#Month 7
+Toni_behaviorcount_month7<- Toni %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Toni_behaviorcount_month7
+
+Toni_month7_SD<- diversity(Toni_behaviorcount_month7$count)
+Toni_month7_SD
+
+#Month 8
+Toni_behaviorcount_month8<- Toni %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Toni_behaviorcount_month8
+
+Toni_month8_SD<- diversity(Toni_behaviorcount_month8$count)
+Toni_month8_SD
+
+#Month 9
+Toni_behaviorcount_month9<- Toni %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Toni_behaviorcount_month9
+
+Toni_month9_SD<- diversity(Toni_behaviorcount_month9$count)
+Toni_month9_SD
+```
+
+### Averaging the SDs across Toni's 4 months pre-release
+```{r}
+Toni_pre_allSDs<- c(Toni_month6_SD,Toni_month7_SD,Toni_month8_SD,Toni_month9_SD)
+Toni_pre_avgSDs<- mean(Toni_pre_allSDs)
+Toni_pre_avgSDs
+```
+
+## BOO
+## Filtering out Boo from the pre-focals dataset
+```{r}
+Boo<- pre_focals %>% filter(FOCAL.ID == "BO")
+n_distinct(Boo$FOCAL.REFERENCE.CODE) #55 distinct focals
+```
+
+### Getting SD for each month for Boo during pre-release observations
+```{r}
+#Month 6
+Boo_behaviorcount_month6<- Boo %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Boo_behaviorcount_month6
+
+Boo_month6_SD<- diversity(Boo_behaviorcount_month6$count)
+Boo_month6_SD
+
+#Month 7
+Boo_behaviorcount_month7<- Boo %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Boo_behaviorcount_month7
+
+Boo_month7_SD<- diversity(Boo_behaviorcount_month7$count)
+Boo_month7_SD
+
+#Month 8
+Boo_behaviorcount_month8<- Boo %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Boo_behaviorcount_month8
+
+Boo_month8_SD<- diversity(Boo_behaviorcount_month8$count)
+Boo_month8_SD
+
+#Month 9
+Boo_behaviorcount_month9<- Boo %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Boo_behaviorcount_month9
+
+Boo_month9_SD<- diversity(Boo_behaviorcount_month9$count)
+Boo_month9_SD
+```
+
+### Averaging the SDs across Boo's 4 months pre-release
+```{r}
+Boo_pre_allSDs<- c(Boo_month6_SD,Boo_month7_SD,Boo_month8_SD,Boo_month9_SD)
+Boo_pre_avgSDs<- mean(Boo_pre_allSDs)
+Boo_pre_avgSDs
+```
+
+## BIG MAMA
+## Filtering out Bgm from the pre-focals dataset
+```{r}
+Bgm<- pre_focals %>% filter(FOCAL.ID == "BM")
+n_distinct(Bgm$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Bgm during pre-release observations
+```{r}
+#Month 6
+Bgm_behaviorcount_month6<- Bgm %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bgm_behaviorcount_month6
+
+Bgm_month6_SD<- diversity(Bgm_behaviorcount_month6$count)
+Bgm_month6_SD
+
+#Month 7
+Bgm_behaviorcount_month7<- Bgm %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bgm_behaviorcount_month7
+
+Bgm_month7_SD<- diversity(Bgm_behaviorcount_month7$count)
+Bgm_month7_SD
+
+#Month 8
+Bgm_behaviorcount_month8<- Bgm %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bgm_behaviorcount_month8
+
+Bgm_month8_SD<- diversity(Bgm_behaviorcount_month8$count)
+Bgm_month8_SD
+
+#Month 9
+Bgm_behaviorcount_month9<- Bgm %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bgm_behaviorcount_month9
+
+Bgm_month9_SD<- diversity(Bgm_behaviorcount_month9$count)
+Bgm_month9_SD
+```
+
+### Averaging the SDs across Bgm's 4 months pre-release
+```{r}
+Bgm_pre_allSDs<- c(Bgm_month6_SD,Bgm_month7_SD,Bgm_month8_SD,Bgm_month9_SD)
+Bgm_pre_avgSDs<- mean(Bgm_pre_allSDs)
+Bgm_pre_avgSDs
+```
+
+## KOVU
+## Filtering out Kovu from the pre-focals dataset
+```{r}
+Kovu<- pre_focals %>% filter(FOCAL.ID == "KO")
+n_distinct(Kovu$FOCAL.REFERENCE.CODE) #55 distinct focals
+```
+
+### Getting SD for each month for Kovu during pre-release observations
+```{r}
+#Month 6
+Kovu_behaviorcount_month6<- Kovu %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Kovu_behaviorcount_month6
+
+Kovu_month6_SD<- diversity(Kovu_behaviorcount_month6$count)
+Kovu_month6_SD
+
+#Month 7
+Kovu_behaviorcount_month7<- Kovu %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Kovu_behaviorcount_month7
+
+Kovu_month7_SD<- diversity(Kovu_behaviorcount_month7$count)
+Kovu_month7_SD
+
+#Month 8
+Kovu_behaviorcount_month8<- Kovu %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Kovu_behaviorcount_month8
+
+Kovu_month8_SD<- diversity(Kovu_behaviorcount_month8$count)
+Kovu_month8_SD
+
+#Month 9
+Kovu_behaviorcount_month9<- Kovu %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Kovu_behaviorcount_month9
+
+Kovu_month9_SD<- diversity(Kovu_behaviorcount_month9$count)
+Kovu_month9_SD
+```
+
+### Averaging the SDs across Kovu's 4 months pre-release
+```{r}
+Kovu_pre_allSDs<- c(Kovu_month6_SD,Kovu_month7_SD,Kovu_month8_SD,Kovu_month9_SD)
+Kovu_pre_avgSDs<- mean(Kovu_pre_allSDs)
+Kovu_pre_avgSDs
+```
+
+## EDDY
+## Filtering out Eddy from the pre-focals dataset
+```{r}
+Ed<- pre_focals %>% filter(FOCAL.ID == "ED")
+n_distinct(Ed$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Eddy during pre-release observations
+```{r}
+#Month 6
+Ed_behaviorcount_month6<- Ed %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Ed_behaviorcount_month6
+
+Ed_month6_SD<- diversity(Ed_behaviorcount_month6$count)
+Ed_month6_SD
+
+#Month 7
+Ed_behaviorcount_month7<- Ed %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Ed_behaviorcount_month7
+
+Ed_month7_SD<- diversity(Ed_behaviorcount_month7$count)
+Ed_month7_SD
+
+#Month 8
+Ed_behaviorcount_month8<- Ed %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Ed_behaviorcount_month8
+
+Ed_month8_SD<- diversity(Ed_behaviorcount_month8$count)
+Ed_month8_SD
+
+#Month 9
+Ed_behaviorcount_month9<- Ed %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Ed_behaviorcount_month9
+
+Ed_month9_SD<- diversity(Ed_behaviorcount_month9$count)
+Ed_month9_SD
+```
+
+### Averaging the SDs across Eddy's 4 months pre-release
+```{r}
+Ed_pre_allSDs<- c(Ed_month6_SD,Ed_month7_SD,Ed_month8_SD,Ed_month9_SD)
+Ed_pre_avgSDs<- mean(Ed_pre_allSDs)
+Ed_pre_avgSDs
+```
+
+## TINKER
+## Filtering out Tinker from the pre-focals dataset
+```{r}
+Tink<- pre_focals %>% filter(FOCAL.ID == "TI")
+n_distinct(Tink$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Tinker during pre-release observations
+```{r}
+#Month 6
+Tink_behaviorcount_month6<- Tink %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Tink_behaviorcount_month6
+
+Tink_month6_SD<- diversity(Tink_behaviorcount_month6$count)
+Tink_month6_SD
+
+#Month 7
+Tink_behaviorcount_month7<- Tink %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Tink_behaviorcount_month7
+
+Tink_month7_SD<- diversity(Tink_behaviorcount_month7$count)
+Tink_month7_SD
+
+#Month 8
+Tink_behaviorcount_month8<- Tink %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Tink_behaviorcount_month8
+
+Tink_month8_SD<- diversity(Tink_behaviorcount_month8$count)
+Tink_month8_SD
+
+#Month 9
+Tink_behaviorcount_month9<- Tink %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Tink_behaviorcount_month9
+
+Tink_month9_SD<- diversity(Tink_behaviorcount_month9$count)
+Tink_month9_SD
+```
+
+### Averaging the SDs across Tinker's 4 months pre-release
+```{r}
+Tink_pre_allSDs<- c(Tink_month6_SD,Tink_month7_SD,Tink_month8_SD,Tink_month9_SD)
+Tink_pre_avgSDs<- mean(Tink_pre_allSDs)
+Tink_pre_avgSDs
+```
+
+## BATMAN
+## Filtering out Batman from the pre-focals dataset
+```{r}
+Bat<- pre_focals %>% filter(FOCAL.ID == "BT")
+n_distinct(Bat$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Batman during pre-release observations
+```{r}
+#Month 6
+Bat_behaviorcount_month6<- Bat %>% 
+  filter(MONTH == "6") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bat_behaviorcount_month6
+
+Bat_month6_SD<- diversity(Bat_behaviorcount_month6$count)
+Bat_month6_SD
+
+#Month 7
+Bat_behaviorcount_month7<- Bat %>% 
+  filter(MONTH == "7") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bat_behaviorcount_month7
+
+Bat_month7_SD<- diversity(Bat_behaviorcount_month7$count)
+Bat_month7_SD
+
+#Month 8
+Bat_behaviorcount_month8<- Bat %>% 
+  filter(MONTH == "8") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bat_behaviorcount_month8
+
+Bat_month8_SD<- diversity(Bat_behaviorcount_month8$count)
+Bat_month8_SD
+
+#Month 9
+Bat_behaviorcount_month9<- Bat %>% 
+  filter(MONTH == "9") %>%
+  group_by(BEHAVIOUR) %>% 
+  summarize(count=n()) %>% 
+  arrange(desc(count))
+Bat_behaviorcount_month9
+
+Bat_month9_SD<- diversity(Bat_behaviorcount_month9$count)
+Bat_month9_SD
+```
+
+### Averaging the SDs across Batman's 4 months pre-release
+```{r}
+Bat_pre_allSDs<- c(Bat_month6_SD,Bat_month7_SD,Bat_month8_SD,Bat_month9_SD)
+Bat_pre_avgSDs<- mean(Bat_pre_allSDs)
+Bat_pre_avgSDs
+```
+
+### Creating a table with all of average Shannon Diversity Indices for each individual
+```{r}
+pre_SDs_table<- matrix(c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Bat_pre_avgSDs), ncol = 1, byrow = 17)
+pre_SDs_table
+colnames(pre_SDs_table) <- c("Shannon Diversity Index")
+rownames(pre_SDs_table) <- c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Bgm", "Kovu", "Eddy", "Tinker", "Batman")
+pre_SDs_table<- as.table(pre_SDs_table)
+#table(pre_SDs_table) %>% 
+        #as.data.frame() %>% 
+        #arrange(desc(Freq))
+pre_SDs_table
+
+x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2.5), cex.names = 0.8, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
+x
+```
+### Saving the image as a jpeg
+```{r}
+pdf(file = "/New User/Desktop/SD Plot.pdf",   # The directory you want to save the file in
+    width = 4, # The width of the plot in inches
+    height = 4) # The height of the plot in inches
+
+jpeg("SDplot.jpg", width = 900, height = 500)
+x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2), cex.lab = 1.25, font.lab= 2, cex.names = 1, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
+x
+
+dev.off()
+```
+
+## Creating a DF for the pre-release Shannon Diversity Index values so that I can use the barplot() function more easily
+```{r}
+Individual<- c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman") #my first column
+SD<- c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Bat_pre_avgSDs) #My second column
+BD_df<- data.frame(Individual,SD) #Turn into data frame
+BD_df
+
+row.names(BD_df)<- c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman") #I need to customize my rownames because with the code I use down below to turn the names on an angle I need to use the paste(rownames) function... otherwise they would just be 1,2,3...
+row.names(BD_df)
+
+par(mar = c(11, 7, 2, 2) + 0.2) #add room for the rotated labels
+
+end_point = 0.5 + nrow(BD_df) + nrow(BD_df) - 1 #this is the line which does the trick (together with barplot "space = 1" parameter)
+
+barplot(BD_df$SD, col = "#69b3a2", 
+        main = "",
+        ylab = "Shannon Diversity Index", ylim = c(0,2.5),
+        xlab = "",
+        space = 0.75)
+text(seq(1.5, end_point, by = 2), par("usr")[3]-0.25, 
+     srt = 60, adj = 1, xpd = TRUE, #rotate 60 degrees (srt = 60)
+     labels = paste(rownames(BD_df)), cex = 0.75)
+```
+
+### Creating a table by hand of the confirmed dead/presumed dead/presumed emigrated for males/females/infants
+```{r}
+info<- matrix(c(7,1,0,4,11,3,3,0,3,0,2,0,21,4,5,4), ncol=4, byrow = T)
+rownames(info)<- c("Male", "Female", "Infant", "Totals")
+colnames(info)<- c("Released", "Confirmed Dead", "Presumed Dead", "Presumed Emigrated")
+info<- as.table(info)
+info
+```
+
+### Using formattable() function to create a nicer table
+```{r}
+summary<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Summary%20Table.csv")
+summary<- read.csv(summary, header = T) #Had to create an excel table and import as df to use formattable()
+
+formattable(summary)
+
+customGreen0 = "#DeF7E9"
+
+customGreen = "#71CA97"
+
+customRed = "#ff7f7f"
+
+formattable(summary, 
+            align =c("l","c","c","c","c"), 
+            list(`Vervets` = formatter(
+              "span", style = ~ style(color = "grey",font.weight = "bold"))
+))
+```
+
+
+```{r}
+n_distinct(Pops$POSITION.IN.CANOPY) #8 (blanks makes 9)
+unique(Pops$POSITION.IN.CANOPY)
+Pops
+```
+
+
