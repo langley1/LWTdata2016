@@ -30,7 +30,9 @@ library(formattable)
 ## Importing the pre-focals datasheet
 ```{r}
 pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_FOCALS.csv")
-pre_focals<- read.csv(pre_focals, header = T)
+pre_focals<- read.csv(pre_focals, header = T, na.strings=c(""," ","NA"))
+pre_focals <- pre_focals %>% mutate_all(na_if,"")
+levels(pre_focals$BEHAVIOUR.2)
 head(pre_focals)
 nrow(pre_focals)
 summary(pre_focals)
@@ -135,10 +137,32 @@ Pops_behaviorcount2
 
 Pops_behaviorcount3<- Pops %>% 
   filter(FOCAL.REFERENCE.CODE == "10407") %>%
+  drop_na(BEHAVIOUR.2) %>%
   group_by(BEHAVIOUR.2) %>% 
   summarize(count=n()) %>% 
   arrange(desc(count))
 Pops_behaviorcount3
+
+#!is.na(BEHAVIOUR.2)
+#na.rm = TRUE
+```
+
+## THIS IS THE PROPER CODE
+```{r}
+Pops_behaviorcount4<- Pops %>% 
+  filter(FOCAL.REFERENCE.CODE == "10407") %>%
+  group_by(BEHAVIOUR, BEHAVIOUR.2)
+  #summarize(count=n())
+Pops_behaviorcount4
+
+Pops_behaviorcount4 <- Pops_behaviorcount4 %>%
+  gather("Obs", "behavior", 19:20, na.rm = T)
+  
+Pops_behaviorcount5<- Pops_behaviorcount4 %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Pops_behaviorcount5
 ```
 
 ### Practicing running SD calculations by "hand" first
@@ -152,24 +176,26 @@ test<- diversity(Pops_behaviorcount$count)
 test #0.7999, they match
 ```
 
-### Since I can't find SD for each of the 56 focals (don't know how to do it at least), I'm going to find a SD for each month during pre-release observations
+### Finding Pops SD for each month during pre-release observations (4 months)
 ```{r}
 #Month 6
 Pops_behaviorcount_month6<- Pops %>% 
-  filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  filter(MONTH == "6") %>% #filtering out month "6"
+  gather("Obs", "behavior", 19:20, na.rm = T) %>% #using the gather() function to create two new columns "obs" and "behavior" using columns 19 & 20 ("Behavior" & "Behavior.2"). This adjusts the rows and basically combines all of the behaviors into one column under "behavior"
+  group_by(behavior) %>% #Now grouping by this new "behavior" column created by gather()
+  summarize(count=n()) %>% #counting the different behaviors and arranging them in descending order
   arrange(desc(count))
 Pops_behaviorcount_month6
 
-Pop_month6_SD<- diversity(Pops_behaviorcount_month6$count)
+Pop_month6_SD<- diversity(Pops_behaviorcount_month6$count) #finding Shannon Diversity for for month6
 Pop_month6_SD
 
 #Month 7
 Pops_behaviorcount_month7<- Pops %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Pops_behaviorcount_month7
 
@@ -179,8 +205,9 @@ Pop_month7_SD
 #Month 8
 Pops_behaviorcount_month8<- Pops %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Pops_behaviorcount_month8
 
@@ -190,8 +217,9 @@ Pop_month8_SD
 #Month 9
 Pops_behaviorcount_month9<- Pops %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Pops_behaviorcount_month9
 
@@ -202,9 +230,8 @@ Pop_month9_SD
 ### Averaging the SDs across Pop's 4 months pre-release
 ```{r}
 Pops_pre_allSDs<- c(Pop_month6_SD,Pop_month7_SD,Pop_month8_SD,Pop_month9_SD)
-Pops_pre_allSDs
 Pop_pre_avgSDs<- mean(Pops_pre_allSDs)
-Pop_pre_avgSDs #1.377789
+Pop_pre_avgSDs #1.393
 ```
 
 ## ZIP
@@ -219,8 +246,9 @@ n_distinct(Zip$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Zip_behaviorcount_month6<- Zip %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Zip_behaviorcount_month6
 
@@ -230,8 +258,9 @@ Zip_month6_SD
 #Month 7
 Zip_behaviorcount_month7<- Zip %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Zip_behaviorcount_month7
 
@@ -241,8 +270,9 @@ Zip_month7_SD
 #Month 8
 Zip_behaviorcount_month8<- Zip %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Zip_behaviorcount_month8
 
@@ -252,8 +282,9 @@ Zip_month8_SD
 #Month 9
 Zip_behaviorcount_month9<- Zip %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Zip_behaviorcount_month9
 
@@ -280,8 +311,9 @@ n_distinct(Jack$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Jack_behaviorcount_month6<- Jack %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Jack_behaviorcount_month6
 
@@ -291,8 +323,9 @@ Jack_month6_SD
 #Month 7
 Jack_behaviorcount_month7<- Jack %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Jack_behaviorcount_month7
 
@@ -302,8 +335,9 @@ Jack_month7_SD
 #Month 8
 Jack_behaviorcount_month8<- Jack %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Jack_behaviorcount_month8
 
@@ -313,8 +347,9 @@ Jack_month8_SD
 #Month 9
 Jack_behaviorcount_month9<- Jack %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Jack_behaviorcount_month9
 
@@ -341,8 +376,9 @@ n_distinct(Blue$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Blue_behaviorcount_month6<- Blue %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Blue_behaviorcount_month6
 
@@ -352,8 +388,9 @@ Blue_month6_SD
 #Month 7
 Blue_behaviorcount_month7<- Blue %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Blue_behaviorcount_month7
 
@@ -363,8 +400,9 @@ Blue_month7_SD
 #Month 8
 Blue_behaviorcount_month8<- Blue %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Blue_behaviorcount_month8
 
@@ -374,8 +412,9 @@ Blue_month8_SD
 #Month 9
 Blue_behaviorcount_month9<- Blue %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Blue_behaviorcount_month9
 
@@ -402,8 +441,9 @@ n_distinct(Alex$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Alex_behaviorcount_month6<- Alex %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Alex_behaviorcount_month6
 
@@ -413,8 +453,9 @@ Alex_month6_SD
 #Month 7
 Alex_behaviorcount_month7<- Alex %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Alex_behaviorcount_month7
 
@@ -424,8 +465,9 @@ Alex_month7_SD
 #Month 8
 Alex_behaviorcount_month8<- Alex %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Alex_behaviorcount_month8
 
@@ -435,8 +477,9 @@ Alex_month8_SD
 #Month 9
 Alex_behaviorcount_month9<- Alex %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Alex_behaviorcount_month9
 
@@ -463,8 +506,9 @@ n_distinct(Bart$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Bart_behaviorcount_month6<- Bart %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bart_behaviorcount_month6
 
@@ -474,8 +518,9 @@ Bart_month6_SD
 #Month 7
 Bart_behaviorcount_month7<- Bart %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bart_behaviorcount_month7
 
@@ -485,8 +530,9 @@ Bart_month7_SD
 #Month 8
 Bart_behaviorcount_month8<- Bart %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bart_behaviorcount_month8
 
@@ -496,13 +542,21 @@ Bart_month8_SD
 #Month 9
 Bart_behaviorcount_month9<- Bart %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bart_behaviorcount_month9
 
 Bart_month9_SD<- diversity(Bart_behaviorcount_month9$count)
 Bart_month9_SD
+```
+
+### Averaging the SDs across Bart's 4 months pre-release
+```{r}
+Bart_pre_allSDs<- c(Bart_month6_SD,Bart_month7_SD,Bart_month8_SD,Bart_month9_SD)
+Bart_pre_avgSDs<- mean(Bart_pre_allSDs)
+Bart_pre_avgSDs
 ```
 
 ## NEVILLE
@@ -517,8 +571,9 @@ n_distinct(Nev$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Nev_behaviorcount_month6<- Nev %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Nev_behaviorcount_month6
 
@@ -528,8 +583,9 @@ Nev_month6_SD
 #Month 7
 Nev_behaviorcount_month7<- Nev %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Nev_behaviorcount_month7
 
@@ -539,8 +595,9 @@ Nev_month7_SD
 #Month 8
 Nev_behaviorcount_month8<- Nev %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Nev_behaviorcount_month8
 
@@ -550,8 +607,9 @@ Nev_month8_SD
 #Month 9
 Nev_behaviorcount_month9<- Nev %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Nev_behaviorcount_month9
 
@@ -578,8 +636,9 @@ n_distinct(Aug$FOCAL.REFERENCE.CODE) #58 distinct focals
 #Month 6
 Aug_behaviorcount_month6<- Aug %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Aug_behaviorcount_month6
 
@@ -589,8 +648,9 @@ Aug_month6_SD
 #Month 7
 Aug_behaviorcount_month7<- Aug %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Aug_behaviorcount_month7
 
@@ -600,8 +660,9 @@ Aug_month7_SD
 #Month 8
 Aug_behaviorcount_month8<- Aug %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Aug_behaviorcount_month8
 
@@ -611,8 +672,9 @@ Aug_month8_SD
 #Month 9
 Aug_behaviorcount_month9<- Aug %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Aug_behaviorcount_month9
 
@@ -639,8 +701,9 @@ n_distinct(Amy$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Amy_behaviorcount_month6<- Amy %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Amy_behaviorcount_month6
 
@@ -650,8 +713,9 @@ Amy_month6_SD
 #Month 7
 Amy_behaviorcount_month7<- Amy %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Amy_behaviorcount_month7
 
@@ -661,8 +725,9 @@ Amy_month7_SD
 #Month 8
 Amy_behaviorcount_month8<- Amy %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Amy_behaviorcount_month8
 
@@ -672,8 +737,9 @@ Amy_month8_SD
 #Month 9
 Amy_behaviorcount_month9<- Amy %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Amy_behaviorcount_month9
 
@@ -700,8 +766,9 @@ n_distinct(May$FOCAL.REFERENCE.CODE) #57 distinct focals
 #Month 6
 May_behaviorcount_month6<- May %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 May_behaviorcount_month6
 
@@ -711,8 +778,9 @@ May_month6_SD
 #Month 7
 May_behaviorcount_month7<- May %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 May_behaviorcount_month7
 
@@ -722,8 +790,9 @@ May_month7_SD
 #Month 8
 May_behaviorcount_month8<- May %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 May_behaviorcount_month8
 
@@ -733,8 +802,9 @@ May_month8_SD
 #Month 9
 May_behaviorcount_month9<- May %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 May_behaviorcount_month9
 
@@ -761,8 +831,9 @@ n_distinct(Toni$FOCAL.REFERENCE.CODE) #55 distinct focals
 #Month 6
 Toni_behaviorcount_month6<- Toni %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Toni_behaviorcount_month6
 
@@ -772,8 +843,9 @@ Toni_month6_SD
 #Month 7
 Toni_behaviorcount_month7<- Toni %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Toni_behaviorcount_month7
 
@@ -783,8 +855,9 @@ Toni_month7_SD
 #Month 8
 Toni_behaviorcount_month8<- Toni %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Toni_behaviorcount_month8
 
@@ -794,8 +867,9 @@ Toni_month8_SD
 #Month 9
 Toni_behaviorcount_month9<- Toni %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Toni_behaviorcount_month9
 
@@ -822,8 +896,9 @@ n_distinct(Boo$FOCAL.REFERENCE.CODE) #55 distinct focals
 #Month 6
 Boo_behaviorcount_month6<- Boo %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Boo_behaviorcount_month6
 
@@ -833,8 +908,9 @@ Boo_month6_SD
 #Month 7
 Boo_behaviorcount_month7<- Boo %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Boo_behaviorcount_month7
 
@@ -844,8 +920,9 @@ Boo_month7_SD
 #Month 8
 Boo_behaviorcount_month8<- Boo %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Boo_behaviorcount_month8
 
@@ -855,8 +932,9 @@ Boo_month8_SD
 #Month 9
 Boo_behaviorcount_month9<- Boo %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Boo_behaviorcount_month9
 
@@ -883,8 +961,9 @@ n_distinct(Bgm$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Bgm_behaviorcount_month6<- Bgm %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bgm_behaviorcount_month6
 
@@ -894,8 +973,9 @@ Bgm_month6_SD
 #Month 7
 Bgm_behaviorcount_month7<- Bgm %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bgm_behaviorcount_month7
 
@@ -905,8 +985,9 @@ Bgm_month7_SD
 #Month 8
 Bgm_behaviorcount_month8<- Bgm %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bgm_behaviorcount_month8
 
@@ -916,8 +997,9 @@ Bgm_month8_SD
 #Month 9
 Bgm_behaviorcount_month9<- Bgm %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bgm_behaviorcount_month9
 
@@ -944,8 +1026,9 @@ n_distinct(Kovu$FOCAL.REFERENCE.CODE) #55 distinct focals
 #Month 6
 Kovu_behaviorcount_month6<- Kovu %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Kovu_behaviorcount_month6
 
@@ -955,8 +1038,9 @@ Kovu_month6_SD
 #Month 7
 Kovu_behaviorcount_month7<- Kovu %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Kovu_behaviorcount_month7
 
@@ -966,8 +1050,9 @@ Kovu_month7_SD
 #Month 8
 Kovu_behaviorcount_month8<- Kovu %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Kovu_behaviorcount_month8
 
@@ -977,8 +1062,9 @@ Kovu_month8_SD
 #Month 9
 Kovu_behaviorcount_month9<- Kovu %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Kovu_behaviorcount_month9
 
@@ -1005,8 +1091,9 @@ n_distinct(Ed$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Ed_behaviorcount_month6<- Ed %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Ed_behaviorcount_month6
 
@@ -1016,8 +1103,9 @@ Ed_month6_SD
 #Month 7
 Ed_behaviorcount_month7<- Ed %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Ed_behaviorcount_month7
 
@@ -1027,8 +1115,9 @@ Ed_month7_SD
 #Month 8
 Ed_behaviorcount_month8<- Ed %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Ed_behaviorcount_month8
 
@@ -1038,8 +1127,9 @@ Ed_month8_SD
 #Month 9
 Ed_behaviorcount_month9<- Ed %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Ed_behaviorcount_month9
 
@@ -1066,8 +1156,9 @@ n_distinct(Tink$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Tink_behaviorcount_month6<- Tink %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Tink_behaviorcount_month6
 
@@ -1077,8 +1168,9 @@ Tink_month6_SD
 #Month 7
 Tink_behaviorcount_month7<- Tink %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Tink_behaviorcount_month7
 
@@ -1088,8 +1180,9 @@ Tink_month7_SD
 #Month 8
 Tink_behaviorcount_month8<- Tink %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Tink_behaviorcount_month8
 
@@ -1099,8 +1192,9 @@ Tink_month8_SD
 #Month 9
 Tink_behaviorcount_month9<- Tink %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Tink_behaviorcount_month9
 
@@ -1127,8 +1221,9 @@ n_distinct(Bat$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Bat_behaviorcount_month6<- Bat %>% 
   filter(MONTH == "6") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bat_behaviorcount_month6
 
@@ -1138,8 +1233,9 @@ Bat_month6_SD
 #Month 7
 Bat_behaviorcount_month7<- Bat %>% 
   filter(MONTH == "7") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bat_behaviorcount_month7
 
@@ -1149,8 +1245,9 @@ Bat_month7_SD
 #Month 8
 Bat_behaviorcount_month8<- Bat %>% 
   filter(MONTH == "8") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bat_behaviorcount_month8
 
@@ -1160,8 +1257,9 @@ Bat_month8_SD
 #Month 9
 Bat_behaviorcount_month9<- Bat %>% 
   filter(MONTH == "9") %>%
-  group_by(BEHAVIOUR) %>% 
-  summarize(count=n()) %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
   arrange(desc(count))
 Bat_behaviorcount_month9
 
@@ -1191,6 +1289,7 @@ pre_SDs_table
 x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2.5), cex.names = 0.8, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
 x
 ```
+
 ### Saving the image as a jpeg
 ```{r}
 pdf(file = "/New User/Desktop/SD Plot.pdf",   # The directory you want to save the file in
