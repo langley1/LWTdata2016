@@ -2,7 +2,6 @@
 title: "2016 release"
 output: html_document
 ---
-
 install.packages("curl")
 install.packages("dplyr")
 install.packages("tidyverse")
@@ -27,9 +26,9 @@ library(tidyr)
 library(formattable)
 ```
 
-## Importing the pre-focals datasheet
+## Importing the pre-focals datasheet (NOT FULL)
 ```{r}
-pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_FOCALS.csv")
+pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_FOCALS.csv") #this one only has months 6-9!! NOT full
 pre_focals<- read.csv(pre_focals, header = T, na.strings=c(""," ","NA"))
 pre_focals <- pre_focals %>% mutate_all(na_if,"")
 levels(pre_focals$BEHAVIOUR.2)
@@ -44,13 +43,44 @@ sort(table(pre_focals$BEHAVIOUR), decreasing = TRUE)
 n_distinct(pre_focals$FOCAL.REFERENCE.CODE) #1012 total focals
 ```
 
+## Importing the FULL pre-focals datasheet
+```{r}
+pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_focals_FULL.csv")
+pre_focals<- read.csv(pre_focals, header=T, na.strings=c(""," ","NA"))
+head(pre_focals)
+unique(pre_focals$FOCAL.ID)
+```
+
+## Importing the pre-continuous dataset (this is NOT FULL)
+```{r}
+pre_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_CONT.csv")
+pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
+pre_cont$X<- NULL #There was an empty column in front with all NAs
+pre_cont<- pre_cont[-c(1),] #the first row was just an empty row of NAs
+head(pre_cont)
+```
+
+## Importing the FULL pre-continuous dataset
+```{r}
+pre_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_cont_FULL.csv")
+pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
+unique(pre_cont$MONTH)
+```
+
+# Importing the post-focals dataset
+```{r}
+post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_FOCALS.csv")
+post_focals<- read.csv(post_focals, header= T, na.strings=c(""," ","NA"))
+head(post_focals)
+```
+
 ## Creating an Age/Sex plot
 ```{r}
-age_sex_plot <- ggplot(pre_focals, aes(SEX, group = AGE)) + 
+age_sex_plot <- ggplot(pre_focals, aes(sex, group = age)) + 
           geom_bar(aes(y = ..prop.., fill = factor(..x..)), stat="count") + 
           scale_y_continuous(labels=scales::percent) +
           ylab("relative frequencies") +
-          facet_grid(~AGE)
+          facet_grid(~age)
 age_sex_plot #There are more female than male adults, almost all subadults are males, and more juveniles are females... overall more females than males 
 ```
 
@@ -59,8 +89,8 @@ age_sex_plot #There are more female than male adults, almost all subadults are m
 ```{r}
 Pops<- pre_focals %>% filter(FOCAL.ID == "PO")
 head(Pops)
-n_distinct(Pops$FOCAL.REFERENCE.CODE) #56 distinct focals
-unique(Pops$FOCAL.REFERENCE.CODE)
+n_distinct(Pops$focal.reference) #131 distinct focals
+#unique(Pops$FOCAL.REFERENCE.CODE)
 ```
 
 ### Testing to see if I get the same SD value if I 1) do three focals separately and then find the average SD and 2)combine all three focals into one df and then find the SD for that 
@@ -126,7 +156,7 @@ DIVTEST<- diversity(Pops_behaviorcountTEST2$count)
 DIVTEST #1.459
 ```
 
-### Playing around with the two behavior columns for one of Pop's focals, I need to somehow incorporate the behaviors from the Behavior.2 column into my SD calculations (don't know how to do this yet)
+### Playing around with the two behavior columns for one of Pop's focals, I need to somehow incorporate the behaviors from the Behavior.2 column into my SD calculations (see code below for proper code)
 ```{r}
 Pops_behaviorcount2<- Pops %>% 
   filter(FOCAL.REFERENCE.CODE == "10407") %>%
@@ -147,7 +177,7 @@ Pops_behaviorcount3
 #na.rm = TRUE
 ```
 
-## THIS IS THE PROPER CODE
+## THIS IS THE PROPER CODE, just practicing it out on individual focals first
 ```{r}
 Pops_behaviorcount4<- Pops %>% 
   filter(FOCAL.REFERENCE.CODE == "10407") %>%
@@ -176,24 +206,24 @@ test<- diversity(Pops_behaviorcount$count)
 test #0.7999, they match
 ```
 
-### Finding Pops SD for each month during pre-release observations (4 months)
+### Finding Pops SD for EACH MONTH during pre-release observations (4 months)
 ```{r}
 #Month 6
 Pops_behaviorcount_month6<- Pops %>% 
   filter(MONTH == "6") %>% #filtering out month "6"
-  gather("Obs", "behavior", 19:20, na.rm = T) %>% #using the gather() function to create two new columns "obs" and "behavior" using columns 19 & 20 ("Behavior" & "Behavior.2"). This adjusts the rows and basically combines all of the behaviors into one column under "behavior"
+  gather("Obs", "behavior", 22:23, na.rm = T) %>% #using the gather() function to create two new columns "obs" and "behavior" using columns 19 & 20 ("Behavior" & "Behavior.2"). This adjusts the rows and basically combines all of the behaviors into one column under "behavior"
   group_by(behavior) %>% #Now grouping by this new "behavior" column created by gather()
   summarize(count=n()) %>% #counting the different behaviors and arranging them in descending order
   arrange(desc(count))
 Pops_behaviorcount_month6
 
-Pop_month6_SD<- diversity(Pops_behaviorcount_month6$count) #finding Shannon Diversity for for month6
+Pop_month6_SD<- diversity(Pops_behaviorcount_month6$count) #finding Shannon Diversity for for month 6
 Pop_month6_SD
 
 #Month 7
 Pops_behaviorcount_month7<- Pops %>% 
   filter(MONTH == "7") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -205,7 +235,7 @@ Pop_month7_SD
 #Month 8
 Pops_behaviorcount_month8<- Pops %>% 
   filter(MONTH == "8") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -217,7 +247,7 @@ Pop_month8_SD
 #Month 9
 Pops_behaviorcount_month9<- Pops %>% 
   filter(MONTH == "9") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -225,20 +255,79 @@ Pops_behaviorcount_month9
 
 Pop_month9_SD<- diversity(Pops_behaviorcount_month9$count)
 Pop_month9_SD
+
+#Month 10
+Pops_behaviorcount_month10<- Pops %>% 
+  filter(MONTH == "10") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Pops_behaviorcount_month10
+
+Pop_month10_SD<- diversity(Pops_behaviorcount_month10$count)
+Pop_month10_SD
+
+#Month 11
+Pops_behaviorcount_month11<- Pops %>% 
+  filter(MONTH == "11") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Pops_behaviorcount_month11
+
+Pop_month11_SD<- diversity(Pops_behaviorcount_month11$count)
+Pop_month11_SD
+
+#Month 12
+Pops_behaviorcount_month12<- Pops %>% 
+  filter(MONTH == "12") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Pops_behaviorcount_month12
+
+Pop_month12_SD<- diversity(Pops_behaviorcount_month12$count)
+Pop_month12_SD
+
+#Month 1
+Pops_behaviorcount_month1<- Pops %>% 
+  filter(MONTH == "1") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Pops_behaviorcount_month1
+
+Pop_month1_SD<- diversity(Pops_behaviorcount_month1$count)
+Pop_month1_SD
+
+#Month 2
+Pops_behaviorcount_month2<- Pops %>% 
+  filter(MONTH == "2") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Pops_behaviorcount_month2
+
+Pop_month2_SD<- diversity(Pops_behaviorcount_month2$count)
+Pop_month2_SD
 ```
 
 ### Averaging the SDs across Pop's 4 months pre-release
 ```{r}
-Pops_pre_allSDs<- c(Pop_month6_SD,Pop_month7_SD,Pop_month8_SD,Pop_month9_SD)
+Pops_pre_allSDs<- c(Pop_month6_SD,Pop_month7_SD,Pop_month8_SD,Pop_month9_SD, Pop_month10_SD,Pop_month11_SD,Pop_month12_SD,Pop_month1_SD,Pop_month2_SD)
 Pop_pre_avgSDs<- mean(Pops_pre_allSDs)
-Pop_pre_avgSDs #1.393
+#Pop_pre_avgSDs #1.153
 ```
 
 ## ZIP
 ## Filtering out Zip from the pre-focals dataset
 ```{r}
 Zip<- pre_focals %>% filter(FOCAL.ID == "ZI")
-n_distinct(Zip$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Zip during pre-release observations
@@ -246,7 +335,7 @@ n_distinct(Zip$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Zip_behaviorcount_month6<- Zip %>% 
   filter(MONTH == "6") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -258,7 +347,7 @@ Zip_month6_SD
 #Month 7
 Zip_behaviorcount_month7<- Zip %>% 
   filter(MONTH == "7") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -270,7 +359,7 @@ Zip_month7_SD
 #Month 8
 Zip_behaviorcount_month8<- Zip %>% 
   filter(MONTH == "8") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -282,7 +371,7 @@ Zip_month8_SD
 #Month 9
 Zip_behaviorcount_month9<- Zip %>% 
   filter(MONTH == "9") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -290,20 +379,79 @@ Zip_behaviorcount_month9
 
 Zip_month9_SD<- diversity(Zip_behaviorcount_month9$count)
 Zip_month9_SD
+
+#Month 10
+Zip_behaviorcount_month10<- Zip %>% 
+  filter(MONTH == "10") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Zip_behaviorcount_month10
+
+Zip_month10_SD<- diversity(Zip_behaviorcount_month10$count)
+Zip_month10_SD
+
+#Month 11
+Zip_behaviorcount_month11<- Zip %>% 
+  filter(MONTH == "11") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Zip_behaviorcount_month11
+
+Zip_month11_SD<- diversity(Zip_behaviorcount_month11$count)
+Zip_month11_SD
+
+#Month 12
+Zip_behaviorcount_month12<- Zip %>% 
+  filter(MONTH == "12") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Zip_behaviorcount_month12
+
+Zip_month12_SD<- diversity(Zip_behaviorcount_month12$count)
+Zip_month12_SD
+
+#Month 1
+Zip_behaviorcount_month1<- Zip %>% 
+  filter(MONTH == "1") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Zip_behaviorcount_month1
+
+Zip_month1_SD<- diversity(Zip_behaviorcount_month1$count)
+Zip_month1_SD
+
+#Month 2
+Zip_behaviorcount_month2<- Zip %>% 
+  filter(MONTH == "2") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Zip_behaviorcount_month2
+
+Zip_month2_SD<- diversity(Zip_behaviorcount_month2$count)
+Zip_month2_SD
 ```
 
 ### Averaging the SDs across Zip's 4 months pre-release
 ```{r}
-Zip_pre_allSDs<- c(Zip_month6_SD,Zip_month7_SD,Zip_month8_SD,Zip_month9_SD)
+Zip_pre_allSDs<- c(Zip_month6_SD,Zip_month7_SD,Zip_month8_SD,Zip_month9_SD,Zip_month10_SD,Zip_month11_SD,Zip_month12_SD,Zip_month1_SD,Zip_month2_SD)
 Zip_pre_avgSDs<- mean(Zip_pre_allSDs)
-Zip_pre_avgSDs
+#Zip_pre_avgSDs
 ```
 
 ## JACK
 ## Filtering out Jack from the pre-focals dataset
 ```{r}
 Jack<- pre_focals %>% filter(FOCAL.ID == "JA")
-n_distinct(Jack$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Jack during pre-release observations
@@ -311,7 +459,7 @@ n_distinct(Jack$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Jack_behaviorcount_month6<- Jack %>% 
   filter(MONTH == "6") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -323,7 +471,7 @@ Jack_month6_SD
 #Month 7
 Jack_behaviorcount_month7<- Jack %>% 
   filter(MONTH == "7") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -335,7 +483,7 @@ Jack_month7_SD
 #Month 8
 Jack_behaviorcount_month8<- Jack %>% 
   filter(MONTH == "8") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -347,7 +495,7 @@ Jack_month8_SD
 #Month 9
 Jack_behaviorcount_month9<- Jack %>% 
   filter(MONTH == "9") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -355,20 +503,79 @@ Jack_behaviorcount_month9
 
 Jack_month9_SD<- diversity(Jack_behaviorcount_month9$count)
 Jack_month9_SD
+
+#Month 10
+Jack_behaviorcount_month10<- Jack %>% 
+  filter(MONTH == "10") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Jack_behaviorcount_month10
+
+Jack_month10_SD<- diversity(Jack_behaviorcount_month10$count)
+Jack_month10_SD
+
+#Month 11
+Jack_behaviorcount_month11<- Jack %>% 
+  filter(MONTH == "11") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Jack_behaviorcount_month11
+
+Jack_month11_SD<- diversity(Jack_behaviorcount_month11$count)
+Jack_month11_SD
+
+#Month 12
+Jack_behaviorcount_month12<- Jack %>% 
+  filter(MONTH == "12") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Jack_behaviorcount_month12
+
+Jack_month12_SD<- diversity(Jack_behaviorcount_month12$count)
+Jack_month12_SD
+
+#Month 1
+Jack_behaviorcount_month1<- Jack %>% 
+  filter(MONTH == "1") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Jack_behaviorcount_month1
+
+Jack_month1_SD<- diversity(Jack_behaviorcount_month1$count)
+Jack_month1_SD
+
+#Month 2
+Jack_behaviorcount_month2<- Jack %>% 
+  filter(MONTH == "2") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Jack_behaviorcount_month2
+
+Jack_month2_SD<- diversity(Jack_behaviorcount_month2$count)
+Jack_month2_SD
 ```
 
 ### Averaging the SDs across Jack's 4 months pre-release
 ```{r}
-Jack_pre_allSDs<- c(Jack_month6_SD,Jack_month7_SD,Jack_month8_SD,Jack_month9_SD)
+Jack_pre_allSDs<- c(Jack_month6_SD,Jack_month7_SD,Jack_month8_SD,Jack_month9_SD,Jack_month10_SD,Jack_month11_SD,Jack_month12_SD,Jack_month1_SD,Jack_month2_SD)
 Jack_pre_avgSDs<- mean(Jack_pre_allSDs)
-Jack_pre_avgSDs
+#Jack_pre_avgSDs
 ```
 
 ## BLUE
 ## Filtering out Blue from the pre-focals dataset
 ```{r}
 Blue<- pre_focals %>% filter(FOCAL.ID == "BL")
-n_distinct(Blue$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Blue during pre-release observations
@@ -376,7 +583,7 @@ n_distinct(Blue$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Blue_behaviorcount_month6<- Blue %>% 
   filter(MONTH == "6") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -388,7 +595,7 @@ Blue_month6_SD
 #Month 7
 Blue_behaviorcount_month7<- Blue %>% 
   filter(MONTH == "7") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -400,7 +607,7 @@ Blue_month7_SD
 #Month 8
 Blue_behaviorcount_month8<- Blue %>% 
   filter(MONTH == "8") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -412,7 +619,7 @@ Blue_month8_SD
 #Month 9
 Blue_behaviorcount_month9<- Blue %>% 
   filter(MONTH == "9") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -420,20 +627,79 @@ Blue_behaviorcount_month9
 
 Blue_month9_SD<- diversity(Blue_behaviorcount_month9$count)
 Blue_month9_SD
+
+#Month 10
+Blue_behaviorcount_month10<- Blue %>% 
+  filter(MONTH == "10") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Blue_behaviorcount_month10
+
+Blue_month10_SD<- diversity(Blue_behaviorcount_month10$count)
+Blue_month10_SD
+
+#Month 11
+Blue_behaviorcount_month11<- Blue %>% 
+  filter(MONTH == "11") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Blue_behaviorcount_month11
+
+Blue_month11_SD<- diversity(Blue_behaviorcount_month11$count)
+Blue_month11_SD
+
+#Month 12
+Blue_behaviorcount_month12<- Blue %>% 
+  filter(MONTH == "12") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Blue_behaviorcount_month12
+
+Blue_month12_SD<- diversity(Blue_behaviorcount_month12$count)
+Blue_month12_SD
+
+#Month 1
+Blue_behaviorcount_month1<- Blue %>% 
+  filter(MONTH == "1") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Blue_behaviorcount_month1
+
+Blue_month1_SD<- diversity(Blue_behaviorcount_month1$count)
+Blue_month1_SD
+
+#Month 2
+Blue_behaviorcount_month2<- Blue %>% 
+  filter(MONTH == "2") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Blue_behaviorcount_month2
+
+Blue_month2_SD<- diversity(Blue_behaviorcount_month2$count)
+Blue_month2_SD
 ```
 
 ### Averaging the SDs across Blue's 4 months pre-release
 ```{r}
-Blue_pre_allSDs<- c(Blue_month6_SD,Blue_month7_SD,Blue_month8_SD,Blue_month9_SD)
+Blue_pre_allSDs<- c(Blue_month6_SD,Blue_month7_SD,Blue_month8_SD,Blue_month9_SD,Blue_month10_SD,Blue_month11_SD,Blue_month12_SD,Blue_month1_SD,Blue_month2_SD)
 Blue_pre_avgSDs<- mean(Blue_pre_allSDs)
-Blue_pre_avgSDs
+#Blue_pre_avgSDs
 ```
 
 ## ALEX
 ## Filtering out Alex from the pre-focals dataset
 ```{r}
 Alex<- pre_focals %>% filter(FOCAL.ID == "AL")
-n_distinct(Alex$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Alex during pre-release observations
@@ -441,7 +707,7 @@ n_distinct(Alex$FOCAL.REFERENCE.CODE) #56 distinct focals
 #Month 6
 Alex_behaviorcount_month6<- Alex %>% 
   filter(MONTH == "6") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -453,7 +719,7 @@ Alex_month6_SD
 #Month 7
 Alex_behaviorcount_month7<- Alex %>% 
   filter(MONTH == "7") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -465,7 +731,7 @@ Alex_month7_SD
 #Month 8
 Alex_behaviorcount_month8<- Alex %>% 
   filter(MONTH == "8") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -477,7 +743,7 @@ Alex_month8_SD
 #Month 9
 Alex_behaviorcount_month9<- Alex %>% 
   filter(MONTH == "9") %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>%
   summarize(count=n()) %>%
   arrange(desc(count))
@@ -485,13 +751,73 @@ Alex_behaviorcount_month9
 
 Alex_month9_SD<- diversity(Alex_behaviorcount_month9$count)
 Alex_month9_SD
+
+#Month 10
+Alex_behaviorcount_month10<- Alex %>% 
+  filter(MONTH == "10") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Alex_behaviorcount_month10
+
+Alex_month10_SD<- diversity(Alex_behaviorcount_month10$count)
+Alex_month10_SD
+
+#Month 11
+Alex_behaviorcount_month11<- Alex %>% 
+  filter(MONTH == "11") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Alex_behaviorcount_month11
+
+Alex_month11_SD<- diversity(Alex_behaviorcount_month11$count)
+Alex_month11_SD
+
+#Month 12
+Alex_behaviorcount_month12<- Alex %>% 
+  filter(MONTH == "12") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Alex_behaviorcount_month12
+
+Alex_month12_SD<- diversity(Alex_behaviorcount_month12$count)
+Alex_month12_SD
+
+#Month 1
+Alex_behaviorcount_month1<- Alex %>% 
+  filter(MONTH == "1") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Alex_behaviorcount_month1
+
+Alex_month1_SD<- diversity(Alex_behaviorcount_month1$count)
+Alex_month1_SD
+
+#Month 2
+Alex_behaviorcount_month2<- Alex %>% 
+  filter(MONTH == "2") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Alex_behaviorcount_month2
+
+Alex_month2_SD<- diversity(Alex_behaviorcount_month2$count)
+Alex_month2_SD
 ```
 
 ### Averaging the SDs across Alex's 4 months pre-release
 ```{r}
-Alex_pre_allSDs<- c(Alex_month6_SD,Alex_month7_SD,Alex_month8_SD,Alex_month9_SD)
+Alex_pre_allSDs<- c(Alex_month6_SD,Alex_month7_SD,Alex_month8_SD,Alex_month9_SD,Alex_month10_SD,Alex_month11_SD,Alex_month12_SD,Alex_month1_SD,Alex_month2_SD)
 Alex_pre_avgSDs<- mean(Alex_pre_allSDs)
-Alex_pre_avgSDs
+#Alex_pre_avgSDs
 ```
 
 ## BART
@@ -1274,31 +1600,238 @@ Bat_pre_avgSDs<- mean(Bat_pre_allSDs)
 Bat_pre_avgSDs
 ```
 
+## MANGO
+## Filtering out Mango from the pre-focals dataset
+```{r}
+Mango<- pre_focals %>% filter(FOCAL.ID == "MG")
+n_distinct(Mango$FOCAL.REFERENCE.CODE) #56 distinct focals
+```
+
+### Getting SD for each month for Mango during pre-release observations
+```{r}
+#Month 6
+Mango_behaviorcount_month6<- Mango %>% 
+  filter(MONTH == "6") %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Mango_behaviorcount_month6
+
+Mango_month6_SD<- diversity(Mango_behaviorcount_month6$count)
+Mango_month6_SD
+
+#Month 7
+Mango_behaviorcount_month7<- Mango %>% 
+  filter(MONTH == "7") %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Mango_behaviorcount_month7
+
+Mango_month7_SD<- diversity(Mango_behaviorcount_month7$count)
+Mango_month7_SD
+
+#Month 8
+Mango_behaviorcount_month8<- Mango %>% 
+  filter(MONTH == "8") %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Mango_behaviorcount_month8
+
+Mango_month8_SD<- diversity(Mango_behaviorcount_month8$count)
+Mango_month8_SD
+
+#Month 9
+Mango_behaviorcount_month9<- Mango %>% 
+  filter(MONTH == "9") %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>%
+  summarize(count=n()) %>%
+  arrange(desc(count))
+Mango_behaviorcount_month9
+
+Mango_month9_SD<- diversity(Mango_behaviorcount_month9$count)
+Mango_month9_SD
+```
+
+### Averaging the SDs across Mango's 4 months pre-release
+```{r}
+Mango_pre_allSDs<- c(Mango_month6_SD,Mango_month7_SD,Mango_month8_SD,Mango_month9_SD)
+Mango_pre_avgSDs<- mean(Mango_pre_allSDs)
+Mango_pre_avgSDs
+```
+
 ### Creating a table with all of average Shannon Diversity Indices for each individual
 ```{r}
-pre_SDs_table<- matrix(c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Bat_pre_avgSDs), ncol = 1, byrow = 17)
+pre_SDs_table<- matrix(c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Bat_pre_avgSDs, Mango_pre_avgSDs), ncol = 1, byrow = 18)
 pre_SDs_table
 colnames(pre_SDs_table) <- c("Shannon Diversity Index")
-rownames(pre_SDs_table) <- c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Bgm", "Kovu", "Eddy", "Tinker", "Batman")
+rownames(pre_SDs_table) <- c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Bgm", "Kovu", "Eddy", "Tinker", "Batman", "Mango")
 pre_SDs_table<- as.table(pre_SDs_table)
 #table(pre_SDs_table) %>% 
         #as.data.frame() %>% 
         #arrange(desc(Freq))
 pre_SDs_table
 
-x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2.5), cex.names = 0.8, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
-x
+PR_SD_PLOT<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman", "Mango"), ylim = c(0,2.5), cex.names = 0.8, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
+PR_SD_PLOT
 ```
 
 ### Saving the image as a jpeg
 ```{r}
-pdf(file = "/New User/Desktop/SD Plot.pdf",   # The directory you want to save the file in
-    width = 4, # The width of the plot in inches
-    height = 4) # The height of the plot in inches
+# pdf(file = "/New User/Desktop/SD Plot NEW.pdf",   # The directory you want to save the file in
+    #width = 4, # The width of the plot in inches
+    #height = 4) # The height of the plot in inches
 
-jpeg("SDplot.jpg", width = 900, height = 500)
+jpeg("SDplot NEW.jpg", width = 900, height = 500)
 x<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman"), ylim = c(0,2), cex.lab = 1.25, font.lab= 2, cex.names = 1, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
 x
+
+dev.off()
+```
+
+## Pre-Release Vigilance Counts from each Individual
+```{r}
+Pops_vig<- Pops %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
+  summarize(count=n()) #counting all the vigilance entries
+Pops_vig$ID<- "Pops"
+Pops_vig
+
+Zip_vig<- Zip %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Zip_vig$ID<- "Zip"
+
+Jack_vig<- Jack %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Jack_vig$ID<- "Jack"
+
+Blue_vig<- Blue %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Blue_vig$ID<- "Blue"
+
+Alex_vig<- Alex %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Alex_vig$ID<- "Alex"
+
+Bart_vig<- Bart %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bart_vig$ID<- "Bart"
+
+Nev_vig<- Nev %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Nev_vig$ID<- "Neville"
+
+Aug_vig<- Aug %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Aug_vig$ID<- "Aug"
+
+Amy_vig<- Amy %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Amy_vig$ID<- "Amy"
+
+May_vig<- May %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+May_vig$ID<- "May"
+
+Toni_vig<- Toni %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Toni_vig$ID<- "Toni"
+
+Boo_vig<- Boo %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Boo_vig$ID<- "Boo"
+
+Bgm_vig<- Bgm %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bgm_vig$ID<- "Big Mama"
+
+Kovu_vig<- Kovu %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Kovu_vig$ID<- "Kovu"
+
+Ed_vig<- Ed %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Ed_vig$ID<- "Eddy"
+
+Tink_vig<- Tink %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Tink_vig$ID<- "Tinker"
+
+Bat_vig<- Bat %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bat_vig$ID<- "Batman"
+
+Mango_vig<- Mango %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Mango_vig$ID<- "Mango"
+```
+
+## Merging Pre-release vigilance for all individuals
+```{r}
+vig_df_ALL<- list(Pops_vig, Zip_vig, Jack_vig, Blue_vig, Alex_vig, Bart_vig, Nev_vig, Aug_vig, Amy_vig, May_vig, Toni_vig, Boo_vig, Bgm_vig, Kovu_vig, Ed_vig, Tink_vig, Bat_vig, Mango_vig) 
+vig_df_ALL<- Reduce(function(x, y) merge(x, y, all=TRUE), vig_df_ALL, accumulate=FALSE) #Not sure how this works but this is needed to make it into a nice df
+
+jpeg("Vig Plot.jpg", width = 900, height = 500)
+vig_plot<- barplot(vig_df_ALL$count, names.arg = vig_df_ALL$ID, cex.lab = 1, font.lab= 2, cex.names = 0.8, las=2, col="#339999", ylab = "Vigilance Counts", ylim= c(0,800), density=c(100,100,100,100,100,100,100,100,100,100,20,100,20,20,100,20,20,20), legend = TRUE, args.legend = list(bty="n", x="topleft")) #Can't get the legend to work here!
+vig_plot
 
 dev.off()
 ```
@@ -1356,11 +1889,383 @@ formattable(summary,
 ))
 ```
 
-
+### Starting to look at position in the canopy
 ```{r}
 n_distinct(Pops$POSITION.IN.CANOPY) #8 (blanks makes 9)
 unique(Pops$POSITION.IN.CANOPY)
 Pops
 ```
 
+# POPs
+## Filtering out Pops from the post-focals dataset
+```{r}
+Pops2<- post_focals %>% filter(FOCAL.ID == "PO")
+head(Pops2)
+n_distinct(Pops2$FOCAL.REFERENCE.CODE) #64 distinct focals
+```
+
+## Looking at Pop's behaviors in month 3 post-release (March) 
+```{r}
+#Month 3
+Pops2_behaviorcount_month3<- Pops2 %>% 
+  filter(MONTH == "3") %>% #filtering out month "3"
+  gather("Obs", "behavior", 19:20, na.rm = T) %>% #using the gather() function to create two new columns "obs" and "behavior" using columns 19 & 20 ("Behavior" & "Behavior.2"). This adjusts the rows and basically combines all of the behaviors into one column under "behavior"
+  group_by(behavior) %>% #Now grouping by this new "behavior" column created by gather()
+  summarize(count=n()) %>% #counting the different behaviors and arranging them in descending order
+  arrange(desc(count))
+Pops2_behaviorcount_month3
+```
+
+## Filtering out each individual from the pre-CONTINUOUS dataset
+```{r}
+Pops_c<- pre_cont %>% filter(FOCAL.ID == "PO")
+Zip_c<- pre_cont %>% filter(FOCAL.ID == "ZI")
+Mango_c<- pre_cont %>% filter(FOCAL.ID == "MG")
+Jack_c<- pre_cont %>% filter(FOCAL.ID == "JA")
+Bart_c<- pre_cont %>% filter(FOCAL.ID == "BA")
+Nev_c<- pre_cont %>% filter(FOCAL.ID == "NE")
+Blue_c<- pre_cont %>% filter(FOCAL.ID == "BL")
+Alex_c<- pre_cont %>% filter(FOCAL.ID == "AL")
+Aug_c<- pre_cont %>% filter(FOCAL.ID == "AU")
+Amy_c<- pre_cont %>% filter(FOCAL.ID == "AM")
+May_c<- pre_cont %>% filter(FOCAL.ID == "MA")
+Toni_c<- pre_cont %>% filter(FOCAL.ID == "TO")
+Boo_c<- pre_cont %>% filter(FOCAL.ID == "BO")
+Bgm_c<- pre_cont %>% filter(FOCAL.ID == "BM")
+Kovu_c<- pre_cont %>% filter(FOCAL.ID == "KO")
+Eddy_c<- pre_cont %>% filter(FOCAL.ID == "ED")
+Tink_c<- pre_cont %>% filter(FOCAL.ID == "TI")
+Bat_c<- pre_cont %>% filter(FOCAL.ID == "BT")
+```
+
+### Looking at grooming bouts (recieved by focal individual, G+) from the continuous dataset
+```{r}
+Pops_G<- Pops_c %>% 
+  filter(BEHAVIOUR == "G+") %>% #filtering out the G+ behavior (grooming received)
+  group_by(ASSOCIATION) %>% #grouping by the association column so that I can see how many grooming bouts the focal had with each individual (the ID in association column would be the one doing the grooming)
+  summarize(count=n()) #counts the number of grooming occurences between pairs and counts them for me.. using these numbers to make my G+ matrix
+
+Zip_G<- Zip_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Zip_G
+
+Mango_G<- Mango_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Mango_G
+
+Jack_G<- Jack_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Jack_G
+
+Bart_G<- Bart_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Bart_G
+
+Nev_G<- Nev_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Nev_G
+
+Blue_G<- Blue_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Blue_G
+
+Alex_G<- Alex_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Alex_G
+
+Aug_G<- Aug_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Aug_G
+
+Amy_G<- Amy_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Amy_G
+
+May_G<- May_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+May_G
+
+Toni_G<- Toni_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Toni_G
+
+Boo_G<- Boo_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Boo_G
+
+Bgm_G<- Bgm_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Bgm_G
+
+Kovu_G<- Kovu_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Kovu_G
+
+Eddy_G<- Eddy_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Eddy_G
+
+Tink_G<- Tink_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Tink_G
+
+Bat_G<- Bat_c %>%
+  filter(BEHAVIOUR == "G+") %>%
+  group_by(ASSOCIATION) %>%
+  summarize(count=n())
+Bat_G
+```
+
+### Looking at Making Place+ instances
+```{r}
+Pops_MP<- Pops_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% #filtering out the MP+ behavior (making place FOR focal individual, they "win" this dominance interaction)
+  group_by(ASSOCIATION) %>% #grouping by the association column so that I can see how many times this individual makes place for the focal (looses the dominance interaction)
+  summarize(count=n()) #counts the number of occurences between pairs.. using these numbers to make my MP+ matrix
+Pops_MP
+
+Zip_MP<- Zip_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Zip_MP
+
+Mango_MP<- Mango_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Mango_MP
+
+Jack_MP<- Jack_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Jack_MP
+
+Bart_MP<- Bart_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Bart_MP
+
+Nev_MP<- Nev_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Nev_MP
+
+Bat_MP<- Bat_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Bat_MP
+
+Alex_MP<- Alex_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Alex_MP
+
+Aug_MP<- Aug_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Aug_MP
+
+Amy_MP<- Amy_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Amy_MP
+
+May_MP<- May_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+May_MP
+
+Toni_MP<- Toni_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Toni_MP
+
+Boo_MP<- Boo_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Boo_MP
+
+Bgm_MP<- Bgm_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Bgm_MP
+
+Kovu_MP<- Kovu_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Kovu_MP
+
+Eddy_MP<- Eddy_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Eddy_MP
+
+Tink_MP<- Tink_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Tink_MP
+
+Blue_MP<- Blue_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Blue_MP
+```
+
+```{r}
+Pops_MP<- Pops_c %>% 
+  filter(BEHAVIOUR == "MP-") %>%
+  group_by(ASSOCIATION) %>% 
+  summarize(count=n()) 
+Pops_MP
+
+Zip_MP<- Zip_c %>% 
+  filter(BEHAVIOUR == "MP-") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Zip_MP
+
+Mango_MP<- Mango_c %>% 
+  filter(BEHAVIOUR == "MP-") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Mango_MP
+
+Jack_MP<- Jack_c %>% 
+  filter(BEHAVIOUR == "MP-") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Jack_MP
+
+Bart_MP<- Bart_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Bart_MP
+
+Nev_MP<- Nev_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Nev_MP
+
+Bat_MP<- Bat_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Bat_MP
+
+Alex_MP<- Alex_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Alex_MP
+
+Aug_MP<- Aug_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Aug_MP
+
+Amy_MP<- Amy_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Amy_MP
+
+May_MP<- May_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+May_MP
+
+Toni_MP<- Toni_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Toni_MP
+
+Boo_MP<- Boo_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Boo_MP
+
+Bgm_MP<- Bgm_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Bgm_MP
+
+Kovu_MP<- Kovu_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Kovu_MP
+
+Eddy_MP<- Eddy_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Eddy_MP
+
+Tink_MP<- Tink_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Tink_MP
+
+Blue_MP<- Blue_c %>% 
+  filter(BEHAVIOUR == "MP+") %>% 
+  group_by(ASSOCIATION) %>%
+  summarize(count=n()) 
+Blue_MP
+```
 
