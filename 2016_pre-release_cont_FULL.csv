@@ -1,4 +1,4 @@
-﻿obsid,day,month,year,date,hour,minute,,time,dayperiod,focal reference,observer1,observer2,weather,temp,focal ID,sex,age,sampleperiod,focalmin,behav,association,conflict outcome,G.P.S. Location,,Notes,,,,
+﻿obsid,DAY,MONTH,YEAR,date,hour,minute,,time,dayperiod,focal reference,observer1,observer2,weather,temp,FOCAL ID,sex,age,sampleperiod,focalmin,BEHAVIOUR,ASSOCIATION,conflict outcome,G.P.S. Location,,Notes,,,,
 1,1,6,2015,1-Jun-15,6,49,:,6:49,AM,010101,NIKA,FLISS,SU,W,PO,M,A,1,0,SC,,,,,,,,,
 2,1,6,2015,1-Jun-15,6,49,:,6:49,AM,010101,NIKA,FLISS,SU,W,PO,M,A,1,0,SG,,,,,,,,,
 3,1,6,2015,1-Jun-15,6,49,:,6:49,AM,010101,NIKA,FLISS,SU,W,PO,M,A,1,5,SG,,,,,,,,,
