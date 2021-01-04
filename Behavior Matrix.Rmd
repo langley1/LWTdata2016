@@ -1,0 +1,185 @@
+---
+title: "Behavior Matrix"
+output: html_document
+---
+
+```{r}
+library(curl)
+library(dplyr)
+library(tidyverse)
+```
+
+### Importing the FULL pre-continuous dataset
+```{r}
+pre_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_cont_FULL.csv")
+pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
+```
+
+## Code for Behavior Matrices
+
+### Grooming Matrix+ (focal recieves grooming)
+```{r}
+library(tidyverse)
+# 1. Create a character vector of all the monkey IDs in your dataset:
+MonkeyIDs<-as.character(unique(pre_cont$FOCAL.ID))
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+monkey.prelim<-lapply(MonkeyIDs, function(x){pre_cont[pre_cont[["FOCAL.ID"]] == x, ]})
+head(monkey.prelim)
+
+# 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
+monkey_G.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR=="G+")) %>%
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_G.prelim) <- MonkeyIDs
+
+# 4. Set up your pairwise combinations of interacting monkeys:
+monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
+filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+
+combo_G<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_G.prelim2),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_G.prelim2[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+G1<-combo_G %>% 
+  mutate(grooms = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_G.prelim2 %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+G1
+
+grooming_matrix<-spread(G1,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
+grooming_matrix
+```
+
+### Grooming Matrix- (focal grooms)
+```{r}
+monkey_G2.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR=="G-")) %>%
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_G2.prelim) <- MonkeyIDs
+
+# 4. Set up your pairwise combinations of interacting monkeys:
+monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
+filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+
+combo_G2<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_G2.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_G2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+G2<-combo_G2 %>% 
+  mutate(grooms = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_G2.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+G2
+
+grooming_matrix2<-spread(G2,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
+grooming_matrix2
+```
+
+
+### Making Place+ Matrix (focal displaces the other individual)
+```{r}
+monkey_MP.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR=="MP+")) %>%
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_MP.prelim) <- MonkeyIDs
+
+monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
+filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+
+combo_MP<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_MP.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_MP.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+MP1<-combo_MP %>% 
+  mutate(makeplace = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_MP.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+MP1
+
+MP_matrix<-spread(MP1,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
+MP_matrix
+```
+
+### Making Place- Matrix (focal gets displaced)
+```{r}
+monkey_MP2.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR=="MP-")) %>%
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_MP2.prelim) <- MonkeyIDs
+
+monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
+filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+
+combo_MP2<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_MP2.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_MP2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+MP2<-combo_MP2 %>% 
+  mutate(makeplace = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_MP2.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+MP2
+
+MP_matrix2<-spread(MP2,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
+MP_matrix2
+```
+
+
+
