@@ -3,7 +3,9 @@ title: "Behavior Matrix"
 output: html_document
 ---
 
+
 ```{r}
+install.packages("dplyr")
 library(curl)
 library(dplyr)
 library(tidyverse)
@@ -181,5 +183,159 @@ MP_matrix2<-spread(MP2,recipient,makeplace) %>% column_to_rownames(var="actor") 
 MP_matrix2
 ```
 
+### Aggression+ Matrix with conflict outcome= 1 (focal acts aggressively or recieves aggression and WINS)
+```{r}
+monkey_A.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),conflict.outcome=="1")) %>% #adding in a second filter so that I can pull out interactions where the focal won
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_A.prelim) <- MonkeyIDs
 
+combo_A<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_A.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_A.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+A1<-combo_A %>% 
+  mutate(aggress = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_A.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+A1
+
+A_matrix<-spread(A1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
+A_matrix
+```
+
+### Aggression Matrix with conflict outcome= 2 (focal acts aggressively or recieves aggression and LOSES)
+```{r}
+monkey_loseA.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),conflict.outcome=="2")) %>% #adding in a second filter so that I can pull out interactions where the focal loses
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_loseA.prelim) <- MonkeyIDs
+
+combo_loseA<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_loseA.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_loseA.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+loseA1<-combo_loseA %>% 
+  mutate(aggress = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_loseA.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+loseA1
+
+loseA_matrix<-spread(loseA1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
+loseA_matrix
+```
+
+### Threat Matrix with conflict outcome= 1 (focal threatens or recieves threat and WINS)
+```{r}
+monkey_TH.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),conflict.outcome=="1")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_TH.prelim) <- MonkeyIDs
+
+combo_TH<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_TH.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_TH.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+TH1<-combo_TH %>% 
+  mutate(threaten = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_TH.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+TH1
+
+TH_matrix<-spread(TH1,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
+TH_matrix
+```
+
+### Threat Matrix with conflict outcome= 2 (focal threatens or recieves threat and LOSES)
+```{r}
+monkey_loseTH.prelim<-
+  monkey.prelim %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),conflict.outcome=="2")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_loseTH.prelim) <- MonkeyIDs
+
+combo_loseTH<-
+  combo %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_loseTH.prelim),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_loseTH.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  select(-absent1,-absent2)
+
+TH2<-combo_loseTH %>% 
+  mutate(threaten = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_loseTH.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+TH2
+
+loseTH_matrix<-spread(TH2,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
+loseTH_matrix
+```
+
+```{r}
+MP_matrix #focal wins, displaces the other
+MP_matrix2 #focal gets displaced
+A_matrix #focal wins any aggression interaction
+loseA_matrix #focal loses any aggression interaction
+TH_matrix #focal wins any threat interaction
+loseTH_matrix #focal loses any threat interaction
+
+MP_matrixDF<- as.data.frame(MP_matrix)
+MP_matrixDF <- cbind(IDs = rownames(MP_matrixDF), MP_matrixDF)
+rownames(MP_matrixDF) <- NULL
+MP_matrixDF
+
+x<- tibble(MP_matrixDF) %>% rowwise() %>% mutate(total = sum(across(AL:ZI)))
+x
+MP_matrixDF
+MP_matrixDF<- MP_matrixDF
+
+```
 
