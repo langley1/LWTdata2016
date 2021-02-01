@@ -67,7 +67,7 @@ pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
 unique(pre_cont$MONTH)
 ```
 
-# Importing the post-focals dataset
+# Importing the post-focals dataset (Not full?)
 ```{r}
 post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_FOCALS.csv")
 post_focals<- read.csv(post_focals, header= T, na.strings=c(""," ","NA"))
@@ -89,7 +89,7 @@ age_sex_plot #There are more female than male adults, almost all subadults are m
 ```{r}
 Pops<- pre_focals %>% filter(FOCAL.ID == "PO")
 head(Pops)
-n_distinct(Pops$focal.reference) #131 distinct focals
+n_distinct(Pops$MONTH)
 #unique(Pops$FOCAL.REFERENCE.CODE)
 ```
 
@@ -180,9 +180,9 @@ Pops_behaviorcount3
 ## THIS IS THE PROPER CODE, just practicing it out on individual focals first
 ```{r}
 Pops_behaviorcount4<- Pops %>% 
-  filter(FOCAL.REFERENCE.CODE == "10407") %>%
+  filter(focal.referenece == "10407") %>%
   group_by(BEHAVIOUR, BEHAVIOUR.2)
-  #summarize(count=n())
+  summarize(count=n())
 Pops_behaviorcount4
 
 Pops_behaviorcount4 <- Pops_behaviorcount4 %>%
@@ -315,6 +315,93 @@ Pops_behaviorcount_month2
 
 Pop_month2_SD<- diversity(Pops_behaviorcount_month2$count)
 Pop_month2_SD
+```
+
+### Purrr method for SD
+```{r}
+combo_SD<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Combo2.csv")
+combo_SD<- read.csv(combo_SD, header = T)
+combo_SD<- data.frame(lapply(combo_SD, as.character), stringsAsFactors=FALSE) %>%
+  as_tibble() #Making this into a tibble with characters to see if it helps with the code below
+head(combo_SD)
+
+# 1. Create a character vector of all the monkey IDs in your dataset:
+MonkeyIDs_SD<-as.character(unique(pre_focals$FOCAL.ID))
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+monkey.prelim_SD<-lapply(MonkeyIDs_SD, function(x){pre_focals[pre_focals[["FOCAL.ID"]] == x, ]})
+head(monkey.prelim_SD)
+
+# 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
+monkey.prelim_SD2 <-
+  monkey.prelim_SD %>% 
+  #purrr::map(~filter(.,MONTH=="2")) %>%
+  purrr::map(~gather(.,"Obs", "behavior", 22:23, na.rm = T))
+  #purrr::map(~group_by(.,behavior)) %>%
+  #purrr::map(~summarize(.,count=n()))
+  
+head(monkey.prelim_SD2)
+
+
+months<- c(1:12)
+IDs<- unique(pre_focals$FOCAL.ID,na.rm=T)
+IDs<- IDs[!IDs %in% c("OL","NY")]
+IDs
+month<- c(1:12)
+combo_SD<- data.frame(IDs,Month)
+str(combo_SD)
+
+TEST<- combo_SD %>%
+  mutate(SD = map2_dfr(
+    IDs, 
+    Month, 
+    ~monkey.prelim_SD2 %>% pluck(.x) %>% filter(Month==.y) %>% 
+    group_by(.,behavior) %>%
+    summarize(.,count=n()) %>%
+    as.data.frame(.)))
+TEST
+
+TEST<- combo_SD %>%
+    map2_dfr(
+    IDs,
+    Month, 
+    lapply(monkey.prelim_SD2, function(x){.[.[["MONTH"]] == x, ]})
+    ~monkey.prelim_SD2 %>% pluck(.x)) %>% filter(Month==.y) %>% 
+    group_by(.,behavior) %>%
+    summarize(.,count=n()) %>%
+    as.data.frame(.)
+
+Blah<- function(count) {
+  answer<- group_by(behavior) %>%
+  summarize(count=n())
+  return(answer)
+}
+
+Attempt<- monkey.prelim_SD %>%
+  lapply(monkey.prelim_SD2[30:31], Blah) 
+
+monkey.prelim_SD2 <-
+  monkey.prelim_SD %>% 
+  lapply(months, function(x){.[.[["MONTH"]] == x, ]}) %>%
+  purrr::map(~gather(.,"Obs", "behavior", 22:23, na.rm = T)) %>%
+  purrr::map(~group_by(.,behavior)) %>%
+  purrr::map(~summarize(.,count=n()))
+
+lapply(months, function(x){.[.[["MONTH"]] == x, ]})
+
+monkey.prelim_SD2<- 
+  monkey.prelim_SD2 %>%
+  arrange(.monkey.prelim_SD2(desc(count)))
+
+names(monkey.prelim_SD2) <- MonkeyIDs_SD
+head(monkey.prelim_SD2)
+
+```
+
+```{r}
+df <- data.frame(id=1:10,var1=LETTERS[1:10],var2=LETTERS[6:15])
+fun.split <- function(x) tolower(as.character(x))
+df$new.letters <- apply(df[ ,2:3],2,fun.split)
 ```
 
 ### Averaging the SDs across Pop's 4 months pre-release
@@ -824,7 +911,6 @@ Alex_pre_avgSDs<- mean(Alex_pre_allSDs)
 ## Filtering out Bart from the pre-focals dataset
 ```{r}
 Bart<- pre_focals %>% filter(FOCAL.ID == "BA")
-n_distinct(Bart$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Bart during pre-release observations
@@ -1697,127 +1783,128 @@ dev.off()
 ## Pre-Release Vigilance Counts from each Individual
 ```{r}
 Pops_vig<- Pops %>% 
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
   summarize(count=n()) #counting all the vigilance entries
+Pops_vig<- Pops_vig$count/nrow(Pops)
 Pops_vig$ID<- "Pops"
 Pops_vig
 
 Zip_vig<- Zip %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Zip_vig$ID<- "Zip"
 
 Jack_vig<- Jack %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Jack_vig$ID<- "Jack"
 
 Blue_vig<- Blue %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Blue_vig$ID<- "Blue"
 
 Alex_vig<- Alex %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Alex_vig$ID<- "Alex"
 
 Bart_vig<- Bart %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Bart_vig$ID<- "Bart"
 
 Nev_vig<- Nev %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Nev_vig$ID<- "Neville"
 
 Aug_vig<- Aug %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Aug_vig$ID<- "Aug"
 
 Amy_vig<- Amy %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Amy_vig$ID<- "Amy"
 
 May_vig<- May %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 May_vig$ID<- "May"
 
 Toni_vig<- Toni %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Toni_vig$ID<- "Toni"
 
 Boo_vig<- Boo %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Boo_vig$ID<- "Boo"
 
 Bgm_vig<- Bgm %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Bgm_vig$ID<- "Big Mama"
 
 Kovu_vig<- Kovu %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Kovu_vig$ID<- "Kovu"
 
 Ed_vig<- Ed %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Ed_vig$ID<- "Eddy"
 
 Tink_vig<- Tink %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Tink_vig$ID<- "Tinker"
 
 Bat_vig<- Bat %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Bat_vig$ID<- "Batman"
 
 Mango_vig<- Mango %>%
-  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
@@ -1830,8 +1917,10 @@ vig_df_ALL<- list(Pops_vig, Zip_vig, Jack_vig, Blue_vig, Alex_vig, Bart_vig, Nev
 vig_df_ALL<- Reduce(function(x, y) merge(x, y, all=TRUE), vig_df_ALL, accumulate=FALSE) #Not sure how this works but this is needed to make it into a nice df
 
 jpeg("Vig Plot.jpg", width = 900, height = 500)
-vig_plot<- barplot(vig_df_ALL$count, names.arg = vig_df_ALL$ID, cex.lab = 1, font.lab= 2, cex.names = 0.8, las=2, col="#339999", ylab = "Vigilance Counts", ylim= c(0,800), density=c(100,100,100,100,100,100,100,100,100,100,20,100,20,20,100,20,20,20), legend = TRUE, args.legend = list(bty="n", x="topleft")) #Can't get the legend to work here!
+vig_plot<- barplot(vig_df_ALL$count, names.arg = vig_df_ALL$ID, cex.lab = 1, font.lab= 2, cex.names = 0.8, las=2, col="#339999", ylab = "Vigilance Counts", ylim= c(0,2000), density=c(100,100,100,100,100,100,100,100,100,100,20,100,20,100,20,20,20,20), legend = TRUE, args.legend = list(bty="n", x="topleft")) #Can't get the legend to work here!
 vig_plot
+
+
 
 dev.off()
 ```
@@ -2159,6 +2248,7 @@ Blue_MP<- Blue_c %>%
 Blue_MP
 ```
 
+### Looking at Making Place- instances
 ```{r}
 Pops_MP<- Pops_c %>% 
   filter(BEHAVIOUR == "MP-") %>%
@@ -2267,5 +2357,33 @@ Blue_MP<- Blue_c %>%
   group_by(ASSOCIATION) %>%
   summarize(count=n()) 
 Blue_MP
+```
+
+```{r}
+x <- c(2,5,3,9,8,11,6)
+count <- 0 
+for (val in x) {
+  if(val %% 2 == 0)  count = count+1
+  }
+print(count)
+
+MonkeysID<- c("PO", "ZI", "TI", "BL")
+pre_cont_FULL$
+
+for (val in MonkeysID) {
+  val_G <- pre_cont_FULL %>%
+    filter(focal.ID=="val") %>%
+    filter(behav=="G+") %>%
+    group_by(association) %>%
+    summarize(count=n())
+}
+
+monkey_g<-lapply(pre_cont_FULL, function(x){pre_cont_FULL[pre_cont_FULL[["focal.ID"]] == x, ]})
+```
+
+```{r}
+pre_focals %>% filter(FOCAL.ID == "PO") %>% map_df(~(data.frame(n_distinct = n_distinct(.x),
+                                  class = class(.x))),
+                     .id = "variable")
 ```
 

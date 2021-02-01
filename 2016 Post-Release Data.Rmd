@@ -1,0 +1,116 @@
+---
+title: "2016 Post-Release Data"
+output: html_document
+---
+
+## Importing the Full Post-release Focals dataset
+```{r}
+post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_FULL.csv") #this is FULL dataset
+post_focals<- read.csv(post_focals, header = T, na.strings=c(""," ","NA"))
+head(post_focals)
+unique(post_focals$SEX)
+```
+
+### Mortality by Month
+
+*Creating a data frame for mortality by month*
+```{r}
+month<- c("Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sept","Oct","Nov","Dec")
+confirmed_death<- c(0,0,0,0,0,1,0,3,2,0,1,1)
+assumed_death<- c(0,0,0,2,0,0,0,2,0,2,1,1)
+
+mortality_cal<- data.frame(month,confirmed_death,assumed_death)
+mortality_cal<- mortality_cal %>%
+  rowwise() %>%
+  mutate(total = sum(c_across(confirmed_death:assumed_death))) #including a column at the end with total confirmed and assumed deaths per month
+
+mortality_cal2<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Mortality%20Cal.csv")
+mortality_cal2<- read.csv(mortality_cal2, header = T, na.strings=c(""," "))
+```
+
+*Creating a plot that shows mortality in each month*
+```{r}
+library(ggplot2)
+#this version uses the dataframe that I made by hand in r, was having trouble stacking the assumed and confirmed deaths
+mortalitycal_plot<- ggplot(data=mortality_cal, aes(x=month, y=, fill=confirmed_death)) +
+  geom_bar(stat="identity") +
+  scale_x_discrete(limits=mortality_cal$month) #this stops ggplot from ordering my months alphabetically 
+mortalitycal_plot
+
+#this version uses the dataframe I made using an excel datasheet 
+mortalitycal_plot<- ggplot(data=mortality_cal2, aes(x=Month, y=Death, fill=Type.Death, yName = "Number of Deaths")) + #fill= Type.Death so I can stack assumed and confirmed deaths for each month
+  geom_bar(stat="identity", width= 0.9) +
+  scale_x_discrete(limits=mortality_cal2$Month) + #this stops ggplot from ordering my months alphabetically 
+  scale_fill_discrete(name = "Death Type", labels = c("Assumed Dead", "Confirmed Dead")) +
+  scale_fill_brewer(palette = "Reds") + theme_minimal()
+mortalitycal_plot #this looks good but the months are unevenly spaced, possibly due to longer/shorter months??
+
+#trying code I found online to fix the uneven spacing for months
+niceFormatting <- format(mortality_cal2$Month, "%b") # %b is supposed to be for noting abbreviated months but I get an error with this 
+MonthFactor <- factor(niceFormatting, levels = niceFormatting)
+
+#also tried turning month column in characters to see if that helps 
+mortality_cal2 %>% mutate_if(is.factor, as.character) -> mortality_cal2
+str(mortality_cal2)
+```
+
+### Exploring Position in Canopy
+```{r}
+unique(Pops_post_focals$POSITION.IN.CANOPY)
+Pops_post_focals <- post_focals %>% filter(FOCAL.ID == "PO") 
+post_focals <- post_focals %>% drop_na(POSITION.IN.CANOPY)
+
+ggplot(data= post_focals, aes(POSITION.IN.CANOPY, group = SEX)) +
+    geom_bar(aes(y = ..prop..), stat="count") + 
+    scale_y_continuous(labels=scales::percent) +
+    ylab("prop") +
+    facet_grid(~SEX)
+
+ggplot((post_focals %>% filter(SEX == "F")), aes(POSITION.IN.CANOPY, group = AGE)) +
+  geom_bar(aes(y = ..prop..)) +
+  facet_grid(~AGE)
+
+ggplot(post_focals, aes(x= POSITION.IN.CANOPY, fill=FOCAL.ID, group = SEX)) + 
+    geom_bar(position="dodge", stat="identity")
+
+
+ggplot(Pops_post_focals, aes(x= POSITION.IN.CANOPY)) +
+  geom_bar() +
+  geom_text(stat='count', aes(label=..count..), vjust=-0.5)
+
+
+#Pops, Jack, Mango (adult/SA males) from March-May because Jack dies in June
+
+Males_canopy_test<- post_focals %>% filter(FOCAL.ID %in% c("PO","JA","MG"), MONTH %in% c("3","4","5")) %>% drop_na(POSITION.IN.CANOPY)
+str(Males_canopy_test)                                                                              
+
+ggplot(Males_canopy_test, aes(POSITION.IN.CANOPY, fill = factor(FOCAL.ID))) +
+  geom_bar(position = position_dodge2(preserve = "single")) +
+  geom_bar(aes(y = ..prop..), stat="count") + 
+  scale_y_continuous(labels=scales::percent) +
+  ylab("prop")
+
+ggplot(Males_canopy_test, aes(POSITION.IN.CANOPY, fill = factor(FOCAL.ID))) +
+  geom_bar(position = position_dodge2(preserve = "single")) +
+  geom_bar(aes(y = (..count..)/sum(..count..))) + 
+  scale_y_continuous(labels=scales::percent) +
+  ylab("prop")
+
+aes(y = ..prop.., group = 1), stat="count", 
+```
+
+### Predator Vigilance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
