@@ -1787,7 +1787,7 @@ Pops_vig<- Pops %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
   summarize(count=n()) #counting all the vigilance entries
-Pops_vig<- Pops_vig$count/nrow(Pops)
+Pops_vig$prop<- Pops_vig$count/nrow(Pops)
 Pops_vig$ID<- "Pops"
 Pops_vig
 
@@ -1796,6 +1796,7 @@ Zip_vig<- Zip %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Zip_vig$prop<- Zip_vig$count/nrow(Zip)
 Zip_vig$ID<- "Zip"
 
 Jack_vig<- Jack %>%
@@ -1803,6 +1804,7 @@ Jack_vig<- Jack %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Jack_vig$prop<- Jack_vig$count/nrow(Jack)
 Jack_vig$ID<- "Jack"
 
 Blue_vig<- Blue %>%
@@ -1810,6 +1812,7 @@ Blue_vig<- Blue %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Blue_vig$prop<- Blue_vig$count/nrow(Blue)
 Blue_vig$ID<- "Blue"
 
 Alex_vig<- Alex %>%
@@ -1817,6 +1820,7 @@ Alex_vig<- Alex %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Alex_vig$prop<- Alex_vig$count/nrow(Alex)
 Alex_vig$ID<- "Alex"
 
 Bart_vig<- Bart %>%
@@ -1824,6 +1828,7 @@ Bart_vig<- Bart %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Bart_vig$prop<- Bart_vig$count/nrow(Bart)
 Bart_vig$ID<- "Bart"
 
 Nev_vig<- Nev %>%
@@ -1831,6 +1836,7 @@ Nev_vig<- Nev %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Nev_vig$prop<- Nev_vig$count/nrow(Nev)
 Nev_vig$ID<- "Neville"
 
 Aug_vig<- Aug %>%
@@ -1838,6 +1844,7 @@ Aug_vig<- Aug %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Aug_vig$prop<- Aug_vig$count/nrow(Aug)
 Aug_vig$ID<- "Aug"
 
 Amy_vig<- Amy %>%
@@ -1845,6 +1852,7 @@ Amy_vig<- Amy %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Amy_vig$prop<- Amy_vig$count/nrow(Amy)
 Amy_vig$ID<- "Amy"
 
 May_vig<- May %>%
@@ -1852,6 +1860,7 @@ May_vig<- May %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+May_vig$prop<- May_vig$count/nrow(May)
 May_vig$ID<- "May"
 
 Toni_vig<- Toni %>%
@@ -1859,6 +1868,7 @@ Toni_vig<- Toni %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Toni_vig$prop<- Toni_vig$count/nrow(Toni)
 Toni_vig$ID<- "Toni"
 
 Boo_vig<- Boo %>%
@@ -1866,6 +1876,7 @@ Boo_vig<- Boo %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Boo_vig$prop<- Boo_vig$count/nrow(Boo)
 Boo_vig$ID<- "Boo"
 
 Bgm_vig<- Bgm %>%
@@ -1873,6 +1884,7 @@ Bgm_vig<- Bgm %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Bgm_vig$prop<- Bgm_vig$count/nrow(Bgm)
 Bgm_vig$ID<- "Big Mama"
 
 Kovu_vig<- Kovu %>%
@@ -1880,6 +1892,7 @@ Kovu_vig<- Kovu %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Kovu_vig$prop<- Kovu_vig$count/nrow(Kovu)
 Kovu_vig$ID<- "Kovu"
 
 Ed_vig<- Ed %>%
@@ -1887,6 +1900,7 @@ Ed_vig<- Ed %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Ed_vig$prop<- Ed_vig$count/nrow(Ed)
 Ed_vig$ID<- "Eddy"
 
 Tink_vig<- Tink %>%
@@ -1894,6 +1908,7 @@ Tink_vig<- Tink %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Tink_vig$prop<- Tink_vig$count/nrow(Tink)
 Tink_vig$ID<- "Tinker"
 
 Bat_vig<- Bat %>%
@@ -1901,6 +1916,7 @@ Bat_vig<- Bat %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Bat_vig$prop<- Bat_vig$count/nrow(Bat)
 Bat_vig$ID<- "Batman"
 
 Mango_vig<- Mango %>%
@@ -1908,6 +1924,7 @@ Mango_vig<- Mango %>%
   group_by(behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
+Mango_vig$prop<- Mango_vig$count/nrow(Mango)
 Mango_vig$ID<- "Mango"
 ```
 
@@ -1916,11 +1933,18 @@ Mango_vig$ID<- "Mango"
 vig_df_ALL<- list(Pops_vig, Zip_vig, Jack_vig, Blue_vig, Alex_vig, Bart_vig, Nev_vig, Aug_vig, Amy_vig, May_vig, Toni_vig, Boo_vig, Bgm_vig, Kovu_vig, Ed_vig, Tink_vig, Bat_vig, Mango_vig) 
 vig_df_ALL<- Reduce(function(x, y) merge(x, y, all=TRUE), vig_df_ALL, accumulate=FALSE) #Not sure how this works but this is needed to make it into a nice df
 
+#This method works mostly (minus the legend) but I'm going to try with ggplot below
 jpeg("Vig Plot.jpg", width = 900, height = 500)
-vig_plot<- barplot(vig_df_ALL$count, names.arg = vig_df_ALL$ID, cex.lab = 1, font.lab= 2, cex.names = 0.8, las=2, col="#339999", ylab = "Vigilance Counts", ylim= c(0,2000), density=c(100,100,100,100,100,100,100,100,100,100,20,100,20,100,20,20,20,20), legend = TRUE, args.legend = list(bty="n", x="topleft")) #Can't get the legend to work here!
+vig_plot<- barplot(vig_df_ALL$prop, names.arg = vig_df_ALL$ID, cex.lab = 1, font.lab= 2, cex.names = 0.8, las=2, col="#339999", ylab = "Vigilance Frequency", ylim= c(0,1), density=c(100,100,100,100,100,100,100,100,100,100,20,100,20,20,100,20,20,20), legend = TRUE, args.legend = list(bty="n", x="topleft")) #Can't get the legend to work here!
 vig_plot
 
-
+# This plot looks good!!
+ggplot(vig_df_ALL, aes(x = reorder(ID, -prop), y = prop)) + #the reorder function with -prop reorders the x-axis to go from highest to lowest
+  geom_bar(stat = "identity") + 
+  scale_y_continuous(labels=scales::percent) + #this changes the y-axis to percents
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turns axis labels to 45 degrees and hjust get rid of excess space
+  ylab("Percent Vigilance Behavior") +
+  xlab("Individual")
 
 dev.off()
 ```
