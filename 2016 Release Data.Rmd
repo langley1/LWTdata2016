@@ -1939,12 +1939,32 @@ vig_plot<- barplot(vig_df_ALL$prop, names.arg = vig_df_ALL$ID, cex.lab = 1, font
 vig_plot
 
 # This plot looks good!!
-ggplot(vig_df_ALL, aes(x = reorder(ID, -prop), y = prop)) + #the reorder function with -prop reorders the x-axis to go from highest to lowest
+c4 = c("Female", "Male", )
+vig_df_ALL = cbind(vig_df_ALL, c4)
+
+#adding in a new column for sex to try to fill the bar colors by it
+vig_df_ALL<- vig_df_ALL %>% 
+  add_column(sex = c("F","F","F","F","F","F","F","F","M","F","M","F","M","M","F","M","M","M"), .after="ID")
+
+#The fill in line one doesn't work
+ggplot(vig_df_ALL, aes(x = reorder(ID, -prop), y = prop), fill= sex) + #the reorder function with -prop reorders the x-axis to go from highest to lowest
   geom_bar(stat = "identity") + 
   scale_y_continuous(labels=scales::percent) + #this changes the y-axis to percents
   theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turns axis labels to 45 degrees and hjust get rid of excess space
   ylab("Percent Vigilance Behavior") +
-  xlab("Individual")
+  xlab("Individual") +
+  scale_fill_manual("legend", values = c("F" = "red", "M" = "blue")) #doesn't want to work
+
+# This also doesn't work
+ggplot(vig_df_ALL, aes(x = ID, y = prop), fill= sex) + #the reorder function with -prop reorders the x-axis to go from highest to lowest
+  geom_bar(stat = "identity") + 
+  scale_y_continuous(labels=scales::percent) + #this changes the y-axis to percents
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turns axis labels to 45 degrees and hjust get rid of excess space
+  ylab("Percent Vigilance Behavior") +
+  xlab("Individual") +
+  scale_fill_manual("legend", values = c("F" = "red", "M" = "blue"))
+
+
 
 dev.off()
 ```
