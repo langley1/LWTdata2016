@@ -8,7 +8,7 @@ output: html_document
 post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_FULL.csv") #this is FULL dataset
 post_focals<- read.csv(post_focals, header = T, na.strings=c(""," ","NA"))
 head(post_focals)
-unique(post_focals$SEX)
+unique(post_focals$POSITION.IN.CANOPY)
 ```
 
 ### Mortality by Month
@@ -24,7 +24,7 @@ mortality_cal<- mortality_cal %>%
   rowwise() %>%
   mutate(total = sum(c_across(confirmed_death:assumed_death))) #including a column at the end with total confirmed and assumed deaths per month
 
-mortality_cal2<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Mortality%20Cal.csv")
+mortality_cal2<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Mortality%20Cal.csv") #created my own df in excel
 mortality_cal2<- read.csv(mortality_cal2, header = T, na.strings=c(""," "))
 ```
 
@@ -54,54 +54,124 @@ mortality_cal2 %>% mutate_if(is.factor, as.character) -> mortality_cal2
 str(mortality_cal2)
 ```
 
-### Exploring Position in Canopy
-```{r}
-unique(Pops_post_focals$POSITION.IN.CANOPY)
-Pops_post_focals <- post_focals %>% filter(FOCAL.ID == "PO") 
-post_focals <- post_focals %>% drop_na(POSITION.IN.CANOPY)
+## Exploring Position in Canopy
 
-ggplot(data= post_focals, aes(POSITION.IN.CANOPY, group = SEX)) +
+### Bar Plots
+```{r}
+# Looking at position in canopy grouped by sex (M/F)
+PIC_plot<- post_focals %>% 
+  drop_na(POSITION.IN.CANOPY) %>% #removing all NAs in this column so they don't show up on graph
+  mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>% #This is to re-order the x-axis so that I can have MMS and NS at the end rather than right in the middle 
+    ggplot( aes(POSITION.IN.CANOPY, group = SEX)) +
     geom_bar(aes(y = ..prop..), stat="count") + 
     scale_y_continuous(labels=scales::percent) +
-    ylab("prop") +
+    theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+    ylab("Percentage Recorded in Canopy Position") +
+    xlab("Position in Canopy") +
     facet_grid(~SEX)
+PIC_plot
 
-ggplot((post_focals %>% filter(SEX == "F")), aes(POSITION.IN.CANOPY, group = AGE)) +
-  geom_bar(aes(y = ..prop..)) +
-  facet_grid(~AGE)
+# Looking at position in canopy grouped by age (A/SA/J)
+age_PIC_plot<- post_focals %>% 
+  drop_na(POSITION.IN.CANOPY) %>% #removing all NAs in this column so they don't show up on graph
+  filter(AGE != "I") %>% #removing infants
+  mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>% #This is to re-order the x-axis so that I can have MMS and NS at the end rather than right in the middle 
+    ggplot( aes(POSITION.IN.CANOPY, group = AGE)) +
+    geom_bar(aes(y = ..prop..), stat="count") + 
+    theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+    scale_y_continuous(labels=scales::percent) +
+    ylab("Percentage Recorded in Canopy Position") +
+    xlab("Position in Canopy") +
+    facet_grid(~AGE)
+age_PIC_plot
 
-ggplot(post_focals, aes(x= POSITION.IN.CANOPY, fill=FOCAL.ID, group = SEX)) + 
-    geom_bar(position="dodge", stat="identity")
-
-
-ggplot(Pops_post_focals, aes(x= POSITION.IN.CANOPY)) +
-  geom_bar() +
-  geom_text(stat='count', aes(label=..count..), vjust=-0.5)
-
+# Looking at position in canopy of females only, grouped by age (I took out infants)
+fems_PIC_plot<- post_focals %>% 
+  drop_na(POSITION.IN.CANOPY) %>% #removing all NAs in this column so they don't show up on graph
+  filter(SEX == "F", AGE %in% c("A","J")) %>% #filtering out females and adults/juveniles (no infants)
+  mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>% #This is to re-order the x-axis so that I can have MMS and NS at the end rather than right in the middle
+  ggplot( aes(POSITION.IN.CANOPY, group = AGE)) +
+  geom_bar(aes(y = ..prop..), stat="count") + 
+  scale_y_continuous(labels=scales::percent) +
+  scale_fill_manual(values = c("G"= "black","LC1"= "orange","LC2"= "blue","MC1"= "black","MC2"= "orange","TC1"= "blue","TC2" ="black","TC3"= "orange","MMS"= "blue","NS1"= "black")) + #This color code DOESN'T WORK
+  facet_grid(~AGE) +
+  ylab("Percentage Recorded in Canopy Position") +
+  xlab("Position in Canopy")
+fems_PIC_plot
 
 #Pops, Jack, Mango (adult/SA males) from March-May because Jack dies in June
-
 Males_canopy_test<- post_focals %>% filter(FOCAL.ID %in% c("PO","JA","MG"), MONTH %in% c("3","4","5")) %>% drop_na(POSITION.IN.CANOPY)
-str(Males_canopy_test)                                                                              
-
+str(Males_canopy_test)                                                                      
+#This one looks strange by the x-axis
 ggplot(Males_canopy_test, aes(POSITION.IN.CANOPY, fill = factor(FOCAL.ID))) +
   geom_bar(position = position_dodge2(preserve = "single")) +
   geom_bar(aes(y = ..prop..), stat="count") + 
   scale_y_continuous(labels=scales::percent) +
   ylab("prop")
 
+#Super high percentages on y-axis
 ggplot(Males_canopy_test, aes(POSITION.IN.CANOPY, fill = factor(FOCAL.ID))) +
   geom_bar(position = position_dodge2(preserve = "single")) +
   geom_bar(aes(y = (..count..)/sum(..count..))) + 
   scale_y_continuous(labels=scales::percent) +
   ylab("prop")
 
-aes(y = ..prop.., group = 1), stat="count", 
+#aes(y = ..prop.., group = 1), stat="count", 
+
+par(mfrow=c(2,2))
+PIC_plot
+age_PIC_plot
+fems_PIC_plot
 ```
 
-### Predator Vigilance
+RESULTS: Overall, both males and females were most frequently positioned on the ground during post-release monitoring (Figure PIC_plot). They were also located in the lower and middle tree canopies more often than top canopies (Figure PIC_plot). Out of the three canopy levels (LC,MC,TC), all individuals were located in the lowest height category (1) most often, remaining 5m or less above the ground, and were rarely seen higher up in the canopy (2,3).  
+
+RESULTS: All age groups of both sexes were most frequently positioned on the ground and in lower and middle tree canopies, less than 5m above the ground (Figure age_PIC_plot). Out of the three canopy levels, all individuals across age groups were positioned in the top canopy least often and rarely moved up higher than 5m above the ground in any canopy level (Figure age_PIC_plot).
 
 
+## Density Plots
+```{r}
+#Density plot with adult females only
+fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A") %>%
+  mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%
+  drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
+  geom_density(aes(group = FOCAL.ID, 
+                   colour = FOCAL.ID, 
+                   fill = FOCAL.ID),
+               alpha = 0.2)
+fems_denPIC_plot
+
+post_focals %>% filter(POSITION.IN.CANOPY == "Mc1")
+
+#density plot with adult males only
+males_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "M",AGE == "A",FOCAL.ID != "PA") %>% #Taking out Patches because he only had 2 focals
+  mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%                         
+  drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
+  geom_density(aes(group = FOCAL.ID, 
+                   colour = FOCAL.ID, 
+                   fill = FOCAL.ID),
+               alpha = 0.2)
+males_denPIC_plot
+
+#Density plot with subadult and juveniles (males/fems)
+age_denPIC_plot<- ggplot((post_focals %>% filter(AGE %in% c("SA","J"), FOCAL.ID != "RE") %>% #Taking out Red because she only had 2 focal observations
+  mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%
+  drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
+  geom_density(aes(group = FOCAL.ID, 
+                   colour = FOCAL.ID, 
+                   fill = FOCAL.ID),
+               alpha = 0.2)
+age_denPIC_plot
+
+par(mfrow=c(3,1))
+fems_denPIC_plot
+males_denPIC_plot
+age_denPIC_plot
+```
+
+METHODS: Density plots were created in ggplot to show the probability density of each indiviudals position in the canopy throughout the post-release stage.
+
+RESULTS: Cicero and Homer, the two wild males that joined the troop for some time, were positioned in the top canopy more than all other adult males (Figure males_denPIC_plot). Cicero was positioned higher up in the top canopy (5-10m off the ground) more often than all other adult males and was positioned on the ground less than all other adult males (Figure). 
 
 
 

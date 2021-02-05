@@ -1956,7 +1956,7 @@ ggplot(vig_df_ALL, aes(x = reorder(ID, -prop), y = prop), fill= sex) + #the reor
   scale_fill_manual("legend", values = c("F" = "red", "M" = "blue")) #doesn't want to work
 
 # This also doesn't work
-ggplot(vig_df_ALL, aes(x = ID, y = prop), fill= sex) + #the reorder function with -prop reorders the x-axis to go from highest to lowest
+ggplot(vig_df_ALL, aes(x = ID, y = prop), fill= sex) + 
   geom_bar(stat = "identity") + 
   scale_y_continuous(labels=scales::percent) + #this changes the y-axis to percents
   theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turns axis labels to 45 degrees and hjust get rid of excess space
