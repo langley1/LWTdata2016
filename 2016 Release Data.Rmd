@@ -975,7 +975,7 @@ Bart_pre_avgSDs
 ## Filtering out Nev from the pre-focals dataset
 ```{r}
 Nev<- pre_focals %>% filter(FOCAL.ID == "NE")
-n_distinct(Nev$FOCAL.REFERENCE.CODE) #56 distinct focals
+#n_distinct(Nev$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Neville during pre-release observations
@@ -1040,7 +1040,6 @@ Nev_pre_avgSDs
 ## Filtering out Aug from the pre-focals dataset
 ```{r}
 Aug<- pre_focals %>% filter(FOCAL.ID == "AU")
-n_distinct(Aug$FOCAL.REFERENCE.CODE) #58 distinct focals
 ```
 
 ### Getting SD for each month for Aug during pre-release observations
@@ -1105,7 +1104,6 @@ Aug_pre_avgSDs
 ## Filtering out Amy from the pre-focals dataset
 ```{r}
 Amy<- pre_focals %>% filter(FOCAL.ID == "AM")
-n_distinct(Amy$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Amy during pre-release observations
@@ -1170,7 +1168,6 @@ Amy_pre_avgSDs
 ## Filtering out May from the pre-focals dataset
 ```{r}
 May<- pre_focals %>% filter(FOCAL.ID == "MA")
-n_distinct(May$FOCAL.REFERENCE.CODE) #57 distinct focals
 ```
 
 ### Getting SD for each month for May during pre-release observations
@@ -1235,7 +1232,6 @@ May_pre_avgSDs
 ## Filtering out Toni from the pre-focals dataset
 ```{r}
 Toni<- pre_focals %>% filter(FOCAL.ID == "TO")
-n_distinct(Toni$FOCAL.REFERENCE.CODE) #55 distinct focals
 ```
 
 ### Getting SD for each month for Toni during pre-release observations
@@ -1300,7 +1296,6 @@ Toni_pre_avgSDs
 ## Filtering out Boo from the pre-focals dataset
 ```{r}
 Boo<- pre_focals %>% filter(FOCAL.ID == "BO")
-n_distinct(Boo$FOCAL.REFERENCE.CODE) #55 distinct focals
 ```
 
 ### Getting SD for each month for Boo during pre-release observations
@@ -1365,7 +1360,6 @@ Boo_pre_avgSDs
 ## Filtering out Bgm from the pre-focals dataset
 ```{r}
 Bgm<- pre_focals %>% filter(FOCAL.ID == "BM")
-n_distinct(Bgm$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Bgm during pre-release observations
@@ -1430,7 +1424,6 @@ Bgm_pre_avgSDs
 ## Filtering out Kovu from the pre-focals dataset
 ```{r}
 Kovu<- pre_focals %>% filter(FOCAL.ID == "KO")
-n_distinct(Kovu$FOCAL.REFERENCE.CODE) #55 distinct focals
 ```
 
 ### Getting SD for each month for Kovu during pre-release observations
@@ -1495,7 +1488,6 @@ Kovu_pre_avgSDs
 ## Filtering out Eddy from the pre-focals dataset
 ```{r}
 Ed<- pre_focals %>% filter(FOCAL.ID == "ED")
-n_distinct(Ed$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Eddy during pre-release observations
@@ -1560,7 +1552,6 @@ Ed_pre_avgSDs
 ## Filtering out Tinker from the pre-focals dataset
 ```{r}
 Tink<- pre_focals %>% filter(FOCAL.ID == "TI")
-n_distinct(Tink$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Tinker during pre-release observations
@@ -1625,7 +1616,6 @@ Tink_pre_avgSDs
 ## Filtering out Batman from the pre-focals dataset
 ```{r}
 Bat<- pre_focals %>% filter(FOCAL.ID == "BT")
-n_distinct(Bat$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Batman during pre-release observations
@@ -1690,7 +1680,6 @@ Bat_pre_avgSDs
 ## Filtering out Mango from the pre-focals dataset
 ```{r}
 Mango<- pre_focals %>% filter(FOCAL.ID == "MG")
-n_distinct(Mango$FOCAL.REFERENCE.CODE) #56 distinct focals
 ```
 
 ### Getting SD for each month for Mango during pre-release observations
@@ -1964,9 +1953,17 @@ ggplot(vig_df_ALL, aes(x = ID, y = prop), fill= sex) +
   xlab("Individual") +
   scale_fill_manual("legend", values = c("F" = "red", "M" = "blue"))
 
-
-
 dev.off()
+```
+
+*Pre-release Vigilance across entire troop*
+```{r}
+pre_focals_vig<- pre_focals %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+pre_focals_vig$prop<- pre_focals_vig$count/nrow(pre_focals)
 ```
 
 ## Creating a DF for the pre-release Shannon Diversity Index values so that I can use the barplot() function more easily
@@ -2022,13 +2019,6 @@ formattable(summary,
 ))
 ```
 
-### Starting to look at position in the canopy
-```{r}
-n_distinct(Pops$POSITION.IN.CANOPY) #8 (blanks makes 9)
-unique(Pops$POSITION.IN.CANOPY)
-Pops
-```
-
 # POPs
 ## Filtering out Pops from the post-focals dataset
 ```{r}
@@ -2069,365 +2059,5 @@ Kovu_c<- pre_cont %>% filter(FOCAL.ID == "KO")
 Eddy_c<- pre_cont %>% filter(FOCAL.ID == "ED")
 Tink_c<- pre_cont %>% filter(FOCAL.ID == "TI")
 Bat_c<- pre_cont %>% filter(FOCAL.ID == "BT")
-```
-
-### Looking at grooming bouts (recieved by focal individual, G+) from the continuous dataset
-```{r}
-Pops_G<- Pops_c %>% 
-  filter(BEHAVIOUR == "G+") %>% #filtering out the G+ behavior (grooming received)
-  group_by(ASSOCIATION) %>% #grouping by the association column so that I can see how many grooming bouts the focal had with each individual (the ID in association column would be the one doing the grooming)
-  summarize(count=n()) #counts the number of grooming occurences between pairs and counts them for me.. using these numbers to make my G+ matrix
-
-Zip_G<- Zip_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Zip_G
-
-Mango_G<- Mango_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Mango_G
-
-Jack_G<- Jack_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Jack_G
-
-Bart_G<- Bart_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Bart_G
-
-Nev_G<- Nev_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Nev_G
-
-Blue_G<- Blue_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Blue_G
-
-Alex_G<- Alex_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Alex_G
-
-Aug_G<- Aug_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Aug_G
-
-Amy_G<- Amy_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Amy_G
-
-May_G<- May_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-May_G
-
-Toni_G<- Toni_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Toni_G
-
-Boo_G<- Boo_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Boo_G
-
-Bgm_G<- Bgm_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Bgm_G
-
-Kovu_G<- Kovu_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Kovu_G
-
-Eddy_G<- Eddy_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Eddy_G
-
-Tink_G<- Tink_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Tink_G
-
-Bat_G<- Bat_c %>%
-  filter(BEHAVIOUR == "G+") %>%
-  group_by(ASSOCIATION) %>%
-  summarize(count=n())
-Bat_G
-```
-
-### Looking at Making Place+ instances
-```{r}
-Pops_MP<- Pops_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% #filtering out the MP+ behavior (making place FOR focal individual, they "win" this dominance interaction)
-  group_by(ASSOCIATION) %>% #grouping by the association column so that I can see how many times this individual makes place for the focal (looses the dominance interaction)
-  summarize(count=n()) #counts the number of occurences between pairs.. using these numbers to make my MP+ matrix
-Pops_MP
-
-Zip_MP<- Zip_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Zip_MP
-
-Mango_MP<- Mango_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Mango_MP
-
-Jack_MP<- Jack_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Jack_MP
-
-Bart_MP<- Bart_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Bart_MP
-
-Nev_MP<- Nev_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Nev_MP
-
-Bat_MP<- Bat_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Bat_MP
-
-Alex_MP<- Alex_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Alex_MP
-
-Aug_MP<- Aug_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Aug_MP
-
-Amy_MP<- Amy_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Amy_MP
-
-May_MP<- May_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-May_MP
-
-Toni_MP<- Toni_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Toni_MP
-
-Boo_MP<- Boo_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Boo_MP
-
-Bgm_MP<- Bgm_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Bgm_MP
-
-Kovu_MP<- Kovu_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Kovu_MP
-
-Eddy_MP<- Eddy_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Eddy_MP
-
-Tink_MP<- Tink_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Tink_MP
-
-Blue_MP<- Blue_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Blue_MP
-```
-
-### Looking at Making Place- instances
-```{r}
-Pops_MP<- Pops_c %>% 
-  filter(BEHAVIOUR == "MP-") %>%
-  group_by(ASSOCIATION) %>% 
-  summarize(count=n()) 
-Pops_MP
-
-Zip_MP<- Zip_c %>% 
-  filter(BEHAVIOUR == "MP-") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Zip_MP
-
-Mango_MP<- Mango_c %>% 
-  filter(BEHAVIOUR == "MP-") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Mango_MP
-
-Jack_MP<- Jack_c %>% 
-  filter(BEHAVIOUR == "MP-") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Jack_MP
-
-Bart_MP<- Bart_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Bart_MP
-
-Nev_MP<- Nev_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Nev_MP
-
-Bat_MP<- Bat_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Bat_MP
-
-Alex_MP<- Alex_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Alex_MP
-
-Aug_MP<- Aug_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Aug_MP
-
-Amy_MP<- Amy_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Amy_MP
-
-May_MP<- May_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-May_MP
-
-Toni_MP<- Toni_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Toni_MP
-
-Boo_MP<- Boo_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Boo_MP
-
-Bgm_MP<- Bgm_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Bgm_MP
-
-Kovu_MP<- Kovu_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Kovu_MP
-
-Eddy_MP<- Eddy_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Eddy_MP
-
-Tink_MP<- Tink_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Tink_MP
-
-Blue_MP<- Blue_c %>% 
-  filter(BEHAVIOUR == "MP+") %>% 
-  group_by(ASSOCIATION) %>%
-  summarize(count=n()) 
-Blue_MP
-```
-
-```{r}
-x <- c(2,5,3,9,8,11,6)
-count <- 0 
-for (val in x) {
-  if(val %% 2 == 0)  count = count+1
-  }
-print(count)
-
-MonkeysID<- c("PO", "ZI", "TI", "BL")
-pre_cont_FULL$
-
-for (val in MonkeysID) {
-  val_G <- pre_cont_FULL %>%
-    filter(focal.ID=="val") %>%
-    filter(behav=="G+") %>%
-    group_by(association) %>%
-    summarize(count=n())
-}
-
-monkey_g<-lapply(pre_cont_FULL, function(x){pre_cont_FULL[pre_cont_FULL[["focal.ID"]] == x, ]})
-```
-
-```{r}
-pre_focals %>% filter(FOCAL.ID == "PO") %>% map_df(~(data.frame(n_distinct = n_distinct(.x),
-                                  class = class(.x))),
-                     .id = "variable")
 ```
 

@@ -50,7 +50,7 @@ monkey_G.prelim<-
 names(monkey_G.prelim) <- MonkeyIDs
 
 # 4. Set up your pairwise combinations of interacting monkeys:
-monkeylist<-list(actor=MonkeyIDs_fems,recipient=MonkeyIDs_fems) #create list of all possible actors/recipients
+monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
 filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
 combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
 head(combo)
@@ -545,37 +545,47 @@ grooming_matrix_fems_tbl #focal grooms, females only
 #library(ggpubr) #this isn't working, I think an updated version of R is required
 ```
 
+#### ALL Matrix (aggression, threat, displacement) with Rank and Sex
+```{r}
+ALL_matrix_rank <- ALL_matrix_tbl %>% #creating a new tibble with rank, sex, and age columns
+  add_column(rank = c(4,3,8,11,2,14,9,5,13,10,17,16,12,15,1,18,6,7), .before = "AL") %>%
+  add_column(sex = c("F","F","F","M","F","F","F","M","F","M","F","F","M","M","M","F","F","M"), .before ="AL") %>%
+  add_column(age = c("A","A","A","SA","A","A","A","A","J","SA","J","J","SA","J","A","A","A","A"), .before = "AL") %>%
+  arrange(rank) #arranging by rank from 1-18
+ALL_matrix_rank
+```
+
 #### Grooming Matrix with Rank and Sex
 ```{r}
 #Focal recieves grooming
 grooming_matrix_rank <- grooming_matrix_tbl %>% #creating a new tibble with rank, sex, and age columns (Pops starts as 12 for highest ranked male)
-  add_column(rank = c(3,2,5,16,1,7,6,13,8,15,10,9,17,18,12,11,4,14), .before = "AL") %>%
-  arrange(rank) %>% #arranging by rank from 1-18
-  add_column(sex = c("F","F","F","F","F","F","F","F","F","F","F","M","M","M","M","M","M","M"), .before ="AL") %>%
-  add_column(age = c("A","A","A","A","A","A","A","J","J","J","A","A","A","A","SA","SA","SA","J"), .before = "AL")
+  add_column(rank = c(4,3,8,11,2,14,9,5,13,10,17,16,12,15,1,18,6,7), .before = "AL") %>%
+  add_column(sex = c("F","F","F","M","F","F","F","M","F","M","F","F","M","M","M","F","F","M"), .before ="AL") %>%
+  add_column(age = c("A","A","A","SA","A","A","A","A","J","SA","J","J","SA","J","A","A","A","A"), .before = "AL") %>%
+  arrange(rank)#arranging by rank from 1-18
 grooming_matrix_rank
 
 #Focal grooms
 grooming_matrix2_rank<- grooming_matrix2_tbl %>%
-  add_column(rank = c(3,2,5,16,1,7,6,13,8,15,10,9,17,18,12,11,4), .before = "AL") %>%
-  arrange(rank) %>%
-  add_column(sex = c("F","F","F","F","F","F","F","F","F","F","F","M","M","M","M","M","M"), .before ="AL") %>%
-  add_column(age = c("A","A","A","A","A","A","A","J","J","J","A","A","A","SA","SA","SA","J"), .before = "AL")
+  add_column(rank = c(4,3,8,11,2,14,9,5,13,10,17,16,12,15,1,18,6), .before = "AL") %>%
+  add_column(sex = c("F","F","F","M","F","F","F","M","F","M","F","F","M","M","M","F","F"), .before ="AL") %>%
+  add_column(age = c("A","A","A","SA","A","A","A","A","J","SA","J","J","SA","J","A","A","A"), .before = "AL") %>%
+  arrange(rank)
 grooming_matrix2_rank
 
-#Females only
+#Females only (recieves grooming)
 grooming_matrix_rank_fems<- grooming_matrix_rank %>% 
-  filter(rank < 12) #filtering out ranks less than 12 to pull out only females
+  filter(sex == "F") #filtering out females 
 grooming_matrix_rank_fems
 
-#Female ADULTS only
+#Female ADULTS only (recieves grooming)
 grooming_matrix_rank_Afems<- grooming_matrix_rank_fems %>%
   filter(age == "A")
 grooming_matrix_rank_Afems
 
-#Males only
+#Males only (recieves grooming)
 grooming_matrix_rank_males<- grooming_matrix_rank %>% 
-  filter(rank > 11) #filtering out ranks more than 11 to pull out only males
+  filter(sex == "M") #filtering out males
 grooming_matrix_rank_males
 
 #both are normally distributed
@@ -584,6 +594,7 @@ shapiro.test(grooming_matrix_rank$total)
 #ggqqplot(my_data$mpg, ylab = "MPG")
 #ggqqplot(grooming_matrix_rank$total, ylab = "total")
 ```
+The Shapiro-Wilk test for normality was used to confirm normal distribution of rank order and total grooming recieved.
 
 Blue, Alex, and Amy are the three highest ranked females AND are the only females that have infants at the time of pre-release. According to Seyfarth (?) in the Grooming in Adult Females paper, females with young offspring typically recieve more grooming from other females. Big Mama has an biological male offspring but he is a juvenile during this stage and may no longer influence the grooming patterns of the other females in the troop.
 
@@ -644,7 +655,7 @@ groom_plot_Afems<- ggplot(grooming_matrix_rank_Afems, aes(x=rank, y=total)) +
 groom_plot_Afems
 ```
 
-There is a negative linear relationship between social ranking and total grooming recieved in females. The higher ranked indiviudals recieve more grooming and the lower ranked individuals recieve less grooming. One exception is Eddy, a juvenile female who recieves more grooming than the lowest ranking adults and other juveniles. This could be because the highest ranking adult females adopted Eddy, since she has no biological mother in the troop. 
+RESULTS: There is a negative linear relationship between social ranking and total grooming recieved in females. The higher ranked indiviudals recieve more grooming and the lower ranked individuals recieve less grooming. One exception is Eddy, a juvenile female who recieves more grooming than the lowest ranking adults and other juveniles. This could be because the highest ranking adult females adopted Eddy, since she has no biological mother in the troop. 
 
 # POST-RELEASE DATASET
 
@@ -1372,7 +1383,7 @@ combined_grooming_matrix_post$IDs<- grooming_matrix_rank_post$IDs
 combined_grooming_matrix_post$rank<- grooming_matrix_rank_post$rank
 combined_grooming_matrix_post$sex<- grooming_matrix_rank_post$sex
 
-combined_grooming_matrix_post<- combined_grooming_matrix_post[,c(16,17,18,1:15)] #re-ording the categorical columns so they're in the front
+combined_grooming_matrix_post<- combined_grooming_matrix_post[,c(4,5,6,1,2,7:18,3)] #re-ording the categorical columns so they're in the front
 ```
 
 #### Spearman's correlation test for rank and grooming

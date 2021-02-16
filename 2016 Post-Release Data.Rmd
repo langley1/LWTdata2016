@@ -173,14 +173,267 @@ METHODS: Density plots were created in ggplot to show the probability density of
 
 RESULTS: Cicero and Homer, the two wild males that joined the troop for some time, were positioned in the top canopy more than all other adult males (Figure males_denPIC_plot). Cicero was positioned higher up in the top canopy (5-10m off the ground) more often than all other adult males and was positioned on the ground less than all other adult males (Figure). 
 
+## Survival Analysis
 
+Note: Red only has a few focals post-release (march/april) but in the demographics file it says she's assumed dead October 4th, Skittles only has 1 focal early on but it says he's assumed dead in November... so not sure if this date is incorrect but they have been removed for this analysis. Also, Alex and Augustine are declared dead AFTER their last data entry (Nov 1st) but I Nov 1st in their "Date End" column and gave them a status of 2, which means dead.
 
+## Correct Survival Analysis Code 
+```{r}
+library(survival)
+library(survminer)
 
+#STEP 1:
+post_focals_surv<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_SURV.csv") #inputting my post focals dataset with data in my "Date End" column 
+post_focals_surv<- read.csv(post_focals_surv, header = T, na.strings=c(""," ","NA"))
 
+#STEP 2:
+post_focals_surv$Date.End <- as.Date(post_focals_surv$Date.End, format = "%Y-%m-%d") #telling R that my "Date End" column is in the y-m-d format and that it needs to be read as "Date" rather than "Factor"
 
+post_focals_surv<- post_focals_surv %>% 
+  unite(Date, c(DAY, MONTH, YEAR), sep = "-", remove = FALSE) %>% #Creating a new column called "Date" using unite(), which combines Day, Month, and Year columns with - as separator
+  mutate(Date = as.Date(Date, format = "%d-%m-%Y")) #using mutate() to turn my date column into accecptable "date" format. NOTE: the format I use in this code is what format my original column IS in...R then turns it into standard Y-M-D format, which will match my "Date End" column 
 
+#STEP 3:
+post_focals_surv<- post_focals_surv %>% filter(!FOCAL.ID %in% c("CI","HO","PA","RE","SK","ZI")) %>% #filtering out these individuals because they either don't have a lot of data, are wild males, or left after only 1 day
+  group_by(FOCAL.ID) %>%
+  mutate( #creating a new column called "yrs_surv"
+    days_surv = 
+      as.numeric( 
+        difftime(Date.End[1], #only selecting the first cell in "Date.End" and "Date" so that it calcultes the difference from the first day of data collection to the day I entered into "Date.End", which is the last day they were observed
+                 Date[1],
+                 units = "days"))) #number of days survived
 
+#STEP 4: status 1 = survived or emigrated; status 2 = confirmed or assumed dead
+post_focals_surv<- post_focals_surv %>% 
+  mutate(status = #creating a new column called "status" to label individuals who die vs those who survive
+    case_when(FOCAL.ID %in% c("PO","MG","BL","AM","KO","ED","MA") ~ as.numeric(1), #for these individuals status=1
+              FOCAL.ID %in% c("JA","NE","AL","TO","AU","BO","BM","TI") ~ as.numeric(2))) #for these indivduals status=2
 
+Surv(post_focals_surv$days_surv, post_focals_surv$status)[1:100] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+```
+
+*Survival Probability and curves with Kaplan-Meier*
+```{r}
+Surv(post_focals_surv$days_surv, post_focals_surv$status)[1:100] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+
+f1 <- survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort
+names(f1)
+
+plot(survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv), mark.time = TRUE, 
+     xlab = "Days", 
+     ylab = "Overall survival probability")
+
+ggsurvplot(
+    fit = survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv), 
+    xlab = "Days", 
+    ylab = "Overall survival probability")
+
+summary(survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv), times = 228) #shows us that the probability of survival at the end of data collection is 45%
+
+#To get median survival times
+survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv)
+
+post_focals_surv %>% filter(FOCAL.ID == "MG")
+```
+
+## Vigilance Counts
+
+### Filtering out each individual from the post-focals dataset
+```{r}
+Pops_post<- post_focals %>% filter(FOCAL.ID == "PO")
+Jack_post<- post_focals %>% filter(FOCAL.ID == "JA")
+Blue_post<- post_focals %>% filter(FOCAL.ID == "BL")
+Amy_post<- post_focals %>% filter(FOCAL.ID == "AM")
+Alex_post<- post_focals %>% filter(FOCAL.ID == "AL")
+Bgm_post<- post_focals %>% filter(FOCAL.ID == "BM")
+Nev_post<- post_focals %>% filter(FOCAL.ID == "NE")
+Mango_post<- post_focals %>% filter(FOCAL.ID == "MG")
+Eddy_post<- post_focals %>% filter(FOCAL.ID == "ED")
+May_post<- post_focals %>% filter(FOCAL.ID == "MA")
+Kovu_post<- post_focals %>% filter(FOCAL.ID == "KO")
+Tink_post<- post_focals %>% filter(FOCAL.ID == "TI")
+Toni_post<- post_focals %>% filter(FOCAL.ID == "TO")
+Boo_post<- post_focals %>% filter(FOCAL.ID == "BO")
+Aug_post<- post_focals %>% filter(FOCAL.ID == "AU")
+Cic_post<- post_focals %>% filter(FOCAL.ID == "CI")
+Homer_post<- post_focals %>% filter(FOCAL.ID == "HO")
+```
+
+### Post-Release Vigilance Counts from each Individual
+```{r}
+Pops_vig2<- Pops_post %>% 
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
+  summarize(count=n()) #counting all the vigilance entries
+Pops_vig2$prop<- Pops_vig2$count/nrow(Pops_post)
+Pops_vig2$ID<- "Pops"
+
+Jack_vig2<- Jack_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Jack_vig2$prop<- Jack_vig2$count/nrow(Jack_post)
+Jack_vig2$ID<- "Jack"
+
+Blue_vig2<- Blue_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Blue_vig2$prop<- Blue_vig2$count/nrow(Blue_post)
+Blue_vig2$ID<- "Blue"
+
+Alex_vig2<- Alex_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Alex_vig2$prop<- Alex_vig2$count/nrow(Alex_post)
+Alex_vig2$ID<- "Alex"
+
+Nev_vig2<- Nev_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Nev_vig2$prop<- Nev_vig2$count/nrow(Nev_post)
+Nev_vig2$ID<- "Neville"
+
+Aug_vig2<- Aug_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Aug_vig2$prop<- Aug_vig2$count/nrow(Aug_post)
+Aug_vig2$ID<- "Aug"
+
+Amy_vig2<- Amy_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Amy_vig2$prop<- Amy_vig2$count/nrow(Amy_post)
+Amy_vig2$ID<- "Amy"
+
+May_vig2<- May_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+May_vig2$prop<- May_vig2$count/nrow(May_post)
+May_vig2$ID<- "May"
+
+Toni_vig2<- Toni_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Toni_vig2$prop<- Toni_vig2$count/nrow(Toni_post)
+Toni_vig2$ID<- "Toni"
+
+Boo_vig2<- Boo_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Boo_vig2$prop<- Boo_vig2$count/nrow(Boo_post)
+Boo_vig2$ID<- "Boo"
+
+Bgm_vig2<- Bgm_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bgm_vig2$prop<- Bgm_vig2$count/nrow(Bgm_post)
+Bgm_vig2$ID<- "Big Mama"
+
+Kovu_vig2<- Kovu_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Kovu_vig2$prop<- Kovu_vig2$count/nrow(Kovu_post)
+Kovu_vig2$ID<- "Kovu"
+
+Ed_vig2<- Eddy_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Ed_vig2$prop<- Ed_vig2$count/nrow(Eddy_post)
+Ed_vig2$ID<- "Eddy"
+
+Tink_vig2<- Tink_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Tink_vig2$prop<- Tink_vig2$count/nrow(Tink_post)
+Tink_vig2$ID<- "Tinker"
+
+Mango_vig2<- Mango_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Mango_vig2$prop<- Mango_vig2$count/nrow(Mango_post)
+Mango_vig2$ID<- "Mango"
+
+Cic_vig2<- Cic_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Cic_vig2$prop<- Cic_vig2$count/nrow(Cic_post)
+Cic_vig2$ID<- "Cicero"
+
+Homer_vig2<- Homer_post %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Homer_vig2$prop<- Homer_vig2$count/nrow(Homer_post)
+Homer_vig2$ID<- "Homer"
+```
+
+*Creating a vigilance dataframe*
+```{r}
+vig2_df_ALL<- list(Pops_vig2, Jack_vig2, Blue_vig2, Alex_vig2, Nev_vig2, Aug_vig2, Amy_vig2, May_vig2, Toni_vig2, Boo_vig2, Bgm_vig2, Kovu_vig2, Ed_vig2, Tink_vig2, Mango_vig2) #leaving out Cicero and Homer here because they're wild males
+vig2_df_ALL<- Reduce(function(x, y) merge(x, y, all=TRUE), vig2_df_ALL, accumulate=FALSE) #this changes it from a "list" item to an actual data frame
+str(vig2_df_ALL)
+
+#Adding a "sex" column
+vig2_df_ALL<- vig2_df_ALL %>% 
+  add_column(sex = c("M","F","F","M","M","F","F","F","F","F","F","F","F","F", "M"), .after="ID")
+```
+
+*Plotting the vigilance dataframe*
+```{r}
+ggplot(vig2_df_ALL, aes(x = reorder(ID, -prop), y = prop), fill= sex) + #the reorder function with -prop reorders the x-axis to go from highest to lowest
+  geom_bar(stat = "identity") + 
+  scale_y_continuous(labels=scales::percent) + #this changes the y-axis to percents
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turns axis labels to 45 degrees and hjust get rid of excess space
+  ylab("Percent Vigilance Behavior") +
+  xlab("Individual") +
+  scale_fill_manual("legend", values = c("F" = "red", "M" = "blue")) #doesn't want to work
+```
+
+*Post-release Vigilance across entire troop*
+```{r}
+post_focals_vig<- post_focals %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>%
+  group_by(behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+post_focals_vig$prop<- post_focals_vig$count/nrow(post_focals)
+```
+
+### Pre/post vigilance t-test
+```{r}
+
+```
 
 
 
