@@ -1966,6 +1966,49 @@ pre_focals_vig<- pre_focals %>%
 pre_focals_vig$prop<- pre_focals_vig$count/nrow(pre_focals)
 ```
 
+### Vigilance Dataframe Editing
+```{r}
+#first filtering out Batman since he's a wild male
+pre_focals_edited<- pre_focals %>%
+  filter(FOCAL.ID != "BT")
+
+#creating a "vigilance-only" dataframe
+pre_focals_vig<- pre_focals_edited %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>% #combining behavior1&2
+  group_by(behavior) %>% 
+  filter(behavior == "V") #pulling out vigilance
+head(pre_focals_vig)
+```
+
+### Rate of Vigilance for ADULT FEMALES
+```{r}
+#1. Create a new dataframe with adult females only
+pre_focals_Afems<- pre_focals_edited %>%
+  filter(sex == "F", age == "A")
+
+#2. create a character list of all adult female IDs
+MonkeyIDs_preAfems<- as.character(unique(pre_focals_Afems$FOCAL.ID))
+MonkeyIDs_preAfems
+
+# 2. Get a list of dataframes (from the updated vigilance dataframe), subsetted by adult female monkey ID
+monkey.list_preAfems<-lapply(MonkeyIDs_preAfems, function(x){pre_focals_vig[pre_focals_vig[["FOCAL.ID"]] == x, ]})
+head(monkey.list_preAfems)
+
+#3. Create new list of tibbles to look at vigilance counts per hour 
+monkey.list_pre_vigAfems<-
+  monkey.list_preAfems %>%
+  purrr::map(~group_by(.,day,hour)) %>% #grouping by day&hour so that I get a vigilance count for each unique day-hour combination per individual 
+  purrr::map(~summarize(.,count=n())) #counting up vigilance 
+head(monkey.list_pre_vigAfems)
+
+#4. Combining all the tibbles into one
+monkey.list_pre_vigAfems<- monkey.list_pre_vigAfems %>% 
+  purrr::reduce(dplyr::full_join) %>% #using full_join since all columns are the same across tibbles
+  mutate(release = "pre") #creating a new column called "release"
+monkey.list_pre_vigAfems
+mean(monkey.list_pre_vigAfems$count) #10.35
+```
+
 ## Creating a DF for the pre-release Shannon Diversity Index values so that I can use the barplot() function more easily
 ```{r}
 Individual<- c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman") #my first column
