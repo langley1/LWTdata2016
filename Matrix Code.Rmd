@@ -1,0 +1,98 @@
+---
+title: "Matrix Code"
+output: html_document
+---
+
+### Load Packages that you'll need
+```{r}
+library(curl)
+library(dplyr)
+library(tidyverse)
+```
+
+For any packages you'll use, you need to install them first using install.packages("name of package here") in the console down below before you can load it into R using the library() function. 
+
+# Inputting the Data
+```{r}
+pre_socnet<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Pre-release_Social%20Proximity.csv")
+pre_socnet<- read.csv(pre_socnet, header = T, na.strings=c(""," ","NA"))
+head(pre_socnet) #check the data to make sure it's uploaded correctly
+
+post_socnet<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Post-release_Social%20Proximity.csv")
+post_socnet<- read.csv(post_socnet, header = T, na.strings=c(""," ","NA"))
+head(post_socnet) #check the data to make sure it's uploaded correctly
+```
+
+Copy and paste the RAW CSV file URL from github into the curl() function, then upload it using read.csv() function. Take a look at the dataset using head() just to make sure it's uploaded correctly. You can also use str() to see some general information about the dataset. 
+
+## Edit the dataframe
+```{r}
+pre_socnet_close<- pre_socnet %>% #creating a new dataframe called pre_socnet_close using data from the original pre_socnet dataframe
+  filter(Focal.ID != "BT", #this code REMOVES all data that has Batman has the focal ID
+         Association != "BT", #this code REMOVES all data that has Batman in association column
+         Proximity.Code %in% c("1","2") #this code only keeps proximity codes 1,2 (excluding 3,4)
+  ) 
+```
+
+Pipes (%>%) from the tidyverse package are great to use! They can make coding a lot easier and more stremlined. Definitley read up on them online to help you understand how they work if you don't already know! I've removed Batman here because he's the wild male from pre-release. I've also only pulled out data that has proximity code of 1 or 2 because that means the individuals were 5m or less apart from one another. (**NOTE**: this is only the code for pre-release, you'll have to do a very similar thing for the post-release dataset removing those individuals we talked about from both the focal ID column and the association column. Read online about the filter() function and how to properly use it both to keep data in and to remove data. The code is different when you want to keep/remove one thing verses when you want to keep/remove multiple things so it won't be exactly like what I have written above.)
+
+# Taking out a sub-sample of the dataframe
+```{r}
+pre_socnet_sample<- pre_socnet_close %>%
+  filter(Focal.ID %in% c("PO","BL","KO","ZI","AM"), Association %in% c("PO","BL","KO","ZI","AM"))
+```
+
+I'm filtering out just a few individuals here to practice with the matrix code 
+
+## Example Matrix Code
+```{r}
+# 1. Create a character vector of all the focal IDs in your dataset:
+pre_sn_sample_IDs<-as.character(unique(pre_socnet_sample$Focal.ID))
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+pre_sn_sample_monkeylist<-lapply(pre_sn_sample_IDs, function(x){pre_socnet_sample[pre_socnet_sample[["Focal.ID"]] == x, ]})
+#head(pre_sn_sample_monkeylist) #this line will load the first 6 lists, remove the # before "head" to take a look at them and see that each is for an individual monkey (I put a # before it so that it doesn't run this code in the markdown file, otherwise it would be very long)
+
+# 3. Group each by focal/associate, and count how many times they are observed close together:
+pre_sn_sample_grouped<-
+  pre_sn_sample_monkeylist %>%
+  purrr::map(~group_by(.,Association)) %>%
+  purrr::map(~summarize(.,count=n())) 
+names(pre_sn_sample_grouped) <- pre_sn_sample_IDs #this will give each grouped list the name of the Focal ID
+
+# 4. Set up your pairwise combinations of interacting monkeys:
+pre_sn_sample_monkeycombos<-list(focal=pre_sn_sample_IDs, associate=pre_sn_sample_IDs) #create list of all possible focals/associates
+pre_sn_sample_filt<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+pre_sn_sample_combo<- pre_sn_sample_monkeycombos %>% cross_df(.,.filter=pre_sn_sample_filt) #get the filtered combined list as a dataframe
+head(pre_sn_sample_combo)
+
+# 5. Create new dataframes with specific criteria
+pre_sn_sample_combo2<-
+  pre_sn_sample_combo %>%
+  mutate(absent1 = map2_chr( #new column called "absent1"
+    focal,
+    associate,
+    ~if_else(.x %in% names(pre_sn_sample_grouped),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.y %in% pre_sn_sample_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2) #this removes those two new columns you made so you're just left with the ID names
+
+pre_sn_sample_combo3<- pre_sn_sample_combo2 %>% 
+  mutate(proximity = map2_int( #new column called "proximity" that is the count for when proximity code = 1 or 2
+    focal, 
+    associate, 
+    ~pre_sn_sample_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+head(pre_sn_sample_combo3)
+
+# 6. Create your matrix
+pre_sn_sample_matrix<-spread(pre_sn_sample_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
+pre_sn_sample_matrix
+```
+
+This code gets a bit crazy. To be completely honest, I don't fully understand the code for step #5. Dr. Schmitt helped me with this and all I know is that it works! Just work through this slowly and look at each dataframe or list after you create it so that you have an idea of the steps you're doing. Also, even though it makes the code look a bit more complicated, I recommend naming each of your new objects something unique so that you know exactly when you're using each original object in the next step (pre_sn_sample_combo2 --> pre_sn_sample_combo3). (**NOTE**: this is just a sample of the full dataset, you'll have to use the full pre-release social network dataframe you create in this code to get the entire matrix).
+
+From here, you may need to turn this matrix into a class "dataframe" or "tibble" using the as.data.frame() function or as.tibble() function in order to use it in the social network analysis code. I have code for that as well so if you really get stuck I can also help with that (hint: you may need to use the 1) rownames_to_column() and rowwise() functions as well in order to turn it into a tibble or dataframe.. you can look that function up online for help if you get stuck).
