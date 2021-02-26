@@ -3,15 +3,279 @@ title: "2016 Post-Release Data"
 output: html_document
 ---
 
-## Importing the Full Post-release Focals dataset
+# Full Post-Release Dataset
+
+## Importing the dataset
 ```{r}
 post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_FULL.csv") #this is FULL dataset
 post_focals<- read.csv(post_focals, header = T, na.strings=c(""," ","NA"))
 head(post_focals)
-unique(post_focals$POSITION.IN.CANOPY)
+
+post_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_cont_FULL.csv")
+post_cont<- read.csv(post_cont, header = T, na.strings=c(""," ","NA"))
+head(post_cont)
 ```
 
-### Mortality by Month
+*Editing Continuous dataset*
+```{r}
+post_cont<- post_cont %>%
+  filter(!ASSOCIATION %in% c("BB","MY","MT","I","ZI"), #removing the infants from association because they were never observed as focals and have very little data in general
+         FOCAL.ID != "ZI") #removing ZI because he has very little data and left a few days after release
+
+#Stage 1 post-release
+post_cont_1<- post_cont %>%
+  filter(MONTH %in% c("4","5")) #looking at the first two full months post-release to assess dominance heirarchy and rank, month 3 was removed to give an adjustment period (this is all before the first individual dies, Jack)
+  
+#Stage 2 post-release
+post_cont_2<- post_cont %>%
+  filter(MONTH %in% c("6","7","8"))
+
+#Stage 3 post-release
+post_cont_3<- post_cont %>%
+  filter(MONTH %in% c("9","10","11"))
+```
+
+## Post-Release Rank Determination
+
+### For stage 1
+*Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)*
+```{r}
+# 1. Create a character vector of all the monkey IDs in your dataset:
+post_monkeyIDs1<-as.character(unique(post_cont_1$FOCAL.ID))
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+post_monkey.prelim1<-lapply(post_monkeyIDs1, function(x){post_cont_1[post_cont_1[["FOCAL.ID"]] == x, ]})
+head(post_monkey.prelim1)
+
+post_monkey_ALL.prelim1<-
+  post_monkey.prelim1 %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"), CONFLICT.OUTCOME=="1")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(post_monkey_ALL.prelim1) <- post_monkeyIDs1
+
+post_monkeylist1<-list(actor=post_monkeyIDs1,recipient=post_monkeyIDs1) #create list of all possible actors/recipients
+post_filt1 <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+post_combo1 <- post_monkeylist1 %>% cross_df(.,.filter=post_filt1) #get the filtered combined list as a dataframe
+
+post_combo_ALL1<-
+  post_combo1 %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(post_monkey_ALL.prelim1),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% post_monkey_ALL.prelim1[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+post_ALL1<-post_combo_ALL1 %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~post_monkey_ALL.prelim1 %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+post_ALL1
+
+post_ALL_matrix1<-spread(post_ALL1,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+post_ALL_matrix1
+```
+
+*Combining displacement, agression, and threat into one matrix (focal LOSES all of these interactions)*
+```{r}
+post_monkey_ALL.prelim1_lose<-
+  post_monkey.prelim1 %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"), CONFLICT.OUTCOME=="2")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(post_monkey_ALL.prelim1_lose) <- post_monkeyIDs1
+
+post_combo_ALL1_lose<-
+  post_combo1 %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(post_monkey_ALL.prelim1_lose),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% post_monkey_ALL.prelim1_lose[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+post_ALL1_lose<-post_combo_ALL1_lose %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~post_monkey_ALL.prelim1_lose %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+post_ALL1_lose
+
+post_ALL_matrix1_lose<-spread(post_ALL1_lose,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+post_ALL_matrix1_lose
+```
+
+### For stage 2
+*Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)*
+```{r}
+post_monkeyIDs2<-as.character(unique(post_cont_2$FOCAL.ID))
+
+post_monkey.prelim2<-lapply(post_monkeyIDs2, function(x){post_cont_2[post_cont_2[["FOCAL.ID"]] == x, ]})
+head(post_monkey.prelim2)
+
+post_monkey_ALL.prelim2<-
+  post_monkey.prelim2 %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"), CONFLICT.OUTCOME=="1")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(post_monkey_ALL.prelim2) <- post_monkeyIDs2
+
+post_monkeylist2<-list(actor=post_monkeyIDs2,recipient=post_monkeyIDs2) #create list of all possible actors/recipients
+post_filt2 <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+post_combo2 <- post_monkeylist2 %>% cross_df(.,.filter=post_filt2) #get the filtered combined list as a dataframe
+
+post_combo_ALL2<-
+  post_combo2 %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(post_monkey_ALL.prelim2),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% post_monkey_ALL.prelim2[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+post_ALL2<-post_combo_ALL2 %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~post_monkey_ALL.prelim2 %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+post_ALL2
+
+post_ALL_matrix2<-spread(post_ALL2,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+post_ALL_matrix2
+```
+
+*Combining displacement, agression, and threat into one matrix (focal LOSES all of these interactions)*
+```{r}
+post_monkey_ALL.prelim2_lose<-
+  post_monkey.prelim2 %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"), CONFLICT.OUTCOME=="2")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(post_monkey_ALL.prelim2_lose) <- post_monkeyIDs2
+
+post_combo_ALL2_lose<-
+  post_combo2 %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(post_monkey_ALL.prelim2_lose),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% post_monkey_ALL.prelim2_lose[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+post_ALL2_lose<-post_combo_ALL2_lose %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~post_monkey_ALL.prelim2_lose %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+post_ALL2_lose
+
+post_ALL_matrix2_lose<-spread(post_ALL2_lose,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+post_ALL_matrix2_lose
+```
+
+### For stage 3
+*Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)*
+```{r}
+post_monkeyIDs3<-as.character(unique(post_cont_3$FOCAL.ID))
+
+post_monkey.prelim3<-lapply(post_monkeyIDs3, function(x){post_cont_3[post_cont_3[["FOCAL.ID"]] == x, ]})
+head(post_monkey.prelim3)
+
+post_monkey_ALL.prelim3<-
+  post_monkey.prelim3 %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"), CONFLICT.OUTCOME=="1")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(post_monkey_ALL.prelim3) <- post_monkeyIDs3
+
+post_monkeylist3<-list(actor=post_monkeyIDs3,recipient=post_monkeyIDs3) #create list of all possible actors/recipients
+post_filt3 <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+post_combo3 <- post_monkeylist3 %>% cross_df(.,.filter=post_filt3) #get the filtered combined list as a dataframe
+
+post_combo_ALL3<-
+  post_combo3 %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(post_monkey_ALL.prelim3),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% post_monkey_ALL.prelim3[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+post_ALL3<-post_combo_ALL3 %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~post_monkey_ALL.prelim3 %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+post_ALL3
+
+post_ALL_matrix3<-spread(post_ALL3,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+post_ALL_matrix3
+```
+
+*Combining displacement, agression, and threat into one matrix (focal LOSES all of these interactions)*
+```{r}
+post_monkey_ALL.prelim3_lose<-
+  post_monkey.prelim1 %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"), CONFLICT.OUTCOME=="2")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(post_monkey_ALL.prelim3_lose) <- post_monkeyIDs3
+
+post_combo_ALL3_lose<-
+  post_combo3 %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(post_monkey_ALL.prelim3_lose),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% post_monkey_ALL.prelim3_lose[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+post_ALL3_lose<-post_combo_ALL3_lose %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~post_monkey_ALL.prelim3_lose %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+post_ALL3_lose
+
+post_ALL_matrix3_lose<-spread(post_ALL3_lose,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+post_ALL_matrix3_lose
+```
+
+RESULTS: Based on all agonistic behaviors, the dominance hierarchy in the troop appears stable. There is no evidence suggesting a major change in dominance order from the pre-release stage. There is also no evidence suggesting a wild male took over as the highest ranking individual. Pops remains the highest ranking male and Blue remains the highest ranking female throughout all stages of the post-release period. 
+
+## Mortality by Month
 
 *Creating a data frame for mortality by month*
 ```{r}
@@ -175,9 +439,9 @@ RESULTS: Cicero and Homer, the two wild males that joined the troop for some tim
 
 ## Survival Analysis
 
-Note: Red only has a few focals post-release (march/april) but in the demographics file it says she's assumed dead October 4th, Skittles only has 1 focal early on but it says he's assumed dead in November... so not sure if this date is incorrect but they have been removed for this analysis. Also, Alex and Augustine are declared dead AFTER their last data entry (Nov 1st) but I Nov 1st in their "Date End" column and gave them a status of 2, which means dead.
+Note: Red only has a few focals post-release (march/april) but in the demographics file it says she's assumed dead October 4th, Skittles only has 1 focal early on but it says he's assumed dead in November... so not sure if this date is incorrect but they have been removed for this analysis. Also, Alex and Augustine are declared dead AFTER their last data entry (Nov 1st) but I put Nov 1st in their "Date End" column and gave them a status of 2, which means dead.
 
-## Correct Survival Analysis Code 
+## Survival Analysis FULL 
 ```{r}
 library(survival)
 library(survminer)
@@ -194,9 +458,10 @@ post_focals_surv<- post_focals_surv %>%
   mutate(Date = as.Date(Date, format = "%d-%m-%Y")) #using mutate() to turn my date column into accecptable "date" format. NOTE: the format I use in this code is what format my original column IS in...R then turns it into standard Y-M-D format, which will match my "Date End" column 
 
 #STEP 3:
-post_focals_surv<- post_focals_surv %>% filter(!FOCAL.ID %in% c("CI","HO","PA","RE","SK","ZI")) %>% #filtering out these individuals because they either don't have a lot of data, are wild males, or left after only 1 day
+post_focals_surv<- post_focals_surv %>% filter(!FOCAL.ID %in% c("CI","HO","PA","ZI")) %>% #filtering out these individuals because they are wild males
+  droplevels() %>% #takes the IDs I want to remove from the levels as well 
   group_by(FOCAL.ID) %>%
-  mutate( #creating a new column called "yrs_surv"
+  mutate( #creating a new column called "days_surv"
     days_surv = 
       as.numeric( 
         difftime(Date.End[1], #only selecting the first cell in "Date.End" and "Date" so that it calcultes the difference from the first day of data collection to the day I entered into "Date.End", which is the last day they were observed
@@ -207,34 +472,252 @@ post_focals_surv<- post_focals_surv %>% filter(!FOCAL.ID %in% c("CI","HO","PA","
 post_focals_surv<- post_focals_surv %>% 
   mutate(status = #creating a new column called "status" to label individuals who die vs those who survive
     case_when(FOCAL.ID %in% c("PO","MG","BL","AM","KO","ED","MA") ~ as.numeric(1), #for these individuals status=1
-              FOCAL.ID %in% c("JA","NE","AL","TO","AU","BO","BM","TI") ~ as.numeric(2))) #for these indivduals status=2
+              FOCAL.ID %in% c("JA","NE","AL","TO","AU","BO","BM","TI","SK","RE") ~ as.numeric(2))) #for these indivduals status=2
 
-Surv(post_focals_surv$days_surv, post_focals_surv$status)[1:100] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+#STEP 5: adding in social rank column 
+post_focals_surv<- post_focals_surv %>%
+  mutate(rank =
+    case_when(FOCAL.ID == "PO" ~ as.numeric(1),
+              FOCAL.ID == "BL" ~ as.numeric(2),
+              FOCAL.ID == "AM" ~ as.numeric(3),
+              FOCAL.ID == "AL" ~ as.numeric(4),
+              FOCAL.ID == "TO" ~ as.numeric(5),
+              FOCAL.ID == "AU" ~ as.numeric(6),
+              FOCAL.ID == "BO" ~ as.numeric(7),
+              FOCAL.ID == "JA" ~ as.numeric(8),
+              FOCAL.ID == "MG" ~ as.numeric(9),
+              FOCAL.ID == "RE" ~ as.numeric(10),
+              FOCAL.ID == "ED" ~ as.numeric(11),
+              FOCAL.ID == "MA" ~ as.numeric(12),
+              FOCAL.ID == "SK" ~ as.numeric(13),
+              FOCAL.ID == "BM" ~ as.numeric(14),
+              FOCAL.ID == "NE" ~ as.numeric(15),
+              FOCAL.ID == "KO" ~ as.numeric(16),
+              FOCAL.ID == "TI" ~ as.numeric(17)))
+
+#STEP 6: select only the first row for each focal ID and clean up dataframe
+post_surv_edited<-
+post_focals_surv %>% 
+  group_by(FOCAL.ID) %>% 
+  filter(row_number()==1) #only takes the first row
+
+drop <- c("ASSOCIATION", "OBSERVER.1","OBSERVER.2","WEATHER","TEMP","ESTRUS","FOCAL.PERIOD","FOCAL.MINUTE","BEHAVIOUR","BEHAVIOUR.2","FOOD.TYPE","FOOD.Type.2","POSITION.IN.CANOPY","Position2","Position3","PLANT.SPECIES","PLANT.SPECIES.SAT.ON","G.P.S..Location","X","NOteS") #these are all the extra columns I just don't need
+post_surv_edited = post_surv_edited[,!(names(post_surv_edited) %in% drop)]
+
+post_surv_edited[17,14] = as.numeric(228) #manually changing Skittles days_surv number since she only has one focal in April, so her number needed to be changed 
 ```
 
 *Survival Probability and curves with Kaplan-Meier*
 ```{r}
-Surv(post_focals_surv$days_surv, post_focals_surv$status)[1:100] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+Surv(post_surv_edited$days_surv, post_surv_edited$status)[1:17] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
 
-f1 <- survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort
-names(f1)
+#Survival curves
+survfit_all <- survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
+names(survfit_all) #important names are "surv" and "time"
+summary(survfit_all)
 
-plot(survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv), mark.time = TRUE, 
+#To get median survival days
+survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited) #The median survival days is 225
+
+#Now let's check the probability of surviving until the end of the observations
+summary(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), times = 228) #shows us that the probability of survival at the end of data collection is 30%
+
+#Now let's plot survfit object: Horizontal lines represent survival duration for the interval, The height of vertical lines show the change in cumulative probability, Censored observations are indicated by tick marks
+plot(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), mark.time = TRUE, 
      xlab = "Days", 
      ylab = "Overall survival probability")
 
 ggsurvplot(
-    fit = survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv), 
+    fit = survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), 
     xlab = "Days", 
     ylab = "Overall survival probability")
 
-summary(survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv), times = 228) #shows us that the probability of survival at the end of data collection is 45%
+#Survfit across Sex
+survfit_sex<- survfit(Surv(days_surv, status) ~ SEX, data = post_surv_edited)
+survfit_sex
+summary(survfit_sex) #median survival time for females is 225 and 228 for males
+summary(survfit_sex)$table
 
-#To get median survival times
-survfit(Surv(days_surv, status) ~ 1, data = post_focals_surv)
+sum<- surv_summary(survfit_sex)
+head(sum)
 
-post_focals_surv %>% filter(FOCAL.ID == "MG")
+#Plotting for Sex
+ggsurvplot(survfit_sex,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+
+#Survfit across Age
+survfit_age<- survfit(Surv(days_surv, status) ~ AGE, data = post_surv_edited)
+survfit_age
+summary(survfit_age)$table #this still looks funky, median for adults is 210 even though none of them have that number
+
+#Plotting for Rank - doesn't look nice
+ggsurvplot(survfit_age,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+
+#Survfit across Rank
+survfit_rank<- survfit(Surv(days_surv, status) ~ rank, data = post_surv_edited)
+survfit_rank
+summary(survfit_rank)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Rank - doesn't look nice
+ggsurvplot(survfit_rank,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+
+#Plotting cummulative hazard: corresponds to the number of events that would be expected for each individual by time t if the event were a repeatable process.
+ggsurvplot(survfit_sex,
+          conf.int = TRUE,
+          risk.table.col = "strata", # Change risk table color by groups
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"),
+          fun = "cumhaz")
+
+#Trying to do "complex survival curves" with more than one factor, this doesn't really work for me here
+survfit_combo<- survfit(Surv(days_surv, status) ~ SEX + AGE, data = post_surv_edited)
+survfit_combo
+
+ggsurv <- ggsurvplot(survfit_combo, fun = "event", conf.int = TRUE,
+                     ggtheme = theme_bw())
+   
+ggsurv$plot +theme_bw() + 
+  theme (legend.position = "right")+
+  facet_grid(~AGE)
 ```
+
+METHODS: The average survival time was calculated using the median since survival times aren't normally distributed and the mean would be an inappropriate summary. Between-group significance tests were run using a log-rank test.  
+
+RESULTS: The survival probability 9 months after release is 30%. The median survival time for all non-censored (confirmed or presumed dead) individuals is 225 days. The median survival time for all non-censored females and males is 225 and 228, respectively. The median survival time for all non-censorded adults and juveniles is 210(???) and 228, respectively. 
+
+*Log-Rank Test*
+```{r}
+#Differences in survival times between sexes
+survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
+#Just another way to get the same p-value
+sd <- survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
+1 - pchisq(sd$chisq, length(sd$n) - 1)
+
+#Differences in survival times between ages
+survdiff(Surv(days_surv, status) ~ AGE, data = post_focals_surv)
+
+#Differences in survival times across the ranks
+survdiff(Surv(days_surv, status) ~ rank, data = post_focals_surv)
+```
+
+RESULTS: There is no significant difference in survival times between males and females (p= 0.08). There is a significant difference in survival times across age groups (p< 0.05). There is a significant difference in survival times across social rank (p< 0.05).
+
+## Cox-Regression Models
+```{r}
+#Regression for Sex
+cox_sex<- coxph(Surv(days_surv, status) ~ SEX, data = post_focals_surv) #exp(coef) = hazard ratio, which represents the ratio of hazards between two groups at any particular point in time
+summary(cox_sex)
+
+#Plotting the survival curve for sex, NOT the hazard ratio here
+ggsurvplot(
+    fit = survfit(Surv(days_surv, status) ~ SEX, data = post_focals_surv), 
+    xlab = "Days", 
+    ylab = "Overall survival probability")
+
+#Regression for Age
+cox_age<- coxph(Surv(days_surv, status) ~ AGE, data = post_focals_surv) 
+summary(cox_age)
+
+#Regression for Rank
+cox_rank<- coxph(Surv(days_surv, status) ~ rank, data = post_focals_surv) 
+summary(cox_rank)
+```
+
+RESULTS: The variable sex has highly statistically significant coefficients (p < 0.05). Beta coef for sex (males) = -0.10562, which indicates that males have lower risk of death than females. Being male reduces the hazard by a factor of 0.90, or 10%. The varibale age (juvenile-adult) has statistically significant coefficients (p < 0.05). Juveniles have a lower risk of death than adults. Being juvenile reduces hazard by 0.3 or 70%. The variable rank has statistically significant coefficients (p< 0.05). Regression coef (coef) is a positive value, which means the risk of death is higher for those with larger social ranking values ("lower" ranked in our case).  
+
+*Cox Multiple regression*
+```{r}
+#This shows us how to factos jointly impact survival
+cox_multi<- coxph(Surv(days_surv, status) ~ SEX + AGE, data = post_surv_edited) #cox-regression on age and sex
+summary(cox_multi)
+
+cox_multi2<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE, data= post_surv_edited)
+summary(cox_multi2)
+
+# Plot the baseline survival function
+ggsurvplot(survfit(cox_multi2), data =post_surv_edited, palette = "#2E9FDF",
+           ggtheme = theme_minimal())
+
+```
+
+RESULTS: In the Cox multiple regression analysis, sex is no longer statistically significant (p= 0.18). The likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are also not statistically significant. There is a slighly significant effect of the juvenile age category on survival (p=0.03) and rank on survival (p=0.01). When holding the other covariates constant, none of these covariates seem to have a very strong effect on the hazard ratio (or death). 
+
+*Proportional Hazards Assumption Test and other statistical tests*
+```{r}
+#Testing for proportional hazards (PH) assumption:
+test.ph <- cox.zph(cox_multi2)
+test.ph #yay we can assume proportional hazards since these covariates don't show statistical significance, Sex is technically 0.05 with this test but comes us as 0.15 when I just run it with Sex and Age
+
+ggcoxzph(test.ph)
+
+#Testing influential observations 
+
+#Specifying the argument type = “dfbeta”, plots the estimated changes in the regression coefficients upon deleting each observation in turn
+ggcoxdiagnostics(cox_multi2, type = "dfbeta",
+                 linear.predictions = FALSE, ggtheme = theme_bw()) #I don't fully understand this but it does seem that some of the observations are influential (mostly for rank)
+
+#The deviance residual is a normalized transform of the martingale residual. These residuals should be roughtly symmetrically distributed about zero with a standard deviation of 1. Positive values correspond to individuals that “died too soon” compared to expected survival times. Negative values correspond to individual that “lived too long”. Very large or small values are outliers, which are poorly predicted by the model.
+ggcoxdiagnostics(cox_multi2, type = "deviance",
+                 linear.predictions = FALSE, ggtheme = theme_bw()) #this looks fairly symmetrical around 0 but not perfect, is this ok?
+
+ggcoxfunctional(Surv(days_surv, status) ~ rank + log(rank) + sqrt(rank), data = post_focals_surv)
+```
+
+METHODS: Proportional hazards (PH) assumption was tested for the model as a whole as well as each covariate based on scaled Schoenfeld residuals to test for independence between residuals and time. Influential observations were also observed graphically using df beta. One influential case was discovered showing a large influence on the rank variable and removed from the analysis?? Don't know if I have to do this.
+
+RESULTS: The PH assumption test is not statistically significance for each of the covariates, as well as the global test. A graphed diagnostic, which shows graphs of the scaled Schoenfeld residuals against the transformed time, shows no trend in the covariates across time. Therefore, we can assume proportional hazards.
+
+## Survival Analysis Reduced - Adding in Behavioral Data
+```{r}
+post_focals_surv_reduced<- post_focals_surv %>%
+  filter(!FOCAL.ID %in% c("RE","SK")) %>% #these two have very little behavior data post-release so removing them
+  droplevels()
+unique(post_focals_surv_reduced$FOCAL.ID)
+```
+
+```{r}
+# 1. Create character vector of all the monkey IDs in the dataset:
+monkeyIDs_surv<-as.character(unique(post_focals_surv_reduced$FOCAL.ID))
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+monkeyID_vigsurv_list<-lapply(monkeyIDs_surv, function(x){post_focals_vig[post_focals_vig[["FOCAL.ID"]] == x, ]})
+head(monkeyID_vigsurv_list)
+
+monkeyID_surv_vig<-
+  monkeyID_vigsurv_list %>%
+  purrr::map(~group_by(.,day,hour)) %>% #grouping by day&hour so that I get a vigilance count for each unique day-hour combination per individual 
+  purrr::map(~summarize(.,count=n())) #counting up vigilance 
+names(monkeyID_surv_vig)<- monkeyIDs_surv
+
+names(monkeyID_surv_vig)
+head(monkeyID_surv_vig)
+
+monkeyID_surv_vig<- monkeyID_vigsurv_list %>%
+  dplyr::mutate(.,ID = map(FOCAL.ID))
+  
+  purrr::map(~mean(.,count))
+head(monkeyID_surv_vig)
+```
+
+
 
 ## Vigilance Counts
 
@@ -430,10 +913,272 @@ post_focals_vig<- post_focals %>%
 post_focals_vig$prop<- post_focals_vig$count/nrow(post_focals)
 ```
 
-### Pre/post vigilance t-test
+### Vigilance Dataframe Editing
 ```{r}
+#first filtering out all of the individuals that have little or no focal data post-release
+post_focals_edited<- post_focals %>%
+  rename(day = DAY, hour= TIME..HOUR.) %>%
+  filter(!FOCAL.ID %in% c("PA","ZI","RE","SK","HO","CI")) %>%
+  droplevels()
+
+#creating a "vigilance-only" dataframe
+post_focals_vig<- post_focals_edited %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>% #combining behavior1&2
+  group_by(behavior) %>% 
+  filter(behavior == "V") #pulling out vigilance
+```
+
+### Rate of Vigilance for ADULT FEMALES
+```{r}
+#1. Create a new dataframe with adult females only
+post_focals_Afems<- post_focals_edited %>%
+  filter(SEX == "F", AGE == "A")
+
+#2. create a character list of all adult female IDs
+MonkeyIDs_postAfems<- as.character(unique(post_focals_Afems$FOCAL.ID))
+MonkeyIDs_postAfems
+
+# 2. Get a list of dataframes (from the updated vigilance dataframe), subsetted by adult female monkey ID
+monkey.list_postAfems<-lapply(MonkeyIDs_postAfems, function(x){post_focals_vig[post_focals_vig[["FOCAL.ID"]] == x, ]})
+head(monkey.list_postAfems)
+
+#3. Create new list of tibbles to look at vigilance counts per hour 
+monkey.list_post_vigAfems<-
+  monkey.list_postAfems %>%
+  purrr::map(~group_by(.,day,hour)) %>% #grouping by day&hour so that I get a vigilance count for each unique day-hour combination per individual 
+  purrr::map(~summarize(.,count=n())) #counting up vigilance 
+head(monkey.list_post_vigAfems)
+
+#4. Combining all the tibbles into one
+monkey.list_post_vigAfems<- monkey.list_post_vigAfems %>% 
+  purrr::reduce(dplyr::full_join) %>% #using full_join since all columns are the same across tibbles
+  mutate(release = "post") #creating a new column called "release"
+monkey.list_post_vigAfems
+mean(monkey.list_post_vigAfems$count) #7.16
+```
+
+*Pre/Post Adult Female Vigilance Tibble*
+```{r}
+monkey.list_vigAfems_FULL<- full_join(monkey.list_post_vigAfems, monkey.list_pre_vigAfems) #joining the two vigilance tibbles together
+```
+
+### Testing for Adult Female Vigilance Normality
+```{r}
+#calculating the difference between release stages to test for normality
+x <- with(monkey.list_vigAfems_FULL, 
+        count[release == "post"] - count[release == "pre"])
+# Shapiro-Wilk normality test for the differences
+shapiro.test(x)
+
+#Looking at density plots and qqplots to check for normality
+ggdensity(monkey.list_vigAfems_FULL$count)
+ggqqplot(monkey.list_vigAfems_FULL$count)
+
+#Plotting pre and post vigilance rates 
+ggplot(monkey.list_vigAfems_FULL, aes(x=release, y=count, color=release)) +
+  geom_boxplot(outlier.color = "black", notch = TRUE) +
+  scale_x_discrete(limits=c("pre", "post")) +
+  labs(x= "Release Stage", y= "Average rate of vigilance")
+  
+
+#Running log10 transformations to see if that changes distribution
+log<- log10(monkey.list_vigAfems_FULL$count)
+shapiro.test(log)
+ggdensity(log)
+ggqqplot(log)
+```
+
+METHODS: To test for normality, Shapiro-Wilk tests were performed on hourly vigilance rate data for each age/sex category. Where Shapiro-Wilk tests revealed non-normal distributions, Log10 transformations were conducted and normality was reassessed. When Log10 transformations also showed non-normal distribution, non-parametric tests were run on the un-logged variables. 
+
+The Log10 transformations for 1) adult female, 2) subadult & juvenile, and 3) Pops hourly vigilance rates show non-normal distribution.
+
+### Wilcoxon Test for Adult Fems
+```{r}
+#Doing a unpaired two-sample Wilcoxon test because I get an error when I do it paired
+WT_vigAfems<- wilcox.test(count ~ release, data = monkey.list_vigAfems_FULL, exact = TRUE)
+WT_vigAfems
+
+#add in ID names as row names
+#When paired = TRUE, I get an error that x and y need to be the same length
+```
+
+RESULTS: There is a significant difference in mean hourly vigilance rates of adult females pre- and post-release. 
+
+### Rate of Vigilance for Subadults and Juveniles
+```{r}
+#1. Create a new dataframe with SA & juvs only
+post_focals_young<- post_focals_edited %>%
+  filter(AGE %in% c("SA","J"))
+
+#2. create a character list of all SA & juvs
+MonkeyIDs_postyoung<- as.character(unique(post_focals_young$FOCAL.ID))
+MonkeyIDs_postyoung
+
+# 2. Get a list of dataframes (from the updated vigilance dataframe), subsetted by monkey ID
+monkey.list_postyoung<-lapply(MonkeyIDs_postyoung, function(x){post_focals_vig[post_focals_vig[["FOCAL.ID"]] == x, ]})
+head(monkey.list_postyoung)
+
+#3. Create new list of tibbles to look at vigilance counts per hour 
+monkey.list_post_vigyoung<-
+  monkey.list_postyoung %>%
+  purrr::map(~group_by(.,day,hour)) %>% #grouping by day&hour so that I get a vigilance count for each unique day-hour combination per individual 
+  purrr::map(~summarize(.,count=n())) #counting up vigilance 
+head(monkey.list_post_vigyoung)
+
+#4. Combining all the tibbles into one
+monkey.list_post_vigyoung<- monkey.list_post_vigyoung %>% 
+  purrr::reduce(dplyr::full_join) %>% #using full_join since all columns are the same across tibbles
+  mutate(release = "post") #creating a new column called "release"
+monkey.list_post_vigyoung
+mean(monkey.list_post_vigyoung$count) #6.59
+```
+
+*Pre/Post Subadult & Juvenile Vigilance Tibble*
+```{r}
+monkey.list_vigyoung_FULL<- full_join(monkey.list_post_vigyoung, monkey.list_pre_vigyoung) #joining the two vigilance tibbles together
+monkey.list_vigyoung_FULL
+```
+
+### Testing for Subadult & Juvenile Vigilance Normality
+```{r}
+#calculating the difference between release stages to test for normality
+x2 <- with(monkey.list_vigyoung_FULL, 
+        count[release == "post"] - count[release == "pre"])
+# Shapiro-Wilk normality test for the differences
+shapiro.test(x2)
+
+#Looking at density plots and qqplots to check for normality
+ggdensity(monkey.list_vigyoung_FULL$count)
+ggqqplot(monkey.list_vigyoung_FULL$count)
+
+#Plotting pre and post vigilance rates 
+ggplot(monkey.list_vigyoung_FULL, aes(x=release, y=count, color=release)) +
+  geom_boxplot(outlier.color = "black", notch = TRUE) +
+  scale_x_discrete(limits=c("pre", "post")) +
+  labs(x= "Release Stage", y= "Average rate of vigilance")
+
+#Running log10 transformations to see if that changes distribution
+log2<- log10(monkey.list_vigyoung_FULL$count)
+shapiro.test(log2)
+ggdensity(log2)
+ggqqplot(log2)
+```
+
+### Wilcoxon Test for Subs/Juvs
+```{r}
+#Doing a unpaired two-sample Wilcoxon test because I get an error when I do it paired
+WT_vigyoung<- wilcox.test(count ~ release, data = monkey.list_vigyoung_FULL, exact = FALSE)
+WT_vigyoung
+
+#When paired = TRUE, I get an error that x and y need to be the same length
+```
+
+RESULTS: There is a significant difference in mean hourly vigilance rates of subadults and juveniles pre- and post-release. 
+
+### Rate of Vigilance for Pops
+```{r}
+post_focals_vigPops<- post_focals_vig %>%
+  filter(FOCAL.ID == "PO") %>%
+  group_by(day,hour) %>%
+  summarize(count=n()) %>%
+  mutate(release = "post")
+  
+mean(post_focals_vigPops$count) #8.38
+```
+
+*Pre/Post Pops Vigilance Tibble*
+```{r}
+post_focals_vigPops_FULL<- full_join(post_focals_vigPops, pre_focals_vigPops) #joining the two vigilance tibbles together
+post_focals_vigPops_FULL
+```
+
+### Testing for Pops Normality
+```{r}
+#calculating the difference between release stages to test for normality
+x3 <- with(post_focals_vigPops_FULL, 
+        count[release == "post"] - count[release == "pre"])
+# Shapiro-Wilk normality test for the differences
+shapiro.test(x3)
+shapiro.test(post_focals_vigPops_FULL$count)
+
+#Looking at density plots and qqplots to check for normality
+ggdensity(post_focals_vigPops_FULL$count)
+ggqqplot(post_focals_vigPops_FULL$count)
+
+#Plotting pre and post vigilance rates 
+ggplot(post_focals_vigPops_FULL, aes(x=release, y=count, color=release)) +
+  geom_boxplot(outlier.color = "black", notch = TRUE) +
+  scale_x_discrete(limits=c("pre", "post")) +
+  labs(x= "Release Stage", y= "Average rate of vigilance")
+
+#Running log10 transformations to see if that changes distribution
+log3<- log10(post_focals_vigPops_FULL$count)
+shapiro.test(log3)
+ggdensity(log3)
+ggqqplot(log3)
+```
+
+### Wilcoxon Test
+```{r}
+#Doing a unpaired two-sample Wilcoxon test because I get an error when I do it paired
+WT_vigPops<- wilcox.test(count ~ release, data = post_focals_vigPops_FULL, exact = FALSE)
+WT_vigPops
+
+#When paired = TRUE, I get an error that x and y need to be the same length
+```
+
+RESULTS: There is a significant difference in Pop's mean hourly vigilance rates pre- and post-release. 
+
+```{r}
+shapiro.test(monkey.list_pre_vigAfems$count)
+histogram(monkey.list_pre_vigAfems$count)
+
 
 ```
 
+## Social Network Code:
+```{r}
+# 1. Create a character vector of all the focal IDs in your dataset:
+pre_sn_closeIDs<-as.character(unique(pre_socnet_close$Focal.ID))
 
+# 2. Get a list of dataframes, subsetted by monkey ID:
+pre_sn_monkeylist<-lapply(pre_sn_closeIDs, function(x){pre_socnet_close[pre_socnet_close[["Focal.ID"]] == x, ]})
+head(pre_sn_monkeylist) #this will load the first 6 lists, take a look at them and see that each is for an individual monkey
 
+# 3. Group each by focal/associate, and count how many times they are observed close together:
+pre_sn_grouped<-
+  pre_sn_monkeylist %>%
+  purrr::map(~group_by(.,Association)) %>%
+  purrr::map(~summarize(.,count=n())) 
+names(pre_sn_grouped) <- pre_sn_closeIDs #this will give each grouped list the name of the Focal ID
+
+# 4. Set up your pairwise combinations of interacting monkeys:
+pre_sn_monkeycombos<-list(focal=pre_sn_closeIDs, associate=pre_sn_closeIDs) #create list of all possible focals/associates
+pre_sn_filt<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+pre_sn_combo<- pre_sn_monkeycombos %>% cross_df(.,.filter=pre_sn_filt) #get the filtered combined list as a dataframe
+head(pre_sn_combo)
+
+pre_sn_combo2<-
+  pre_sn_combo %>%
+  mutate(absent1 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.x %in% names(pre_sn_grouped),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.y %in% pre_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+pre_sn_combo3<- pre_sn_combo2 %>% 
+  mutate(proximity = map2_int(
+    focal, 
+    associate, 
+    ~pre_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+pre_sn_combo3
+
+pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
+pre_sn_matrix
+```
