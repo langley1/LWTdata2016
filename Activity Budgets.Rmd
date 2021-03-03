@@ -1,0 +1,735 @@
+---
+title: "Activity Budgets"
+output: html_document
+---
+
+```{r}
+library(lme4)
+```
+
+## Activity Budgets PRE RELEASE
+### Behavior Categories
+```{r}
+pre_focals_budget<- pre_focals %>%
+  #filter(FOCAL.ID != "BT") %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>% #gathering the two behavior columns
+  filter(!behavior %in% c("AL","BL","PO")) %>% #removing these from the behavior column becuase they're mistakes
+  mutate(behavior.category = #creating new column for behavior categories
+           case_when(behavior %in% c("G+","G-","PR-","PR+","C","CL","N","NU","SU","PL","MA","MO") ~ as.character("Social"),
+                     behavior %in% c("F","FE","FO") ~ as.character("Feeding"),
+                     behavior %in% c("L","R") ~ as.character("Activity"),
+                     behavior %in% c("V","PA") ~ as.character("Predator"),
+                     behavior %in% c("A+","A-","TH+","TH-","MP+","MP-") ~ as.character("Dominance"),
+                     behavior %in% c("YA","SC","SG","SM","PC") ~ as.character("Stress"),
+                     behavior %in% c("PH","AH")~ as.character("Human"),
+                     behavior %in% c("O","OS")~ as.character("Other")))
+unique(pre_focals_budget$behavior.category)
+pre_focals_budget %>% filter(behavior %in% c("PH","AH"))
+```
+
+### Mean Activity Budget Per Focal
+```{r}
+#Pops
+Pops_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "PO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n()) %>%
+  mutate(ID = "PO")
+
+Pops_budget2<- Pops_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Pops_budget$focal.reference))))
+Pops_budget2$total<- NULL
+
+#Blue
+Blue_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "BL") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n()) %>%
+  mutate(ID = "BL")
+
+Blue_budget2<- Blue_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Blue_budget$focal.reference))))
+Blue_budget2$total<- NULL
+
+#Amy
+Amy_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "AM") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n()) %>%
+  mutate(ID = "AM")
+
+Amy_budget2<- Amy_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Amy_budget$focal.reference))))
+Amy_budget2$total<- NULL
+
+#Alex
+Alex_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "AL") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Alex_budget<- Alex_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Alex_budget$focal.reference))))
+Alex_budget$total<- NULL
+
+#Boo
+Boo_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "BO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Boo_budget<- Boo_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Boo_budget$focal.reference))))
+Boo_budget$total<- NULL
+
+#Big Mama
+Bgm_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "BM") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Bgm_budget<- Bgm_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Bgm_budget$focal.reference))))
+Bgm_budget$total<- NULL
+
+#Augustine
+Aug_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "AU") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Aug_budget<- Aug_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Aug_budget$focal.reference))))
+Aug_budget$total<- NULL
+
+#Bart
+Bart_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "BA") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Bart_budget<- Bart_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Bart_budget$focal.reference))))
+Bart_budget$total<- NULL
+
+#Eddy
+Ed_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "ED") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Ed_budget<- Ed_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Ed_budget$focal.reference))))
+Ed_budget$total<- NULL
+
+#Jack
+Jack_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "JA") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Jack_budget<- Jack_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Jack_budget$focal.reference))))
+Jack_budget$total<- NULL
+
+#Tinker
+Tink_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "TI") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Tink_budget<- Tink_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Tink_budget$focal.reference))))
+Tink_budget$total<- NULL
+
+#Kovu
+Kovu_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "KO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Kovu_budget<- Kovu_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Kovu_budget$focal.reference))))
+Kovu_budget$total<- NULL
+
+#Mango
+Mango_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "KO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Mango_budget<- Mango_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Mango_budget$focal.reference))))
+Mango_budget$total<- NULL
+
+#Neville
+Nev_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "NE") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Nev_budget<- Nev_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Nev_budget$focal.reference))))
+Nev_budget$total<- NULL
+
+#Toni
+Toni_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "TO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Toni_budget<- Toni_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Toni_budget$focal.reference))))
+Toni_budget$total<- NULL
+
+#May
+May_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "MA") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+May_budget<- May_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(May_budget$focal.reference))))
+May_budget$total<- NULL
+
+#Zip
+Zip_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "ZI") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Zip_budget<- Zip_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Zip_budget$focal.reference))))
+Zip_budget$total<- NULL
+```
+
+*Troop Mean Activity Budgets*
+```{r}
+pre_fullbudget<- Pops_budget %>%
+  full_join(Blue_budget,by= "behavior.category") %>%
+  full_join(Amy_budget,by= "behavior.category") %>%
+  full_join(Alex_budget,by= "behavior.category") %>%
+  full_join(Boo_budget,by= "behavior.category") %>%
+  full_join(Bgm_budget,by= "behavior.category") %>%
+  full_join(Aug_budget,by= "behavior.category") %>%
+  full_join(Bart_budget,by= "behavior.category") %>%
+  full_join(Ed_budget,by= "behavior.category") %>%
+  full_join(Jack_budget,by= "behavior.category") %>%
+  full_join(Tink_budget,by= "behavior.category") %>%
+  full_join(Kovu_budget,by= "behavior.category") %>%
+  full_join(Mango_budget,by= "behavior.category") %>%
+  full_join(May_budget,by= "behavior.category") %>%
+  full_join(Toni_budget,by= "behavior.category") %>%
+  full_join(Nev_budget,by= "behavior.category") %>%
+  full_join(Zip_budget,by= "behavior.category") %>%
+  rowwise() %>% #this allows us to work with row-wise dataframe where we want to look at each row individually
+  mutate(TroopMean = ((sum(c_across(2:18),na.rm=T))/17), #adding up all the means per category and dividing by 17 monkeys to get average
+        release = "pre") #adding column to identify pre-release
+
+pre_fullbudget<- pre_fullbudget[,c("behavior.category","TroopMean","release")] #these are the only columns I want to look at now
+pre_fullbudget
+```
+
+### Activity Budget Bar Chart
+```{r}
+budget_plot<-ggplot(data=pre_fullbudget, aes(x=behavior.category, y=TroopMean)) +
+  geom_bar(stat="identity")
+budget_plot
+```
+
+### Batman vs Rehabilitant Males: Activity Budget 
+```{r}
+#Batman
+Bat_budget<- pre_focals_budget %>%
+  filter(FOCAL.ID == "BT") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+Bat_budget
+
+Bat_budget<- Bat_budget %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Bat_budget$focal.reference))))
+Bat_budget$total<- NULL
+
+Pops_budget_pred<- Pops_budget %>%
+  filter(behavior.category == "Predator") %>%
+  mutate(ID = "Pops")
+Pops_budget_pred
+
+Bat_budget_pred<- Bat_budget %>%
+  filter(behavior.category == "Predator") %>%
+  mutate(ID = "Batman")
+
+Males_budget<- bind_rows(Pops_budget_pred, Bat_budget_pred)
+Males_budget %>% filter(ID == "Pops")
+```
+
+### Trying to do Wilcoxon Test with Batman and Pops
+```{r}
+ggdensity(Males_budget$count)
+ggqqplot(Males_budget$count)
+
+ggboxplot(Males_budget, x = "ID", y = "count", 
+          color = "ID", palette = c("#00AFBB", "#E7B800"),
+          ylab = "count", xlab = "ID")
+
+WT_PopsBat_pred<- wilcox.test(count ~ ID, data = Males_budget, paired = FALSE)
+WT_PopsBat_pred
+```
+
+## Activity Budgets POST RELEASE
+### Behavior Categories
+```{r}
+post_focals_budget<- post_focals %>%
+  filter(!FOCAL.ID %in% c("CI","HO","PA")) %>%
+  gather("Obs", "behavior", 20:21, na.rm = T) %>% #gathering the two behavior columns
+  filter(!behavior %in% c("ED","TH","VL")) %>% #removing these from the behavior column becuase they're mistakes
+  mutate(behavior.category = #creating new column for behavior categories
+           case_when(behavior %in% c("G+","G-","PR-","PR+","C","CL","N","SU","PL","MA","MO") ~ as.character("Social"),
+                     behavior %in% c("F","FE","FO") ~ as.character("Feeding"),
+                     behavior %in% c("L","R") ~ as.character("Activity"),
+                     behavior %in% c("V","PA") ~ as.character("Predator"),
+                     behavior %in% c("A+","A-","TH+","TH-","MP+","MP-") ~ as.character("Dominance"),
+                     behavior %in% c("YA","SC","SG","SM","PC") ~ as.character("Stress"),
+                     behavior %in% c("PH","AH")~ as.character("Human"),
+                     behavior %in% c("O","OS","oS")~ as.character("Other"))) %>%
+  rename(focal.reference = FOCAL.REFERENCE.CODE)
+unique(post_focals_budget$behavior.category)
+```
+
+### Mean Activity Budget Per Focal
+```{r}
+#Pops
+Pops_budget3<- post_focals_budget %>%
+  filter(FOCAL.ID == "PO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n()) %>%
+  mutate(ID = "PO")
+
+Pops_budget4<- Pops_budget3 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Pops_budget3$focal.reference))))
+Pops_budget4$total<- NULL
+
+#Blue
+Blue_budget3<- post_focals_budget %>%
+  filter(FOCAL.ID == "BL") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n()) %>%
+  mutate(ID = "BL")
+
+Blue_budget4<- Blue_budget3 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Blue_budget3$focal.reference))))
+Blue_budget4$total<- NULL
+
+#Amy
+Amy_budget3<- post_focals_budget %>%
+  filter(FOCAL.ID == "AM") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n()) %>%
+  mutate(ID = "AM")
+
+Amy_budget4<- Amy_budget3 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Amy_budget3$focal.reference))))
+Amy_budget4$total<- NULL
+
+#Alex
+Alex_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "AL") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Alex_budget2<- Alex_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Alex_budget2$focal.reference))))
+Alex_budget2$total<- NULL
+
+#Boo
+Boo_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "BO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Boo_budget2<- Boo_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Boo_budget2$focal.reference))))
+Boo_budget2$total<- NULL
+
+#Big Mama
+Bgm_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "BM") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Bgm_budget2<- Bgm_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Bgm_budget2$focal.reference))))
+Bgm_budget2$total<- NULL
+
+#Augustine
+Aug_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "AU") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Aug_budget2<- Aug_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Aug_budget2$focal.reference))))
+Aug_budget2$total<- NULL
+
+#Eddy
+Ed_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "ED") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Ed_budget2<- Ed_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Ed_budget2$focal.reference))))
+Ed_budget2$total<- NULL
+
+#Jack
+Jack_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "JA") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Jack_budget2<- Jack_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Jack_budget2$focal.reference))))
+Jack_budget2$total<- NULL
+
+#Tinker
+Tink_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "TI") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Tink_budget2<- Tink_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Tink_budget2$focal.reference))))
+Tink_budget2$total<- NULL
+
+#Kovu
+Kovu_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "KO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Kovu_budget2<- Kovu_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Kovu_budget2$focal.reference))))
+Kovu_budget2$total<- NULL
+
+#Mango
+Mango_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "KO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Mango_budget2<- Mango_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Mango_budget2$focal.reference))))
+Mango_budget2$total<- NULL
+
+#Neville
+Nev_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "NE") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Nev_budget2<- Nev_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Nev_budget2$focal.reference))))
+Nev_budget2$total<- NULL
+
+#Toni
+Toni_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "TO") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Toni_budget2<- Toni_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Toni_budget2$focal.reference))))
+Toni_budget2$total<- NULL
+
+#May
+May_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "MA") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+May_budget2<- May_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(May_budget2$focal.reference))))
+May_budget2$total<- NULL
+
+#Zip
+Zip_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "ZI") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Zip_budget2<- Zip_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Zip_budget2$focal.reference))))
+Zip_budget2$total<- NULL
+
+#Red
+Red_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "RE") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Red_budget2<- Red_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Red_budget2$focal.reference))))
+Red_budget2$total<- NULL
+
+#Skittles
+Sk_budget2<- post_focals_budget %>%
+  filter(FOCAL.ID == "SK") %>%
+  group_by(focal.reference,behavior.category) %>%
+  summarize(count=n())
+
+Sk_budget2<- Sk_budget2 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/(n_distinct(Sk_budget2$focal.reference))))
+Sk_budget2$total<- NULL
+```
+
+*Troop Mean Activity Budgets*
+```{r}
+post_fullbudget<- Pops_budget2 %>%
+  full_join(Blue_budget2,by= "behavior.category") %>%
+  full_join(Amy_budget2,by= "behavior.category") %>%
+  full_join(Alex_budget2,by= "behavior.category") %>%
+  full_join(Boo_budget2,by= "behavior.category") %>%
+  full_join(Bgm_budget2,by= "behavior.category") %>%
+  full_join(Aug_budget2,by= "behavior.category") %>%
+  full_join(Ed_budget2,by= "behavior.category") %>%
+  full_join(Jack_budget2,by= "behavior.category") %>%
+  full_join(Tink_budget2,by= "behavior.category") %>%
+  full_join(Kovu_budget2,by= "behavior.category") %>%
+  full_join(Mango_budget2,by= "behavior.category") %>%
+  full_join(May_budget2,by= "behavior.category") %>%
+  full_join(Toni_budget2,by= "behavior.category") %>%
+  full_join(Nev_budget2,by= "behavior.category") %>%
+  full_join(Zip_budget2,by= "behavior.category") %>%
+  full_join(Red_budget2,by= "behavior.category") %>%
+  full_join(Sk_budget2,by= "behavior.category") %>%
+  rowwise() %>% #this allows us to work with row-wise dataframe where we want to look at each row individually
+  mutate(TroopMean = ((sum(c_across(2:19),na.rm=T))/19), #adding up all the means per category and dividing by 19 monkeys to get average
+        release= "post") #adding column to identify pre-release
+
+post_fullbudget<- post_fullbudget[,c("behavior.category","TroopMean","release")] #these are the only columns I want to look at now
+post_fullbudget
+```
+
+### MEAN Activity Budget Tables
+```{r}
+combined_budget_table<- bind_rows(pre_fullbudget, post_fullbudget)
+combined_budget_table<- combined_budget_table %>%
+  mutate(proportion= TroopMean/20)
+combined_budget_table
+
+full_budgetplot<- ggplot(data=combined_budget_table, aes(x=behavior.category, y=proportion, fill=release)) +
+  geom_bar(position="dodge", stat="identity") +
+  scale_fill_discrete(name = "Release Stage", labels = c("Post", "Pre")) +
+  scale_y_continuous(labels=scales::percent) +
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+  xlab("Activity Budget Category") +
+  ylab("Mean Behavior Occurrence Per Focal")
+full_budgetplot
+```
+RESULTS: This figure shows the mean percentage of behavior occurences in each cateogry per focal observation across release stage. 
+
+### COUNT Activity Budget Tables (to use for LMM)
+```{r}
+#creating a full activity budget table for all individuals post-release 
+post_ABtable_full<- bind_rows(Pops_budget3,Blue_budget3,Amy_budget3) %>% #this data is counts per focal in each focals, NOT mean count across all of the focals
+  mutate(release = "2")
+post_ABtable_full
+
+#creating a full activity budget table for all individuals pre-release
+pre_ABtable_full<- bind_rows(Pops_budget,Blue_budget,Amy_budget) %>% #this data is counts per focal in each focals, NOT mean count across all of the focals
+  mutate(release = "1")
+pre_ABtable_full
+
+#combining the two together with sex and age
+ABtable_full<- bind_rows(pre_ABtable_full,post_ABtable_full) %>%
+  mutate(sex = 
+           case_when(ID == "PO" ~ as.character("0"), #making these character so that I can make them factors with labels in the next step 
+                     ID %in% c("BL","AM")~ as.character("1")),
+         age = 
+           case_when(ID %in% c("PO","BL","AM")~ as.character("1"))) %>%
+  rename(counts = count)
+
+unique(ABtable_full$ID)
+
+
+#making sure all of my columns are factors 
+ABtable_full <- within(ABtable_full, {
+  sex <- factor(sex, levels = 0:1, labels = c("M", "F"))
+  age <- factor(age, levels = 1, labels = "A")
+  release <- factor(release, levels = 1:2, labels = c("pre","post"))
+  ID <- factor(ID, levels= c("PO","BL","AM"))
+})
+str(ABtable_full)
+```
+
+*Predator ONLY table*
+```{r}
+#filtering out the predator category
+ABtable_full_pred<- ABtable_full %>%
+  filter(behavior.category == "Predator")
+ABtable_full_pred
+
+#Checking histogram
+hist(log(ABtable_full_pred$count))
+
+pred_lm = lm(count ~ release, data = ABtable_full_pred)
+summary(pred_lm)
+
+pred_mixed<- lmer(count ~ release + (1 | ID), data = ABtable_full_pred)
+summary(pred_mixed)
+
+confint(pred_mixed)
+```
+
+## Example datasets from R
+```{r}
+hdp <- read.csv("https://stats.idre.ucla.edu/stat/data/hdp.csv")
+hdp
+
+Dyestuff
+str(Penicillin)
+```
+
+## Kruskal Wallis Test
+### Pre-release
+```{r}
+ABtable_pre<- ABtable_full %>%
+  filter(release == "pre", behavior.category != "Human")
+
+group_by(ABtable_pre, behavior.category) %>%
+  summarise(
+    count = n(),
+    mean = mean(counts, na.rm = TRUE),
+    sd = sd(counts, na.rm = TRUE),
+    median = median(counts, na.rm = TRUE),
+    IQR = IQR(counts, na.rm = TRUE)
+  )
+
+ggboxplot(ABtable_pre, x = "behavior.category", y = "counts", 
+          ylab = "Activity Budget Category", xlab = "Mean Count Per Focal")
+
+kruskal.test(counts ~ behavior.category, data = ABtable_pre)
+pairwise.wilcox.test(ABtable_pre$counts, ABtable_pre$behavior.category,
+                 p.adjust.method = "BH")
+```
+RESULTS: There is a significant difference across behavior categories in the troops activity budget pre-release. 
+
+### Post-Release
+```{r}
+ABtable_post<- ABtable_full %>%
+  filter(release == "post") #behavior.category != "Human")
+unique(ABtable_post$behavior.category)
+
+group_by(ABtable_post, behavior.category) %>%
+  summarise(
+    count = n(),
+    mean = mean(counts, na.rm = TRUE),
+    sd = sd(counts, na.rm = TRUE),
+    median = median(counts, na.rm = TRUE),
+    IQR = IQR(counts, na.rm = TRUE)
+  )
+
+ggboxplot(ABtable_pre, x = "behavior.category", y = "counts", 
+          ylab = "Activity Budget Category", xlab = "Mean Count Per Focal")
+
+kruskal.test(counts ~ behavior.category, data = ABtable_pre)
+pairwise.wilcox.test(ABtable_pre$counts, ABtable_pre$behavior.category,
+                 p.adjust.method = "BH")
+```
+
+
+
+```{r}
+group_by(ABtable_full, behavior.category) %>%
+  summarise(
+    count = n(),
+    mean = mean(counts, na.rm = TRUE),
+    sd = sd(counts, na.rm = TRUE),
+    median = median(counts, na.rm = TRUE),
+    IQR = IQR(counts, na.rm = TRUE)
+  )
+
+ggboxplot(ABtable_full, x = "behavior.category", y = "counts", 
+          ylab = "Activity Budget Category", xlab = "Mean Count Per Focal")
+
+ggline(ABtable_full, x = "behavior.category", y = "counts", 
+       add = c("mean_se", "jitter"), 
+       ylab = "Activity Budget Category", xlab = "Mean Count Per Focal")
+
+kruskal.test(counts ~ behavior.category, data = ABtable_full)
+pairwise.wilcox.test(ABtable_full$counts, ABtable_full$behavior.category,
+                 p.adjust.method = "BH")
+```
+RESULTS: There is a significant difference across behavior categories in the troops activity budget both pre- and post-release. 
