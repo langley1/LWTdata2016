@@ -13,7 +13,7 @@ MonkeyIDs_SD<-as.character(unique(pre_focals$FOCAL.ID))
 monkey.prelim_SD<-lapply(MonkeyIDs_SD, function(x){pre_focals[pre_focals[["FOCAL.ID"]] == x, ]})
 head(monkey.prelim_SD)
 
-# 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
+# 3. Edit the dataframe: combine behavior columns into one, group by month & behavior, and count 
 monkey.prelim_SD2 <-
   monkey.prelim_SD %>% 
   purrr::map(~gather(.,"Obs", "behavior", 22:23, na.rm = T)) %>%
@@ -28,18 +28,18 @@ head(monkey.prelim_SD2)
 MonkeyIDs_SD2<-as.character(unique(post_focals$FOCAL.ID))
 
 #2. 
-monkey.prelim_SD_post<-lapply(MonkeyIDs_SD, function(x){pre_focals[pre_focals[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim_SD)
+monkey.prelim_SD_post<-lapply(MonkeyIDs_SD2, function(x){post_focals[post_focals[["FOCAL.ID"]] == x, ]})
+head(monkey.prelim_SD_post)
 
 # 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
-monkey.prelim_SD2 <-
-  monkey.prelim_SD %>% 
-  purrr::map(~gather(.,"Obs", "behavior", 22:23, na.rm = T)) %>%
+monkey.prelim_SD3 <-
+  monkey.prelim_SD_post %>% 
+  purrr::map(~gather(.,"Obs", "behavior", 20:21, na.rm = T)) %>%
   purrr::map(~filter(.,behavior != ("ED"))) %>%
   purrr::map(~group_by(.,MONTH,behavior)) %>%
   purrr::map(~summarize(.,count=n()))
-names(monkey.prelim_SD2) <- MonkeyIDs_SD 
-head(monkey.prelim_SD2)
+names(monkey.prelim_SD3) <- MonkeyIDs_SD2 
+head(monkey.prelim_SD3)
 ```
 
 # PRE-RELEASE
@@ -1386,16 +1386,769 @@ Mango_pre_avgSDs<- mean(Mango_pre_allSDs)
 Mango_pre_avgSDs
 ```
 
+# POST-RELEASE
+
+## Pops
+### Getting SD for each month for Pops during post-release observations
+```{r}
+#Month 6
+Pops_month6_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "6")
+Pops_month6_SD2<- diversity(Pops_month6_SD2$count)
+
+#Month 7
+Pops_month7_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "7")
+Pops_month7_SD2<- diversity(Pops_month7_SD2$count)
+
+#Month 8
+Pops_month8_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "8")
+Pops_month8_SD2<- diversity(Pops_month8_SD2$count)
+
+#Month 9
+Pops_month9_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "9")
+Pops_month9_SD2<- diversity(Pops_month9_SD2$count)
+
+#Month 10
+Pops_month10_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "10")
+Pops_month10_SD2<- diversity(Pops_month10_SD2$count)
+
+#Month 11
+Pops_month11_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "11")
+Pops_month11_SD2<- diversity(Pops_month11_SD2$count)
+
+#Month 3
+Pops_month3_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "3")
+Pops_month3_SD2<- diversity(Pops_month3_SD2$count)
+
+#Month 4
+Pops_month4_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "4")
+Pops_month4_SD2<- diversity(Pops_month4_SD2$count)
+
+#Month 5
+Pops_month5_SD2<- monkey.prelim_SD3$PO %>%
+  filter(MONTH == "5")
+Pops_month5_SD2<- diversity(Pops_month5_SD2$count)
+```
+
+### Averaging the SDs across Pop's release
+```{r}
+Pops_post_allSDs<- c(Pops_month6_SD2,Pops_month7_SD2,Pops_month8_SD2,Pops_month9_SD2,Pops_month10_SD2,Pops_month11_SD2,Pops_month3_SD2,Pops_month4_SD2,Pops_month5_SD2)
+Pops_post_avgSDs<- mean(Pops_post_allSDs)
+Pops_post_avgSDs #1.486
+```
+
+## Blue
+### Getting SD for each month for Blue during post-release observations
+```{r}
+#Month 6
+Blue_month6_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "6")
+Blue_month6_SD2<- diversity(Blue_month6_SD2$count)
+
+#Month 7
+Blue_month7_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "7")
+Blue_month7_SD2<- diversity(Blue_month7_SD2$count)
+
+#Month 8
+Blue_month8_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "8")
+Blue_month8_SD2<- diversity(Blue_month8_SD2$count)
+
+#Month 9
+Blue_month9_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "9")
+Blue_month9_SD2<- diversity(Blue_month9_SD2$count)
+
+#Month 10
+Blue_month10_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "10")
+Blue_month10_SD2<- diversity(Blue_month10_SD2$count)
+
+#Month 11
+Blue_month11_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "11")
+Blue_month11_SD2<- diversity(Blue_month11_SD2$count)
+
+#Month 3
+Blue_month3_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "3")
+Blue_month3_SD2<- diversity(Blue_month3_SD2$count)
+
+#Month 4
+Blue_month4_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "4")
+Blue_month4_SD2<- diversity(Blue_month4_SD2$count)
+
+#Month 5
+Blue_month5_SD2<- monkey.prelim_SD3$BL %>%
+  filter(MONTH == "5")
+Blue_month5_SD2<- diversity(Blue_month5_SD2$count)
+```
+
+### Averaging the SDs across Blue's release
+```{r}
+Blue_post_allSDs<- c(Blue_month6_SD2,Blue_month7_SD2,Blue_month8_SD2,Blue_month9_SD2,Blue_month10_SD2,Blue_month11_SD2,Blue_month3_SD2,Blue_month4_SD2,Blue_month5_SD2)
+Blue_post_avgSDs<- mean(Blue_post_allSDs)
+Blue_post_avgSDs
+```
+
+## Alex
+### Getting SD for each month for Alex during post-release observations
+```{r}
+#Month 6
+Alex_month6_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "6")
+Alex_month6_SD2<- diversity(Alex_month6_SD2$count)
+
+#Month 7
+Alex_month7_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "7")
+Alex_month7_SD2<- diversity(Alex_month7_SD2$count)
+
+#Month 8
+Alex_month8_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "8")
+Alex_month8_SD2<- diversity(Alex_month8_SD2$count)
+
+#Month 9
+Alex_month9_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "9")
+Alex_month9_SD2<- diversity(Alex_month9_SD2$count)
+
+#Month 10
+Alex_month10_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "10")
+Alex_month10_SD2<- diversity(Alex_month10_SD2$count)
+
+#Month 11
+Alex_month11_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "11")
+Alex_month11_SD2<- diversity(Alex_month11_SD2$count)
+
+#Month 3
+Alex_month3_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "3")
+Alex_month3_SD2<- diversity(Alex_month3_SD2$count)
+
+#Month 4
+Alex_month4_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "4")
+Alex_month4_SD2<- diversity(Alex_month4_SD2$count)
+
+#Month 5
+Alex_month5_SD2<- monkey.prelim_SD3$AL %>%
+  filter(MONTH == "5")
+Alex_month5_SD2<- diversity(Alex_month5_SD2$count)
+```
+
+### Averaging the SDs across Blue's release
+```{r}
+Alex_post_allSDs<- c(Alex_month6_SD2,Alex_month7_SD2,Alex_month8_SD2,Alex_month9_SD2,Alex_month10_SD2,Alex_month11_SD2,Alex_month3_SD2,Alex_month4_SD2,Alex_month5_SD2)
+Alex_post_avgSDs<- mean(Alex_post_allSDs)
+Alex_post_avgSDs
+```
+
+## Neville
+### Getting SD for each month for Neville during post-release observations
+```{r}
+#Month 6
+Nev_month6_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "6")
+Nev_month6_SD2<- diversity(Nev_month6_SD2$count)
+
+#Month 7
+Nev_month7_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "7")
+Nev_month7_SD2<- diversity(Nev_month7_SD2$count)
+
+#Month 8
+Nev_month8_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "8")
+Nev_month8_SD2<- diversity(Nev_month8_SD2$count)
+
+#Month 9
+Nev_month9_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "9")
+Nev_month9_SD2<- diversity(Nev_month9_SD2$count)
+
+#Month 10
+Nev_month10_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "10")
+Nev_month10_SD2<- diversity(Nev_month10_SD2$count)
+
+#Month 11
+Nev_month11_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "11")
+Nev_month11_SD2<- diversity(Nev_month11_SD2$count)
+
+#Month 3
+Nev_month3_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "3")
+Nev_month3_SD2<- diversity(Nev_month3_SD2$count)
+
+#Month 4
+Nev_month4_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "4")
+Nev_month4_SD2<- diversity(Nev_month4_SD2$count)
+
+#Month 5
+Nev_month5_SD2<- monkey.prelim_SD3$NE %>%
+  filter(MONTH == "5")
+Nev_month5_SD2<- diversity(Nev_month5_SD2$count)
+```
+
+### Averaging the SDs across Nev's postrelease
+```{r}
+Nev_post_allSDs<- c(Nev_month6_SD2,Nev_month7_SD2,Nev_month8_SD2,Nev_month3_SD2,Nev_month4_SD2,Nev_month5_SD2)
+Nev_post_avgSDs<- mean(Nev_post_allSDs)
+Nev_post_avgSDs
+```
+
+## AUGUSTINE
+### Getting SD for each month for Aug during post-release observations
+```{r}
+#Month 6
+Aug_month6_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "6")
+Aug_month6_SD2<- diversity(Aug_month6_SD2$count)
+
+#Month 7
+Aug_month7_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "7")
+Aug_month7_SD2<- diversity(Aug_month7_SD2$count)
+
+#Month 8
+Aug_month8_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "8")
+Aug_month8_SD2<- diversity(Aug_month8_SD2$count)
+
+#Month 9
+Aug_month9_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "9")
+Aug_month9_SD2<- diversity(Aug_month9_SD2$count)
+
+#Month 10
+Aug_month10_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "10")
+Aug_month10_SD2<- diversity(Aug_month10_SD2$count)
+
+#Month 11
+Aug_month11_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "11")
+Aug_month11_SD2<- diversity(Aug_month11_SD2$count)
+
+#Month 3
+Aug_month3_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "3")
+Aug_month3_SD2<- diversity(Aug_month3_SD2$count)
+
+#Month 4
+Aug_month4_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "4")
+Aug_month4_SD2<- diversity(Aug_month4_SD2$count)
+
+#Month 5
+Aug_month5_SD2<- monkey.prelim_SD3$AU %>%
+  filter(MONTH == "5")
+Aug_month5_SD2<- diversity(Aug_month5_SD2$count)
+```
+
+### Averaging the SDs across Aug's post-release
+```{r}
+Aug_post_allSDs<- c(Aug_month6_SD2,Aug_month7_SD2,Aug_month8_SD2,Aug_month9_SD2,Aug_month10_SD2,Aug_month11_SD2,Aug_month3_SD2,Aug_month4_SD2,Aug_month5_SD2)
+Aug_post_avgSDs<- mean(Aug_post_allSDs)
+Aug_post_avgSDs 
+```
+
+## AMY
+### Getting SD for each month for Amy during post-release observations
+```{r}
+#Month 6
+Amy_month6_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "6")
+Amy_month6_SD2<- diversity(Amy_month6_SD2$count)
+
+#Month 7
+Amy_month7_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "7")
+Amy_month7_SD2<- diversity(Amy_month7_SD2$count)
+
+#Month 8
+Amy_month8_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "8")
+Amy_month8_SD2<- diversity(Amy_month8_SD2$count)
+
+#Month 9
+Amy_month9_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "9")
+Amy_month9_SD2<- diversity(Amy_month9_SD2$count)
+
+#Month 10
+Amy_month10_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "10")
+Amy_month10_SD2<- diversity(Amy_month10_SD2$count)
+
+#Month 11
+Amy_month11_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "11")
+Amy_month11_SD2<- diversity(Amy_month11_SD2$count)
+
+#Month 3
+Amy_month3_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "3")
+Amy_month3_SD2<- diversity(Amy_month3_SD2$count)
+
+#Month 4
+Amy_month4_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "4")
+Amy_month4_SD2<- diversity(Amy_month4_SD2$count)
+
+#Month 5
+Amy_month5_SD2<- monkey.prelim_SD3$AM %>%
+  filter(MONTH == "5")
+Amy_month5_SD2<- diversity(Amy_month5_SD2$count)
+```
+
+### Averaging the SDs across Amy's post-release
+```{r}
+Amy_post_allSDs<- c(Amy_month6_SD2,Amy_month7_SD2,Amy_month8_SD2,Amy_month9_SD2,Amy_month10_SD2,Amy_month3_SD2,Amy_month11_SD2,Amy_month4_SD2,Amy_month5_SD2)
+Amy_post_avgSDs<- mean(Amy_post_allSDs)
+Amy_post_avgSDs
+```
+
+## MAY
+### Getting SD for each month for May during post-release observations
+```{r}
+#Month 6
+May_month6_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "6")
+May_month6_SD2<- diversity(May_month6_SD2$count)
+
+#Month 7
+May_month7_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "7")
+May_month7_SD2<- diversity(May_month7_SD2$count)
+
+#Month 8
+May_month8_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "8")
+May_month8_SD2<- diversity(May_month8_SD2$count)
+
+#Month 9
+May_month9_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "9")
+May_month9_SD2<- diversity(May_month9_SD2$count)
+
+#Month 10
+May_month10_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "10")
+May_month10_SD2<- diversity(May_month10_SD2$count)
+
+#Month 11
+May_month11_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "11")
+May_month11_SD2<- diversity(May_month11_SD2$count)
+
+#Month 3
+May_month3_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "3")
+May_month3_SD2<- diversity(May_month3_SD2$count)
+
+#Month 4
+May_month4_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "4")
+May_month4_SD2<- diversity(May_month4_SD2$count)
+
+#Month 5
+May_month5_SD2<- monkey.prelim_SD3$MA %>%
+  filter(MONTH == "5")
+May_month5_SD2<- diversity(May_month5_SD2$count)
+```
+
+### Averaging the SDs across May post-release
+```{r}
+May_post_allSDs<- c(May_month6_SD2,May_month7_SD2,May_month8_SD2,May_month9_SD2,May_month10_SD2,May_month3_SD2,May_month11_SD2,May_month4_SD2,May_month5_SD2)
+May_post_avgSDs<- mean(May_post_allSDs)
+May_post_avgSDs
+```
+
+## TONI
+### Getting SD for each month for Toni during post-release observations
+```{r}
+#Month 6
+Toni_month6_SD2<- monkey.prelim_SD3$TO %>%
+  filter(MONTH == "6")
+Toni_month6_SD2<- diversity(Toni_month6_SD2$count)
+
+#Month 7
+Toni_month7_SD2<- monkey.prelim_SD3$TO %>%
+  filter(MONTH == "7")
+Toni_month7_SD2<- diversity(Toni_month7_SD2$count)
+
+#Month 8
+Toni_month8_SD2<- monkey.prelim_SD3$TO %>%
+  filter(MONTH == "8")
+Toni_month8_SD2<- diversity(Toni_month8_SD2$count)
+
+#Month 3
+Toni_month3_SD2<- monkey.prelim_SD3$TO %>%
+  filter(MONTH == "3")
+Toni_month3_SD2<- diversity(Toni_month3_SD2$count)
+
+#Month 4
+Toni_month4_SD2<- monkey.prelim_SD3$TO %>%
+  filter(MONTH == "4")
+Toni_month4_SD2<- diversity(Toni_month4_SD2$count)
+
+#Month 5
+Toni_month5_SD2<- monkey.prelim_SD3$TO %>%
+  filter(MONTH == "5")
+Toni_month5_SD2<- diversity(Toni_month5_SD2$count)
+```
+
+### Averaging the SDs across Amy's post-release
+```{r}
+Toni_post_allSDs<- c(Toni_month6_SD2,Toni_month7_SD2,Toni_month8_SD2,Toni_month3_SD2,Toni_month4_SD2,Toni_month5_SD2)
+Toni_post_avgSDs<- mean(Toni_post_allSDs)
+Toni_post_avgSDs
+```
+
+## BOO
+### Getting SD for each month for Boo during post-release observations
+```{r}
+#Month 6
+Boo_month6_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "6")
+Boo_month6_SD2<- diversity(Boo_month6_SD2$count)
+
+#Month 7
+Boo_month7_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "7")
+Boo_month7_SD2<- diversity(Boo_month7_SD2$count)
+
+#Month 8
+Boo_month8_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "8")
+Boo_month8_SD2<- diversity(Boo_month8_SD2$count)
+
+#Month 9
+Boo_month9_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "9")
+Boo_month9_SD2<- diversity(Boo_month9_SD2$count)
+
+#Month 10
+Boo_month10_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "10")
+Boo_month10_SD2<- diversity(Boo_month10_SD2$count)
+
+#Month 3
+Boo_month3_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "3")
+Boo_month3_SD2<- diversity(Boo_month3_SD2$count)
+
+#Month 4
+Boo_month4_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "4")
+Boo_month4_SD2<- diversity(Boo_month4_SD2$count)
+
+#Month 5
+Boo_month5_SD2<- monkey.prelim_SD3$BO %>%
+  filter(MONTH == "5")
+Boo_month5_SD2<- diversity(Boo_month5_SD2$count)
+```
+
+### Averaging the SDs across Boo's post-release
+```{r}
+Boo_post_allSDs<- c(Boo_month6_SD2,Boo_month7_SD2,Boo_month8_SD2,Boo_month9_SD2,Boo_month10_SD2,Boo_month3_SD2,Boo_month4_SD2,Boo_month5_SD2)
+Boo_post_avgSDs<- mean(Boo_post_allSDs)
+Boo_post_avgSDs
+```
+
+## BIG MAMA
+### Getting SD for each month for Bgm during post-release observations
+```{r}
+#Month 6
+Bgm_month6_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "6")
+Bgm_month6_SD2<- diversity(Bgm_month6_SD2$count)
+
+#Month 7
+Bgm_month7_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "7")
+Bgm_month7_SD2<- diversity(Bgm_month7_SD2$count)
+
+#Month 8
+Bgm_month8_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "8")
+Bgm_month8_SD2<- diversity(Bgm_month8_SD2$count)
+
+#Month 9
+Bgm_month9_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "9")
+Bgm_month9_SD2<- diversity(Bgm_month9_SD2$count)
+
+#Month 3
+Bgm_month3_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "3")
+Bgm_month3_SD2<- diversity(Bgm_month3_SD2$count)
+
+#Month 4
+Bgm_month4_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "4")
+Bgm_month4_SD2<- diversity(Bgm_month4_SD2$count)
+
+#Month 5
+Bgm_month5_SD2<- monkey.prelim_SD3$BM %>%
+  filter(MONTH == "5")
+Bgm_month5_SD2<- diversity(Bgm_month5_SD2$count)
+```
+
+### Averaging the SDs across Bgms 4 months pre-release
+```{r}
+Bgm_post_allSDs<- c(Bgm_month6_SD2,Bgm_month7_SD2,Bgm_month8_SD2,Bgm_month9_SD2,Bgm_month3_SD2,Bgm_month4_SD2,Bgm_month5_SD2)
+Bgm_post_avgSDs<- mean(Bgm_post_allSDs)
+Bgm_post_avgSDs
+```
+
+## KOVU
+### Getting SD for each month for Kovu during post-release observations
+```{r}
+#Month 6
+Kovu_month6_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "6")
+Kovu_month6_SD2<- diversity(Kovu_month6_SD2$count)
+
+#Month 7
+Kovu_month7_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "7")
+Kovu_month7_SD2<- diversity(Kovu_month7_SD2$count)
+
+#Month 8
+Kovu_month8_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "8")
+Kovu_month8_SD2<- diversity(Kovu_month8_SD2$count)
+
+#Month 9
+Kovu_month9_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "9")
+Kovu_month9_SD2<- diversity(Kovu_month9_SD2$count)
+
+#Month 10
+Kovu_month10_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "10")
+Kovu_month10_SD2<- diversity(Kovu_month10_SD2$count)
+
+#Month 11
+Kovu_month11_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "11")
+Kovu_month11_SD2<- diversity(Kovu_month11_SD2$count)
+
+#Month 3
+Kovu_month3_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "3")
+Kovu_month3_SD2<- diversity(Kovu_month3_SD2$count)
+
+#Month 4
+Kovu_month4_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "4")
+Kovu_month4_SD2<- diversity(Kovu_month4_SD2$count)
+
+#Month 5
+Kovu_month5_SD2<- monkey.prelim_SD3$KO %>%
+  filter(MONTH == "5")
+Kovu_month5_SD2<- diversity(Kovu_month5_SD2$count)
+```
+
+### Averaging the SDs across Kovus post-release
+```{r}
+Kovu_post_allSDs<- c(Kovu_month6_SD2,Kovu_month7_SD2,Kovu_month8_SD2,Kovu_month9_SD2,Kovu_month10_SD2,Kovu_month3_SD2,Kovu_month11_SD2,Kovu_month4_SD2,Kovu_month5_SD2)
+Kovu_post_avgSDs<- mean(Kovu_post_allSDs)
+Kovu_post_avgSDs
+```
+
+## EDDY
+### Getting SD for each month for Eddy during post-release observations
+```{r}
+#Month 6
+Ed_month6_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "6")
+Ed_month6_SD2<- diversity(Ed_month6_SD2$count)
+
+#Month 7
+Ed_month7_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "7")
+Ed_month7_SD2<- diversity(Ed_month7_SD2$count)
+
+#Month 8
+Ed_month8_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "8")
+Ed_month8_SD2<- diversity(Ed_month8_SD2$count)
+
+#Month 9
+Ed_month9_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "9")
+Ed_month9_SD2<- diversity(Ed_month9_SD2$count)
+
+#Month 10
+Ed_month10_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "10")
+Ed_month10_SD2<- diversity(Ed_month10_SD2$count)
+
+#Month 11
+Ed_month11_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "11")
+Ed_month11_SD2<- diversity(Ed_month11_SD2$count)
+
+#Month 3
+Ed_month3_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "3")
+Ed_month3_SD2<- diversity(Ed_month3_SD2$count)
+
+#Month 4
+Ed_month4_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "4")
+Ed_month4_SD2<- diversity(Ed_month4_SD2$count)
+
+#Month 5
+Ed_month5_SD2<- monkey.prelim_SD3$ED %>%
+  filter(MONTH == "5")
+Ed_month5_SD2<- diversity(Ed_month5_SD2$count)
+```
+
+### Averaging the SDs across Eddys post-release
+```{r}
+Ed_post_allSDs<- c(Ed_month6_SD2,Ed_month7_SD2,Ed_month8_SD2,Ed_month9_SD2,Ed_month10_SD2,Ed_month3_SD2,Ed_month11_SD2,Ed_month4_SD2,Ed_month5_SD2)
+Ed_post_avgSDs<- mean(Ed_post_allSDs)
+Ed_post_avgSDs
+```
+
+## TINKER
+### Getting SD for each month for Tinker during post-release observations
+```{r}
+#Month 6
+Tink_month6_SD2<- monkey.prelim_SD3$TI %>%
+  filter(MONTH == "6")
+Tink_month6_SD2<- diversity(Tink_month6_SD2$count)
+
+#Month 7
+Tink_month7_SD2<- monkey.prelim_SD3$TI %>%
+  filter(MONTH == "7")
+Tink_month7_SD2<- diversity(Tink_month7_SD2$count)
+
+#Month 8
+Tink_month8_SD2<- monkey.prelim_SD3$TI %>%
+  filter(MONTH == "8")
+Tink_month8_SD2<- diversity(Tink_month8_SD2$count)
+
+#Month 3
+Tink_month3_SD2<- monkey.prelim_SD3$TI %>%
+  filter(MONTH == "3")
+Tink_month3_SD2<- diversity(Tink_month3_SD2$count)
+
+#Month 4
+Tink_month4_SD2<- monkey.prelim_SD3$TI %>%
+  filter(MONTH == "4")
+Tink_month4_SD2<- diversity(Tink_month4_SD2$count)
+
+#Month 5
+Tink_month5_SD2<- monkey.prelim_SD3$TI %>%
+  filter(MONTH == "5")
+Tink_month5_SD2<- diversity(Tink_month5_SD2$count)
+```
+
+### Averaging the SDs across Tinker post-release
+```{r}
+Tink_post_allSDs<- c(Tink_month6_SD2,Tink_month7_SD2,Tink_month8_SD2,Tink_month3_SD2,Tink_month4_SD2,Tink_month5_SD2)
+Tink_post_avgSDs<- mean(Tink_post_allSDs)
+Tink_post_avgSDs
+```
+
+## MANGO
+### Getting SD for each month for Mango during post-release observations
+```{r}
+#Month 6
+Mango_month6_SD2<- monkey.prelim_SD3$MG %>%
+  filter(MONTH == "6")
+Mango_month6_SD2<- diversity(Mango_month6_SD2$count)
+
+#Month 7
+Mango_month7_SD2<- monkey.prelim_SD3$MG %>%
+  filter(MONTH == "7")
+Mango_month7_SD2<- diversity(Mango_month7_SD2$count)
+
+#Month 8
+Mango_month8_SD2<- monkey.prelim_SD3$MG %>%
+  filter(MONTH == "8")
+Mango_month8_SD2<- diversity(Mango_month8_SD2$count)
+
+#Month 3
+Mango_month3_SD2<- monkey.prelim_SD3$MG %>%
+  filter(MONTH == "3")
+Mango_month3_SD2<- diversity(Mango_month3_SD2$count)
+
+#Month 4
+Mango_month4_SD2<- monkey.prelim_SD3$MG %>%
+  filter(MONTH == "4")
+Mango_month4_SD2<- diversity(Mango_month4_SD2$count)
+
+#Month 5
+Mango_month5_SD2<- monkey.prelim_SD3$MG %>%
+  filter(MONTH == "5")
+Mango_month5_SD2<- diversity(Mango_month5_SD2$count)
+```
+
+### Averaging the SDs across Mango post-release
+```{r}
+Mango_post_allSDs<- c(Mango_month6_SD2,Mango_month7_SD2,Mango_month8_SD2,Mango_month3_SD2,Mango_month4_SD2,Mango_month5_SD2)
+Mango_post_avgSDs<- mean(Mango_post_allSDs)
+Mango_post_avgSDs
+```
+
+## Jack
+### Getting SD for each month for Jack during post-release observations
+```{r}
+#Month 3
+Jack_month3_SD2<- monkey.prelim_SD3$JA %>%
+  filter(MONTH == "3")
+Jack_month3_SD2<- diversity(Jack_month3_SD2$count)
+
+#Month 4
+Jack_month4_SD2<- monkey.prelim_SD3$JA %>%
+  filter(MONTH == "4")
+Jack_month4_SD2<- diversity(Jack_month4_SD2$count)
+
+#Month 5
+Jack_month5_SD2<- monkey.prelim_SD3$JA %>%
+  filter(MONTH == "5")
+Jack_month5_SD2<- diversity(Jack_month5_SD2$count)
+```
+
+### Averaging the SDs across Mango post-release
+```{r}
+Jack_post_allSDs<- c(Jack_month3_SD2,Jack_month4_SD2,Jack_month5_SD2)
+Jack_post_avgSDs<- mean(Jack_post_allSDs)
+Jack_post_avgSDs
+```
+
 ### Full Troop SD DF and Plot
 ```{r}
+#PRE-RELEASE
 #Creating a matrix
-pre_SDs_table<- matrix(c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Bat_pre_avgSDs, Mango_pre_avgSDs), ncol = 1, byrow = 18)
+pre_SDs_table<- matrix(c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Mango_pre_avgSDs), ncol = 1, byrow = 17)
 pre_SDs_table
 
 #Turning into dataframe and adding new columns
 pre_SDs_table<- as.data.frame(pre_SDs_table) %>%
   rename(SD.Index = V1) %>%
-  add_column(IDs = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman", "Mango")) %>%
+  add_column(IDs = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Mango")) %>%
   add_column(release = "pre")
 
 PR_SD_PLOT<- barplot(pre_SDs_table, beside = TRUE, space = c(0.25,1), xlab = "", ylab = "Shannon Diversity Index", names.arg = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Nev", "Aug", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Batman", "Mango"), ylim = c(0,2), cex.names = 0.8, las=2, col="#339999")#I don't love this barplot visual, I can't figure out how to turn the x-axis labels on an angle using a table
@@ -1406,6 +2159,166 @@ SD_plot<- ggplot(data= pre_SDs_table,aes(x=IDs, y=SD.Index)) +
   geom_bar(position="dodge", stat="identity") +
   theme(axis.text.x = element_text(angle = 45, hjust =1)) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+#POST-RELEASE
+#Creating a matrix
+post_SDs_table<- matrix(c(Pops_post_avgSDs, Jack_post_avgSDs, Blue_post_avgSDs, Alex_post_avgSDs, Nev_post_avgSDs, Aug_post_avgSDs, Amy_post_avgSDs, May_post_avgSDs, Toni_post_avgSDs, Boo_post_avgSDs, Bgm_post_avgSDs, Kovu_post_avgSDs, Ed_post_avgSDs, Tink_post_avgSDs, Mango_post_avgSDs), ncol = 1, byrow = 15)
+post_SDs_table
+
+#Turning into dataframe and adding new columns
+post_SDs_table<- as.data.frame(post_SDs_table) %>%
+  rename(SD.Index = V1) %>%
+  add_column(IDs = c("Pops","Jack", "Blue", "Alex", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Mango")) %>%
+  add_column(release = "post")
+
+#using ggplot
+post_SD_plot<- ggplot(data= post_SDs_table,aes(x=IDs, y=SD.Index)) +
+  geom_bar(position="dodge", stat="identity") +
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
 ```
+
+## Combined SD Plot and Graph
+```{r}
+SD_combined<- bind_rows(pre_SDs_table,post_SDs_table)
+SD_combined$release= factor(SD_combined$release, levels = c("pre", "post"), ordered = TRUE)
+SD_combined<- SD_combined %>%
+  mutate(IDs = fct_relevel(IDs, 
+            "Pops","Jack", "Blue", "Alex", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Mango","Bart","Zip"))
+
+full_SD_plot<- ggplot(data=SD_combined, aes(x=IDs, y=SD.Index, fill=release)) +
+  geom_bar(stat = "identity", width = 0.5, position = position_dodge(0.8)) +
+  scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
+  ylim(0,2) +
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turning labels on an angle
+  xlab("Individual") +
+  ylab("Shannon-Weaver Index (H)") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+full_SD_plot
+```
+
+*Running Wilcoxon Test*
+```{r}
+SD_combined2<- SD_combined %>%
+  filter(!IDs %in% c("Zip","Bart")) #removing Zip and Bart because they have no post-release data
+
+#Testing for normality first
+ggdensity(SD_combined2$SD.Index)
+ggqqplot(SD_combined2$SD.Index)
+shapiro.test(SD_combined2$SD.Index)
+
+#Running log10 transformations to see if that changes distribution
+log_SD<- log10(SD_combined2$SD.Index)
+shapiro.test(log_SD)
+ggdensity(log_SD)
+ggqqplot(log_SD)
+
+#It's NOT normal
+WT_SD<- wilcox.test(SD.Index ~ release, data = SD_combined2, paired = TRUE)
+WT_SD
+
+wilcox.test(SD.Index ~ release, data = SD_combined2, paired = TRUE,
+       alternative = "greater")
+```
+RESULTS: The troop's mean Shannon Diversity pre-release is significantly greater than the troop's mean Shannon Diversity post-release. 
+
+*Boxplot: SD across release stages*
+```{r}
+ggboxplot(SD_combined2, x = "release", y = "SD.Index", 
+          color = "release", palette = c("#00AFBB", "#E7B800"),
+          ylab = "Shannon Weaver Index (H)", xlab = "Release Stage")
+```
+
+### Adding in Sex, Age, and Rank into Shannon Diversity Tables
+```{r}
+# Pre-Release
+pre_SDs_table<- pre_SDs_table %>%
+  mutate(sex = 
+          case_when(IDs %in% c("Pops","Jack","Neville","Mango","Zip","Bart")~ as.character("M"), 
+                    IDs %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(IDs %in% c("Pops","Jack","Bart", "Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker","Zip")~ as.character("A"),
+                     IDs == "Mango" ~ as.character("SA"),
+                     IDs %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.character(c("1","6","9","2","4","10","15","7","3","13","5","8","14","16","12","17","11")),
+         rank = fct_relevel(rank, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10","11","12","13","14","15","16","17"))
+
+# Post-Release
+post_SDs_table<- post_SDs_table %>%
+  mutate(sex = 
+          case_when(IDs %in% c("Pops","Jack","Neville","Mango")~ as.character("M"), 
+                    IDs %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(IDs %in% c("Pops","Jack","Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker")~ as.character("A"),
+                     IDs == "Mango" ~ as.character("SA"),
+                     IDs %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.character(c("1","8","2","4","13","6","3","11","5","7","12","14","10","15","9")),
+         rank = fct_relevel(rank, "1", "2", "3", "4", "5", "6", "7", "8", "9", "10","11","12","13","14","15"))
+str(post_SDs_table)
+```
+
+*Plots for SD and Age, Sex, Rank
+```{r}
+#Pre-release
+pre_SDs_sex_plot<- boxplot(SD.Index ~ sex,
+        data = pre_SDs_table,
+        ylab="Shannon-Weaver Index (H)",
+        xlab="Sex")
+pre_SDs_sex_plot
+
+pre_SDs_age_plot<- boxplot(SD.Index ~ age,
+        data = pre_SDs_table,
+        ylab="Shannon-Weaver Index (H)",
+        xlab="Age")
+pre_SDs_age_plot
+
+library(ggrepel)
+pre_SDs_rank_plot<- ggplot(data = pre_SDs_table, aes(x=rank, y=SD.Index, shape=sex, color=age)) +
+  geom_point(size = 2.5) +
+  geom_text_repel(label=pre_SDs_table$IDs) +
+  ylab("Shannon-Weaver Index (H)") +
+  xlab("Social Rank") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+pre_SDs_rank_plot
+
+#Post-release
+post_SDs_sex_plot<- boxplot(SD.Index ~ sex,
+        data = post_SDs_table,
+        ylab="Shannon-Weaver Index (H)",
+        xlab="Sex")
+post_SDs_sex_plot
+
+post_SDs_age_plot<- boxplot(SD.Index ~ age,
+        data = post_SDs_table,
+        ylab="Shannon-Weaver Index (H)",
+        xlab="Age")
+post_SDs_age_plot
+
+post_SDs_rank_plot<- ggplot(data = post_SDs_table, aes(x=rank, y=SD.Index, shape=sex, color=age)) +
+  geom_point(size = 2.5) +
+  geom_text_repel(label=post_SDs_table$IDs) +
+  ylim(1.4,1.85) +
+  ylab("Shannon-Weaver Index (H)") +
+  xlab("Social Rank") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+post_SDs_rank_plot
+```
+
+*Kruskal-Wallis Test*
+```{r}
+#Pre-release
+kruskal.test(SD.Index ~ sex, data= pre_SDs_table)
+kruskal.test(SD.Index ~ age, data= pre_SDs_table)
+kruskal.test(SD.Index ~ rank, data= pre_SDs_table)
+
+#Post-release
+kruskal.test(SD.Index ~ sex, data= post_SDs_table)
+kruskal.test(SD.Index ~ age, data= post_SDs_table)
+kruskal.test(SD.Index ~ rank, data= post_SDs_table)
+```
+RESULTS: There is a significant difference in mean Shannon Diversity values across sexes pre-release (p= 0.002) and post-release (p= 0.013). There is no significant difference in mean Shannon Diversity values across age groups pre-release (p= 0.311) or post-release (p= 0.426). There is no significant difference in mean Shannon Diversity values across social rank order pre-release (p=0.453) or post-release (p= 0.45).
 
 

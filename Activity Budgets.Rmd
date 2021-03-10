@@ -9,6 +9,7 @@ library(lme4)
 
 ## Activity Budgets PRE RELEASE
 ### Behavior Categories
+*Focal Dataset*
 ```{r}
 pre_focals_budget<- pre_focals %>%
   gather("Obs", "behavior", 22:23, na.rm = T) %>% #gathering the two behavior columns
@@ -391,17 +392,6 @@ Bat_budget2$total<- NULL
 Bat_budget2$Occurrences<- NULL
 ```
 
-```{r}
-#Pops
-Pops_budget_social<- Pops_budget3 %>%
-  filter(behavior.category == "Social")
-  
-Pops_social_mean<- Pops_budget_social %>%
-  group_by(behavior.category) %>%
-  summarize(total=sum(count)) %>%
-  mutate(Mean = total/n_distinct(Pops_budget_social$hour))
-```
-
 *Troop Mean Activity Budgets*
 ```{r}
 pre_fullbudget<- Pops_budget2 %>%
@@ -426,13 +416,8 @@ pre_fullbudget<- Pops_budget2 %>%
 pre_fullbudget_reduced<- pre_fullbudget[,c("behavior.category","TroopMean","release")] #these are the only columns I want to look at now
 pre_fullbudget_reduced
 
-```
-
-### Activity Budget Bar Chart
-```{r}
-budget_plot<-ggplot(data=pre_fullbudget, aes(x=behavior.category, y=TroopMean)) +
-  geom_bar(stat="identity")
-budget_plot
+#A different table for this:
+pre_fullbudget_FULL<- bind_rows(Pops_budget2,Blue_budget2,Amy_budget2,Alex_budget2,Boo_budget2,Bgm_budget2,Aug_budget2,Ed_budget2,Jack_budget2,Tink_budget2,Kovu_budget2,Mango_budget2,May_budget2,Toni_budget2,Nev_budget2)
 ```
 
 ### Batman vs Rehabilitant Males: Activity Budget 
@@ -723,7 +708,7 @@ Kovu_budget4$Occurrences<- NULL
 
 #Mango
 Mango_budget3<- post_focals_budget %>%
-  filter(FOCAL.ID == "KO") %>%
+  filter(FOCAL.ID == "MG") %>%
   group_by(MONTH,day,hour,behavior.category) %>%
   summarize(count=n())
 
@@ -924,6 +909,9 @@ post_fullbudget<- Pops_budget4 %>%
 
 post_fullbudget_reduced<- post_fullbudget[,c("behavior.category","TroopMean","release")] #these are the only columns I want to look at now
 post_fullbudget_reduced
+
+#Different kind of table for this:
+post_fullbudget_FULL<- bind_rows(Pops_budget4,Blue_budget4,Amy_budget4,Alex_budget4,Boo_budget4,Bgm_budget4,Aug_budget4,Ed_budget4,Jack_budget4,Tink_budget4,Kovu_budget4,Mango_budget4,May_budget4,Toni_budget4,Nev_budget4)
 ```
 
 ### MEAN Activity Budget Tables and BarChart
@@ -947,6 +935,7 @@ full_budgetplot
 levels(combined_budget_table$release)
 ```
 RESULTS: This figure shows the troop's mean percentage of behavior occurrences in each cateogry per hour pre- and post-release.  
+
 ## Wilcoxon Tests
 ### Predator Category
 *Setting up Table*
@@ -1014,7 +1003,7 @@ WT_AB_pred
 wilcox.test(Means ~ release, data = fullbudget_pred, paired = TRUE,
        alternative = "less")
 ```
-RESULTS: The troop's mean hourly display of predator-related behaviors are significantly higher in the pre-release stage than post-release (V=0, p=6.104e-05,n=15).
+RESULTS: The troop's mean hourly display of predator-related behaviors are significantly higher in the pre-release stage than post-release (V=0, p=3.052e-05 ,n=15).
 
 ### Social Category
 *Setting up Table*
@@ -1254,9 +1243,388 @@ wilcox.test(Means ~ release, data = fullbudget_loc, paired = TRUE,
 ```
 RESULTS: The troop moved significantly more per hour during the post-release stage (V=120, p=3.052e-05,n=15).
 
+### Continuous Dataset for Grooming
+```{r}
+pre_cont_groombudget<- pre_cont %>%
+  filter(BEHAVIOUR %in% c("G+","G-"),
+         !FOCAL.ID %in% c("ZI","BT")) %>%
+  droplevels() %>%
+  mutate(behavior.category = as.character("Grooming")) %>%
+  rename(day = DAY)
+unique(pre_focals_budget$behavior.category)
+unique(pre_cont_groombudget$MONTH)
 
+post_cont_groombudget<- post_cont %>%
+  filter(BEHAVIOUR %in% c("G+","G-"),
+         !FOCAL.ID %in% c("RE","CI","HO","PA")) %>%
+  droplevels() %>%
+  rename(day = DAY,
+         hour = TIME..HOUR.)
+```
 
+### Pre-Release
+*Mean Grooming Activity Budget Per Hour*
+```{r}
+#Pops
+Pops_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "PO") %>% #filter out Pops
+  group_by(MONTH,day,hour) %>% #group by these columns because I need unique counts PER HOUR
+  summarize(count=n()) %>% #counts up all of the times each specific month-day-hour had data (so every time G+ or G- was recorded)
+  ungroup()
+  
+Pops_budget5<- Pops_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Pops_budget5)))
+  
+#Blue
+Blue_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "BL") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Blue_budget5<- Blue_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Blue_budget5)))
 
+#Amy
+Amy_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "AM") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Amy_budget5<- Amy_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Amy_budget5)))
+
+#Alex
+Alex_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "AL") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Alex_budget5<- Alex_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Alex_budget5)))
+
+#Boo
+Boo_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "BO") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Boo_budget5<- Boo_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Boo_budget5)))
+
+#Big Mama
+Bgm_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "BM") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Bgm_budget5<- Bgm_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Bgm_budget5)))
+
+#Augustine
+Aug_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "AU") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Aug_budget5<- Aug_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Aug_budget5)))
+
+#Eddy
+Ed_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "ED") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Ed_budget5<- Ed_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Ed_budget5)))
+
+#Jack
+Jack_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "JA") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Jack_budget5<- Jack_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Jack_budget5)))
+
+#Tinker
+Tink_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "TI") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Tink_budget5<- Tink_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Tink_budget5)))
+
+#Kovu
+Kovu_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "KO") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Kovu_budget5<- Kovu_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Kovu_budget5)))
+
+#Mango
+Mango_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "MG") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Mango_budget5<- Mango_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Mango_budget5)))
+
+#Neville
+Nev_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "NE") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Nev_budget5<- Nev_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Nev_budget5)))
+
+#Toni
+Toni_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "TO") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Toni_budget5<- Toni_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Toni_budget5)))
+
+#May
+May_budget5<- pre_cont_groombudget %>%
+  filter(FOCAL.ID == "MA") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+May_budget5<- May_budget5 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(May_budget5)))
+```
+
+*Pre-release Grooming Table*
+```{r}
+pre_groombudget_table<- bind_rows(Pops_budget5,Blue_budget5,Amy_budget5,Alex_budget5,Boo_budget5,Bgm_budget5,Aug_budget5,Ed_budget5,Jack_budget5,Tink_budget5,Kovu_budget5,Mango_budget5,May_budget5,Toni_budget5,Nev_budget5) %>%
+  mutate(release = "pre")
+```
+
+### Post-Release
+*Mean Grooming Activity Budget Per Hour*
+```{r}
+#Pops
+Pops_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "PO") %>% #filter out Pops
+  group_by(MONTH,day,hour) %>% #group by these columns because I need unique counts PER HOUR
+  summarize(count=n()) %>% #counts up all of the times each specific month-day-hour had data (so every time G+ or G- was recorded)
+  ungroup()
+  
+Pops_budget6<- Pops_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Pops_budget6)))
+  
+#Blue
+Blue_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "BL") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Blue_budget6<- Blue_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Blue_budget6)))
+
+#Amy
+Amy_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "AM") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Amy_budget6<- Amy_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Amy_budget6)))
+
+#Alex
+Alex_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "AL") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Alex_budget6<- Alex_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Alex_budget6)))
+
+#Boo
+Boo_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "BO") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Boo_budget6<- Boo_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Boo_budget6)))
+
+#Big Mama
+Bgm_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "BM") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Bgm_budget6<- Bgm_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Bgm_budget6)))
+
+#Augustine
+Aug_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "AU") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Aug_budget6<- Aug_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Aug_budget6)))
+
+#Eddy
+Ed_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "ED") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Ed_budget6<- Ed_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Ed_budget6)))
+
+#Jack
+Jack_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "JA") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Jack_budget6<- Jack_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Jack_budget6)))
+
+#Tinker
+Tink_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "TI") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Tink_budget6<- Tink_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Tink_budget6)))
+
+#Kovu
+Kovu_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "KO") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Kovu_budget6<- Kovu_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Kovu_budget6)))
+
+#Mango
+Mango_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "MG") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Mango_budget6<- Mango_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Mango_budget6)))
+
+#Neville
+Nev_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "NE") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Nev_budget6<- Nev_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Nev_budget6)))
+
+#Toni
+Toni_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "TO") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+Toni_budget6<- Toni_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(Toni_budget6)))
+
+#May
+May_budget6<- post_cont_groombudget %>%
+  filter(FOCAL.ID == "MA") %>% 
+  group_by(MONTH,day,hour) %>% 
+  summarize(count=n()) %>% 
+  ungroup()
+  
+May_budget6<- May_budget6 %>%
+  summarize(total= sum(count)) %>%
+  mutate(Mean = (total/nrow(May_budget6)))
+```
+
+*Post-release Grooming Table*
+```{r}
+post_groombudget_table<- bind_rows(Pops_budget6,Blue_budget6,Amy_budget6,Alex_budget6,Boo_budget6,Bgm_budget6,Aug_budget6,Ed_budget6,Jack_budget6,Tink_budget6,Kovu_budget6,Mango_budget6,May_budget6,Toni_budget6,Nev_budget6) %>%
+  mutate(release = "post")
+post_groombudget_table[9,2]<- as.numeric(0)
+post_groombudget_table[15,2]<- as.numeric(0)
+```
+
+*Full Grooming Table*
+```{r}
+full_groombudget_table<- bind_rows(pre_groombudget_table,post_groombudget_table)
+```
+
+*Running Wilcoxon Test*
+```{r}
+WT_AB_groom<- wilcox.test(Mean ~ release, data = full_groombudget_table, paired = TRUE)
+WT_AB_groom
+```
+RESULTS: There is no significant difference in the troop's mean hourly grooming counts pre- and post-release (p= 0.1876). 
 
 ### COUNT Activity Budget Tables (to use for LMM)
 ```{r}
@@ -1317,49 +1685,82 @@ confint(pred_mixed)
 ABtable_pre<- ABtable_full %>%
   filter(release == "pre", behavior.category != "Human")
 
-group_by(ABtable_pre, behavior.category) %>%
+group_by(pre_fullbudget_FULL, behavior.category) %>%
   summarise(
     count = n(),
-    mean = mean(counts, na.rm = TRUE),
-    sd = sd(counts, na.rm = TRUE),
-    median = median(counts, na.rm = TRUE),
-    IQR = IQR(counts, na.rm = TRUE)
+    mean = mean(Mean, na.rm = TRUE),
+    sd = sd(Mean, na.rm = TRUE),
+    median = median(Mean, na.rm = TRUE),
+    IQR = IQR(Mean, na.rm = TRUE)
   )
 
-ggboxplot(ABtable_pre, x = "behavior.category", y = "counts", 
-          ylab = "Activity Budget Category", xlab = "Mean Count Per Focal")
+ggboxplot(pre_fullbudget_FULL, x = "behavior.category", y = "Mean", 
+          ylab = "Activity Budget Category", xlab = "Mean Count Per Hour")
 
-kruskal.test(counts ~ behavior.category, data = ABtable_pre)
-pairwise.wilcox.test(ABtable_pre$counts, ABtable_pre$behavior.category,
+kruskal.test(Mean ~ behavior.category, data = pre_fullbudget_FULL)
+
+#Mann-Whitney U Test
+ManWhitU_pre<- pairwise.wilcox.test(pre_fullbudget_FULL$Mean, pre_fullbudget_FULL$behavior.category,
                  p.adjust.method = "BH")
+
+library(rcompanion)
+library(multcompView)
+ManWhitU_pre = ManWhitU_pre$p.value
+ManWhitU_pre2 = fullPTable(ManWhitU_pre)
+ManWhitU_pre2
+
+multcompLetters(ManWhitU_pre2,
+                compare="<",
+                threshold=0.05,
+                Letters=letters,
+                reversed = FALSE)
 ```
-RESULTS: There is a significant difference across behavior categories in the troops activity budget pre-release. 
 
 ### Post-Release
 ```{r}
-ABtable_post<- ABtable_full %>%
-  filter(release == "post") #behavior.category != "Human")
-unique(ABtable_post$behavior.category)
-
-group_by(ABtable_post, behavior.category) %>%
+#TO get means and medians
+group_by(post_fullbudget_FULL, behavior.category) %>%
   summarise(
     count = n(),
-    mean = mean(counts, na.rm = TRUE),
-    sd = sd(counts, na.rm = TRUE),
-    median = median(counts, na.rm = TRUE),
-    IQR = IQR(counts, na.rm = TRUE)
+    mean = mean(Mean, na.rm = TRUE),
+    sd = sd(Mean, na.rm = TRUE),
+    median = median(Mean, na.rm = TRUE),
+    IQR = IQR(Mean, na.rm = TRUE)
   )
 
-ggboxplot(ABtable_pre, x = "behavior.category", y = "counts", 
-          ylab = "Activity Budget Category", xlab = "Mean Count Per Focal")
+#Boxplot
+my_comparisons <- list( c("Predator", "Stress"), c("Social", "Stress"), c("Predator", "Feeding") )
 
-kruskal.test(counts ~ behavior.category, data = ABtable_pre)
-pairwise.wilcox.test(ABtable_pre$counts, ABtable_pre$behavior.category,
+ggplot(post_fullbudget_FULL, aes(x=behavior.category, y=Mean, color=behavior.category)) +
+  geom_boxplot(outlier.color = "black", notch = FALSE) +
+  scale_x_discrete(limits=c("Feeding", "Locomote","Other","Predator","Social","Stress"),name="Behavior Category") +
+  labs(x= "Activity Budget Category", y= "Mean Count Per Hour",color="Behavior Category") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  #stat_compare_means(comparisons = my_comparisons) #I need to get ggsignif downloaded before I can do this!
+
+kruskal.test(Mean ~ behavior.category, data = post_fullbudget_FULL)
+
+#Mann-Whitney U Test
+ManWhitU_post<- pairwise.wilcox.test(post_fullbudget_FULL$Mean, post_fullbudget_FULL$behavior.category,
                  p.adjust.method = "BH")
+
+library(rcompanion)
+library(ggsignif)
+library(multcompView)
+ManWhitU_post = ManWhitU_post$p.value
+ManWhitU_post2 = fullPTable(ManWhitU_post)
+ManWhitU_post2
+
+multcompLetters(ManWhitU_post2,
+                compare="<",
+                threshold=0.05,
+                Letters=letters,
+                reversed = FALSE)
 ```
+RESULTS: There is a significant difference across behavior categories in the troop's activity budget both pre-release (p=2.449e-15) and post-release (p=6.082e-13). The Mann-Whitney U Test shows the troop's average display of predator-releated behaviors per hour are significanlty higher than all other behavior categories during pre-release stage with a mean of 9.02 (n=15). The troop's average display of predatory-related behaviors and feeding behaviors are significantly higher than all other behavior categories during post-release with means of 6.29 and 5.96, respectively (n=15). The troop's average display of stress-related behaviors is significantly lower than all other behavior categories during pre- and post-release, with means of 1.53 and 1.50, respectively (n=15).
 
-
-
+### Kruskal Test for combined AB dataframe
 ```{r}
 group_by(ABtable_full, behavior.category) %>%
   summarise(
