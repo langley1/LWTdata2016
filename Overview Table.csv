@@ -1,0 +1,25 @@
+﻿ID,Name,Sex,# Focals,# Continuous,# Focals,# Continuous,Survival Status
+PO,Pops,Male,131,792,65,198,Alive
+JA,Jack,Male,131,946,19,75,Confirmed Dead
+ZI,Zip,Male,132,839,1,4,Presumed Emigrated
+BA,Bart,Male,130,977,NA,NA,Presumed Emigrated
+BL,Blue,Female,129,1066,64,205,Alive
+AM,Amy,Female,128,858,61,237,Alive
+AL,Alex,Female,129,1287,60,231,Confirmed Dead
+AU,Augustine,Female,133,954,58,268,Presumed Dead
+TO,Toni,Female,130,857,33,145,Presumed Dead
+BO,Boo,Female,123,682,46,192,Presumed Dead
+BM,Big Mama,Female,130,894,51,156,Confirmed Dead
+TI,Tinker,Female,129,1051,37,137,Confirmed Dead
+BT,Batman,Male,124,961,NA,NA,Non-release
+CI,Cicero,Male,NA,NA,13,70,Uknown
+PA,Patches,Male,NA,NA,1,0,Unknown
+HO,Homer,Male,NA,NA,13,53,Alive
+MG,Mango,Male,130,1007,44,234,Presumed Emigrated
+NE,Neville,Male,131,1111,35,83,Presumed Dead
+KO,Kovu,Female,129,1033,63,272,Alive
+ED,Eddy,Female,133,1213,54,270,Alive
+MA,May,Female,124,1166,45,289,Alive
+SK,Skittles,Male,NA,NA,1,0,Presumed Dead
+RE,Red,Female,NA,NA,2,20,Presumed Dead
+MY,Mya,Female,NA,NA,0,0,Alive
