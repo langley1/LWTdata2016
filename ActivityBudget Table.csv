@@ -1,0 +1,16 @@
+﻿Code,Behavior
+FE,Feeding
+FO,Foraging
+L,Locomotion
+V,Vigilance
+PA,Predator Avoidance
+YA,Yawn
+SC,Scratch
+SG,Self-groom (autogrooming)
+SM,Self-mutilation
+PC,Pacing
+O,Other
+OS,Out-of-sight
+R,Rest
+PH,Positive towards humans
+AH,Agonistic towards humans
