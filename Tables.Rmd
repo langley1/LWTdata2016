@@ -1,0 +1,241 @@
+---
+title: "Tables"
+output: html_document
+---
+
+```{r}
+library(curl)
+library(formattable)
+library(dplyr)
+library(tidyr)
+library(data.table)
+library(gt)
+library(webshot)
+webshot::install_phantomjs()
+```
+
+# Overview Table
+## Loading in my overview table
+```{r}
+overview_table<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Overview%20Table.csv")
+overview_table<- read.csv(overview_table, header= T, na.strings=c(""," "), stringsAsFactors = FALSE)
+overview_table[14,8]<- as.character("Unknown") #There was a typo
+overview_table$X..Focals<- as.numeric(overview_table$X..Focals)
+overview_table$X..Continuous<- as.numeric(overview_table$X..Continuous)
+overview_table$X..Focals.1<- as.numeric(overview_table$X..Focals.1)
+overview_table$X..Continuous.1<- as.numeric(overview_table$X..Continuous.1)
+
+
+overview_table<- as.data.frame(unclass(overview_table)) #turning all character columns into factors
+str(overview_table)
+gt_table
+```
+
+**Using gt() to create a nice table**
+```{r}
+gt_table<- gt(overview_table)
+gt_table<- gt_table %>%
+  tab_footnote( #this function add footnotes to specific cells, here I'm labeling the wild males
+    footnote = "Wild Males",
+    locations = cells_body(
+      columns = vars(Name),
+      rows = 13:16)
+  ) %>%
+  tab_footnote(
+    footnote = "Infants during Pre-Release",
+    locations = cells_body(
+      columns = vars(Name),
+      rows = 23:24)
+    ) %>%
+  tab_row_group( #this creates row groups: splitting up Adults, Juvs, SA, and infants by row 
+    group = "Adults",
+    rows = 1:16
+  ) %>%
+  tab_row_group(
+    group = "Subadult",
+    rows = 17
+  ) %>%
+  tab_row_group(
+    group = "Juveniles",
+    rows = 18:24
+  ) %>%
+  tab_row_group(
+    group = "Infants",
+    rows = 25:26
+  ) %>%
+  tab_row_group(
+    group = "Totals",
+    rows = 27
+  ) %>%
+  row_group_order(
+    groups = c("Adults","Subadult","Juveniles","Infants","Totals")
+  ) %>%
+  tab_spanner( #this creates column groups: splitting up pre- and post-release focal & continuous columns
+    label = "PRE-RELEASE",
+    columns = 4:5
+  ) %>%
+  tab_spanner(
+    label = "POST-RELEASE",
+    columns = 6:7)
+  
+gt_table<- gt_table %>%
+  cols_label( #changing my column names 
+    X..Focals = md("**Total<br>Focals**"),
+    X..Continuous = md("**Total<br>Continuous**"),
+    Survival.Status = md("**Survival<br>Status**"),
+    X..Focals.1 = md("**Total<br>Focals**"),
+    X..Continuous.1 = md("**Total<br>Continuous**"),
+    ID = md("**ID**"),
+    Name = md("**Name**"),
+    Sex = md("**Sex**")
+  ) %>%
+  cols_align( #fixing the alignment of my columns 
+    align = "right",
+    columns = 8
+  ) %>%
+  cols_align(
+    align = "center",
+    columns = 2:7
+  ) %>%
+  data_color( #changing the color of my ID column 
+    columns = vars(ID),
+    colors = "skyblue4"
+  ) %>%
+  tab_style( #changing the color of my groups (all the same color)
+    style = list(
+      cell_fill(color = "grey87")
+    ),
+    locations = cells_body(
+      columns = 2:8, # not needed if coloring all columns
+      rows = 1:27)
+  ) %>%
+  tab_style( #making my Names column bold
+    style = list(
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(Name))
+  )
+  
+gt_table<- gt_table %>%
+  fmt_missing( #changing all of the cells with "NA" to have "---" instead 
+    columns= 4:5,
+    rows = 14:16,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 4:5,
+    rows = 22:24,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 6:7,
+    rows = 24,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 6:7,
+    rows = 4,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 6:7,
+    rows = 13,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 4:7,
+    rows = 25:26,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 1,
+    rows = 27,
+    missing_text = "") %>%
+  fmt_missing(
+    columns = 8,
+    rows = 27,
+    missing_text = "") %>%
+  fmt_missing(
+    columns = 3,
+    rows = 27,
+    missing_text = "")
+  #gra2nd_summary_rows( #this code to create summaries at the bottom isn't working
+    #groups = FALSE,
+    #columns = 4:7,
+    #fns = fns_labels
+gt_table %>% #saving my table as a pdf (note: I had to install webshot for this)
+  gtsave(
+  "overview_table.pdf" 
+)
+```
+
+# Activity Budget Description Table
+## Load in Data
+```{r}
+activitybudet_table<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/ActivityBudget%20Table.csv")
+activitybudet_table<- read.csv(activitybudet_table, header= T, na.strings=c(""," "), stringsAsFactors = FALSE)
+activitybudet_table<- as.data.frame(unclass(activitybudet_table)) #changing characters to factors
+```
+
+**Use gt() to make a nice table**
+```{r}
+gt_AB_table<- gt(activitybudet_table)
+gt_AB_table<- gt_AB_table %>%
+  tab_row_group( #this creates row groups: splitting up Behavior Categories by row 
+    group = "Feeding",
+    rows = 1:2
+  ) %>%
+  tab_row_group(
+    group = "Locomotion",
+    rows = 3
+  ) %>%
+  tab_row_group(
+    group = "Predator",
+    rows = 4:5
+  ) %>%
+  tab_row_group(
+    group = "Stress",
+    rows = 6:10
+  ) %>%
+  tab_row_group(
+    group = "Social",
+    rows = 11:27
+  ) %>%
+  tab_row_group(
+    group = "Other",
+    rows = 28:32
+  ) %>%
+  row_group_order(
+    groups = c("Feeding","Social","Stress","Predator","Locomotion","Other")
+  ) %>%
+  cols_align( #fixing the alignment of my columns 
+    align = "left",
+    columns = 1
+  ) %>%
+  cols_align(
+    align = "right",
+    columns = 2
+  ) %>%
+  data_color( #changing the color of the first column
+    columns = vars(Code),
+    colors = "skyblue4"
+  ) %>%
+  tab_style( #changing the color of my groups (all the same color)
+    style = list(
+      cell_fill(color = "grey87")
+    ),
+    locations = cells_body(
+      columns = vars(Behavior),
+      rows = 1:32
+    )
+  ) %>%
+  tab_style( #making my Code column bold
+    style = list(
+      cell_text(weight = "bold")
+      ),
+    locations = cells_body(
+      columns = vars(Code))
+  ) %>%
+  cols_label(
+    Code = md("**Code**"),
+    Behavior = md("**Behavior**")
+  )
+gt_AB_table %>%
+  gtsave("activitybudget_table.pdf")
+```
+

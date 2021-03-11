@@ -9,6 +9,8 @@ output: html_document
 ```{r}
 post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_FULL.csv") #this is FULL dataset
 post_focals<- read.csv(post_focals, header = T, na.strings=c(""," ","NA"))
+levels(post_focals$BEHAVIOUR)[levels(post_focals$BEHAVIOUR) == "F"] <- "FE" #changing the Fs to FEs
+unique(post_focals$BEHAVIOUR)
 head(post_focals)
 
 post_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_cont_FULL.csv")
@@ -390,15 +392,14 @@ fems_PIC_plot
 
 RESULTS: Overall, both males and females were most frequently positioned on the ground during post-release monitoring (Figure PIC_plot). They were also located in the lower and middle tree canopies more often than top canopies (Figure PIC_plot). Out of the three canopy levels (LC,MC,TC), all individuals were located in the lowest height category (1) most often, remaining 5m or less above the ground, and were rarely seen higher up in the canopy (2,3).  
 
-RESULTS: All age groups of both sexes were most frequently positioned on the ground and in lower and middle tree canopies, less than 5m above the ground (Figure age_PIC_plot). Out of the three canopy levels, all individuals across age groups were positioned in the top canopy least often and rarely moved up higher than 5m above the ground in any canopy level (Figure age_PIC_plot).
-
+RESULTS: All age groups of both sexes were most frequently positioned on the ground and in lower and middle tree canopies less than 5m above the ground (Figure age_PIC_plot). Out of the three canopy levels, all individuals across age groups were positioned in the top canopy least often and rarely moved up higher than 5m above the ground in any canopy level (Figure age_PIC_plot).
 
 ## Density Plots
 ```{r}
 #Density plot with adult females only
-fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A") %>%
+fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A")) %>%
   mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%
-  drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
+  drop_na(POSITION.IN.CANOPY), aes(x = POSITION.IN.CANOPY)) +  
   geom_density(aes(group = FOCAL.ID, 
                    colour = FOCAL.ID, 
                    fill = FOCAL.ID),
@@ -436,6 +437,89 @@ age_denPIC_plot
 METHODS: Density plots were created in ggplot to show the probability density of each indiviudals position in the canopy throughout the post-release stage.
 
 RESULTS: Cicero and Homer, the two wild males that joined the troop for some time, were positioned in the top canopy more than all other adult males (Figure males_denPIC_plot). Cicero was positioned higher up in the top canopy (5-10m off the ground) more often than all other adult males and was positioned on the ground less than all other adult males (Figure). 
+
+*GLMM For PIC*
+```{r}
+#Filter out all individuals we don't want for this glmm
+post_focals_glmm<- post_focals %>%
+  filter(AGE != "I", !FOCAL.ID %in% c("RE","PA","SK"), !POSITION.IN.CANOPY %in% c("MMS","NS1")) %>%
+  droplevels() %>%
+  rename(sex = SEX, #renaming these columns 
+         age = AGE,
+         PIC = POSITION.IN.CANOPY,
+         ID = FOCAL.ID) %>%
+  drop_na(PIC) %>%
+  mutate(rank =
+           case_when(ID == "PO"~ as.numeric(1),
+                     ID == "BL"~ as.numeric(2),
+                     ID == "AM"~ as.numeric(3),
+                     ID == "AL"~ as.numeric(4),
+                     ID == "TO"~ as.numeric(5),
+                     ID == "AU"~ as.numeric(6),
+                     ID == "BO"~ as.numeric(7),
+                     ID == "JA"~ as.numeric(8),
+                     ID == "MG"~ as.numeric(9),
+                     ID == "ED"~ as.numeric(10),
+                     ID == "MA"~ as.numeric(11),
+                     ID == "BM"~ as.numeric(12),
+                     ID == "NE"~ as.numeric(13),
+                     ID == "KO"~ as.numeric(14),
+                     ID == "TI"~ as.numeric(15)))
+
+post_focals_glmm<- as.data.frame(unclass(post_focals_glmm)) #turning all character columns into factors
+post_focals_glmm$rank<- as.factor(post_focals_glmm$rank) #turning this numeric column into factor
+
+#Glmer (doesn't work)
+m1 <- glmer(
+  PIC ~ age + sex + (1 | ID), 
+  data = post_focals_glmm
+)
+
+#Mlogit (doesnt work)
+library(mlogit)
+PIC.l<- mlogit.data(post_focals_glmm, varying = NULL, choice = "PIC", shape = "wide", id.var = "ID")
+m <- mlogit(PIC ~ age + sex | ID, data = PIC.l)
+summary(m)
+```
+
+## Using the Ordinal package- this works?? but not sure
+```{r}
+library(ordinal)
+
+fm1 <- clm(PIC ~ rank, data=post_focals_glmm, link= "logit")
+summary(fm1)
+exp(coef(fm1))
+
+fm2 = clmm(PIC~ sex + age + (1|ID), data = post_focals_glmm, threshold = "equidistant")
+summary(fm2)
+```
+
+## Trying using the Mixor Package - this does NOT seem to work
+```{r}
+library(mixor)
+post_focals_mixor<- post_focals_glmm %>%
+  mutate(Pic_num = 
+           case_when(PIC == "G"~ as.numeric(1),
+                     PIC == "LC1"~as.numeric(2),
+                     PIC == "LC2"~as.numeric(3),
+                     PIC == "MC1"~as.numeric(4),
+                     PIC == "MC2"~as.numeric(5),
+                     PIC == "TC1"~as.numeric(6),
+                     PIC == "TC2"~as.numeric(7),
+                     PIC == "TC3"~as.numeric(8))) %>%
+  mutate(sex_num = 
+           case_when(sex == "M"~ as.numeric(1),
+                     sex == "F"~ as.numeric(2)))
+head(post_focals_mixor)
+
+
+SP<- data("SmokingPrevention")
+head(SmokingPrevention)
+post_focals_glmm<-post_focals_glmm[order(post_focals_glmm$ID),]
+mixortest<- mixor(Pic_num ~ sex, data = post_focals_mixor, id= ID, link = "logit")
+mixortest
+```
+
 
 ## Survival Analysis
 
@@ -589,7 +673,6 @@ ggsurv$plot +theme_bw() +
   theme (legend.position = "right")+
   facet_grid(~AGE)
 ```
-
 METHODS: The average survival time was calculated using the median since survival times aren't normally distributed and the mean would be an inappropriate summary. Between-group significance tests were run using a log-rank test.  
 
 RESULTS: The survival probability 9 months after release is 30%. The median survival time for all non-censored (confirmed or presumed dead) individuals is 225 days. The median survival time for all non-censored females and males is 225 and 228, respectively. The median survival time for all non-censorded adults and juveniles is 210(???) and 228, respectively. 
@@ -597,24 +680,24 @@ RESULTS: The survival probability 9 months after release is 30%. The median surv
 *Log-Rank Test*
 ```{r}
 #Differences in survival times between sexes
-survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
+survdiff(Surv(days_surv, status) ~ SEX, data = post_surv_edited)
 #Just another way to get the same p-value
 sd <- survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
 1 - pchisq(sd$chisq, length(sd$n) - 1)
 
 #Differences in survival times between ages
-survdiff(Surv(days_surv, status) ~ AGE, data = post_focals_surv)
+survdiff(Surv(days_surv, status) ~ AGE, data = post_surv_edited)
 
 #Differences in survival times across the ranks
-survdiff(Surv(days_surv, status) ~ rank, data = post_focals_surv)
+survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited)
 ```
 
-RESULTS: There is no significant difference in survival times between males and females (p= 0.08). There is a significant difference in survival times across age groups (p< 0.05). There is a significant difference in survival times across social rank (p< 0.05).
+RESULTS: There is no significant difference in survival times between males and females (p= 0.7). There is no significant difference in survival times across age groups (p=0.7). There is a significant difference in survival times across social rank (p< 0.05).
 
 ## Cox-Regression Models
 ```{r}
 #Regression for Sex
-cox_sex<- coxph(Surv(days_surv, status) ~ SEX, data = post_focals_surv) #exp(coef) = hazard ratio, which represents the ratio of hazards between two groups at any particular point in time
+cox_sex<- coxph(Surv(days_surv, status) ~ SEX, data = post_surv_edited) #exp(coef) = hazard ratio, which represents the ratio of hazards between two groups at any particular point in time
 summary(cox_sex)
 
 #Plotting the survival curve for sex, NOT the hazard ratio here
@@ -624,7 +707,7 @@ ggsurvplot(
     ylab = "Overall survival probability")
 
 #Regression for Age
-cox_age<- coxph(Surv(days_surv, status) ~ AGE, data = post_focals_surv) 
+cox_age<- coxph(Surv(days_surv, status) ~ AGE, data = post_surv_edited) 
 summary(cox_age)
 
 #Regression for Rank
@@ -632,7 +715,7 @@ cox_rank<- coxph(Surv(days_surv, status) ~ rank, data = post_focals_surv)
 summary(cox_rank)
 ```
 
-RESULTS: The variable sex has highly statistically significant coefficients (p < 0.05). Beta coef for sex (males) = -0.10562, which indicates that males have lower risk of death than females. Being male reduces the hazard by a factor of 0.90, or 10%. The varibale age (juvenile-adult) has statistically significant coefficients (p < 0.05). Juveniles have a lower risk of death than adults. Being juvenile reduces hazard by 0.3 or 70%. The variable rank has statistically significant coefficients (p< 0.05). Regression coef (coef) is a positive value, which means the risk of death is higher for those with larger social ranking values ("lower" ranked in our case).  
+RESULTS: Neither variables sex (p= 0.694) nor age (SA: p= 0.694; J: p=0.546) have statistically significant coefficients in the cox-regression models. Risk of death does not differ across sexes or age groups. The variable rank has statistically significant coefficients (p< 0.05). Regression coef (coef) is a positive value, which means the risk of death is higher for those with larger social ranking values ("lower" ranked in our case).  
 
 *Cox Multiple regression*
 ```{r}
@@ -649,7 +732,7 @@ ggsurvplot(survfit(cox_multi2), data =post_surv_edited, palette = "#2E9FDF",
 
 ```
 
-RESULTS: In the Cox multiple regression analysis, sex is no longer statistically significant (p= 0.18). The likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are also not statistically significant. There is a slighly significant effect of the juvenile age category on survival (p=0.03) and rank on survival (p=0.01). When holding the other covariates constant, none of these covariates seem to have a very strong effect on the hazard ratio (or death). 
+RESULTS: In the Cox multiple regression analysis with covariates sex, age, and rank, sex was not statistically significant (p= 0.1841). There is a slighly significant effect of the juvenile age category on survival (p=0.032) and rank on survival (p=0.01). Regression coef indicates that the risk of death is lower in juveniles as well as those ranked higher in the social hierarchy. However, the likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are not statistically significant.
 
 *Proportional Hazards Assumption Test and other statistical tests*
 ```{r}
@@ -677,13 +760,36 @@ METHODS: Proportional hazards (PH) assumption was tested for the model as a whol
 RESULTS: The PH assumption test is not statistically significance for each of the covariates, as well as the global test. A graphed diagnostic, which shows graphs of the scaled Schoenfeld residuals against the transformed time, shows no trend in the covariates across time. Therefore, we can assume proportional hazards.
 
 ## Survival Analysis Reduced - Adding in Behavioral Data
+*Predator Behaviors*
 ```{r}
-post_focals_surv_reduced<- post_focals_surv %>%
+surv_pred<- post_surv_edited %>%
   filter(!FOCAL.ID %in% c("RE","SK")) %>% #these two have very little behavior data post-release so removing them
-  droplevels()
-unique(post_focals_surv_reduced$FOCAL.ID)
-```
+  droplevels() %>%
+  mutate(pred = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(7.41), #Taking the mean predator counts from Pops_budget4 df and inputting them here manually
+                     FOCAL.ID == "BL" ~ as.numeric(6.78),
+                     FOCAL.ID == "AM" ~ as.numeric(6.99),
+                     FOCAL.ID == "AL" ~ as.numeric(5.77),
+                     FOCAL.ID == "BO" ~ as.numeric(6.82),
+                     FOCAL.ID == "BM" ~ as.numeric(6.91),
+                     FOCAL.ID == "AU" ~ as.numeric(5.77),
+                     FOCAL.ID == "ED" ~ as.numeric(6.10),
+                     FOCAL.ID == "JA" ~ as.numeric(7.32),
+                     FOCAL.ID == "TI" ~ as.numeric(5.79),
+                     FOCAL.ID == "KO" ~ as.numeric(5.27),
+                     FOCAL.ID == "MG" ~ as.numeric(4.07),
+                     FOCAL.ID == "MA" ~ as.numeric(5.36),
+                     FOCAL.ID == "TO" ~ as.numeric(6.13),
+                     FOCAL.ID == "NE" ~ as.numeric(7.82))
+         )
 
+cox_pred<- coxph(Surv(days_surv, status) ~ pred, data = surv_pred)
+cox_pred
+
+cox_multi3<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + pred, data= surv_pred)
+summary(cox_multi3)
+```
+RESULTS: In the Cox multiple regression analysis with covariates sex, age, rank, and predator vigilance, neither sex nor predator-vigilance was statistically significant (p= 0.1841, p=0.75). There is a very slight effect of the juvenile age category on survival (p=0.05), though not stastically significant. The effect of rank on survival, however, was significant (p=0.02). Regression coef indicates that the risk of death is lower in juveniles as well as those ranked higher in the social hierarchy. However, the likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are not statistically significant.
 
 
 ```{r}
@@ -726,7 +832,7 @@ head(monkeyID_surv_vig)
 
 
 
-## Vigilance Counts
+# Vigilance Counts
 
 ### Filtering out each individual from the post-focals dataset
 ```{r}
@@ -959,8 +1065,10 @@ head(monkey.list_post_vigAfems)
 
 # Trying to 
 monkey.list_post_vigAfems<- monkey.list_post_vigAfems %>%
-  pluck(.)
-  purrr::map(~add_column(.,names(monkey.list_post_vigAfems)))
+  #purrr::map(~mutate(.,mean= ((summarize(sum(count)))/nrow(.))))
+  
+monkey.list_post_vigAfems$TI
+
 
 #4. Combining all the tibbles into one
 monkey.list_post_vigAfems<- monkey.list_post_vigAfems %>% 
@@ -991,7 +1099,7 @@ ggqqplot(monkey.list_vigAfems_FULL$count)
 ggplot(monkey.list_vigAfems_FULL, aes(x=release, y=count, color=release)) +
   geom_boxplot(outlier.color = "black", notch = TRUE) +
   scale_x_discrete(limits=c("pre", "post")) +
-  labs(x= "Release Stage", y= "Average rate of vigilance")
+  labs(x= "Release Stage", y= "Mean hourly rate of vigilance")
   
 
 #Running log10 transformations to see if that changes distribution
