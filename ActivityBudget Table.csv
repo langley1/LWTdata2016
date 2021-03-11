@@ -3,12 +3,29 @@ FE,Feeding
 FO,Foraging
 L,Locomotion
 V,Vigilance
-PA,Predator Avoidance
+PA,Predator avoidance
 YA,Yawn
 SC,Scratch
 SG,Self-groom (autogrooming)
 SM,Self-mutilation
 PC,Pacing
+G+,Grooming received
+G-,Grooming (allogrooming)
+PR-,Presenting to another
+PR+,Being presented to another
+TH-,Receive threat
+TH+,Threat
+C,Contact
+CL,Clinging
+N,Nursing
+SU,Suckling
+PL,Play
+MA,Mating
+MO,Mounting
+A+,Aggression 
+A-,Receive aggression
+MP+,Making place for focal individual
+MP-,Making place by focal individual
 O,Other
 OS,Out-of-sight
 R,Rest
