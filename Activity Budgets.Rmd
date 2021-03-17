@@ -22,7 +22,6 @@ pre_focals_budget<- pre_focals %>%
                      behavior %in% c("YA","SC","SG","SM","PC") ~ as.character("Stress"),
                      behavior %in% c("O","OS","R","PH","AH")~ as.character("Other")))
 unique(pre_focals_budget$behavior.category)
-unique(pre_focals_budget$FOCAL.ID)
 ```
 
 ### Mean Activity Budget Per Hour
@@ -465,8 +464,7 @@ WT_PopsBat_pred
 ### Behavior Categories
 ```{r}
 post_focals_budget<- post_focals %>%
-  #filter(!FOCAL.ID %in% c("CI","HO","PA")) %>%
-  gather("Obs", "behavior", 20:21, na.rm = T) %>% #gathering the two behavior columns
+  gather("Obs", "behavior", 19:20, na.rm = T) %>% #gathering the two behavior columns
   filter(!behavior %in% c("ED","TH","VL")) %>% #removing these from the behavior column becuase they're mistakes
   mutate(behavior.category = #creating new column for behavior categories
            case_when(behavior %in% c("G+","G-","PR-","PR+","C","CL","N","SU","PL","MA","MO","A+","A-","TH+","TH-","MP+","MP-") ~ as.character("Social"),
@@ -921,18 +919,20 @@ combined_budget_table<- combined_budget_table %>%
   mutate(proportion= TroopMean/60)
 combined_budget_table$release= factor(combined_budget_table$release, levels = c("pre", "post"), ordered = TRUE) #reordering the levels so that the bars appear on the barchart in pre-post order
 
+#BarChart
 full_budgetplot<- ggplot(data=combined_budget_table, aes(x=behavior.category, y=proportion, fill=release)) +
   geom_bar(position="dodge", stat="identity") +
   scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
   scale_y_continuous(labels=scales::percent) +
   theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turning labels on an angle
-  xlab("Activity Budget Category") +
-  ylab("Mean Percentage Per Hour") +
+  labs(x="Behavior Category",y="Mean Percentage Per Hour",fill= "Release Stage") +
+  theme(legend.box.background = element_rect(colour = "black")) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  scale_fill_manual(values = c("slategray3","slategray4"))
 full_budgetplot
 
-levels(combined_budget_table$release)
+ggsave("Pre&Post Troop AB Plot.pdf", width = 6, height = 4, last_plot())
 ```
 RESULTS: This figure shows the troop's mean percentage of behavior occurrences in each cateogry per hour pre- and post-release.  
 
@@ -944,7 +944,7 @@ pre_fullbudget_pred<- pre_fullbudget %>%
   filter(behavior.category == "Predator") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "pre")
 pre_fullbudget_pred
@@ -953,7 +953,7 @@ post_fullbudget_pred<- post_fullbudget %>%
   filter(behavior.category == "Predator") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "post")
 post_fullbudget_pred
@@ -979,10 +979,25 @@ group_by(fullbudget_pred, release) %>%
     IQR = IQR(Means, na.rm = TRUE)
   )
 
+library(ggpubr)
 ggboxplot(fullbudget_pred, x = "release", y = "Means", 
-          color = "release", palette = c("#00AFBB", "#E7B800"),
+          color = "release", palette = c("slategray4", "slategray4"), fill = "slategray3", legend.position = F,
           order = c("pre", "post"),
           ylab = "Mean Hourly Count", xlab = "Release Stage")
+
+#GGplot2 Plot!
+AB_pred_boxplot<- ggplot(fullbudget_pred, aes(x= release, y = Means, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("skyblue3","skyblue3")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+ggsave("Predator Boxplot.pdf", width = 5,height = 4, last_plot())
 
 # Subset weight data before treatment
 pre <- subset(fullbudget_pred,  release == "pre", Means,
@@ -1012,7 +1027,7 @@ pre_fullbudget_social<- pre_fullbudget %>%
   filter(behavior.category == "Social") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "pre")
 pre_fullbudget_social
@@ -1021,7 +1036,7 @@ post_fullbudget_social<- post_fullbudget %>%
   filter(behavior.category == "Social") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "post")
 post_fullbudget_social
@@ -1045,6 +1060,21 @@ ggboxplot(fullbudget_social, x = "release", y = "Means",
           order = c("pre", "post"),
           ylab = "Mean Hourly Count", xlab = "Release Stage")
 
+#GGplot2 Plot!
+AB_social_boxplot<- ggplot(fullbudget_social, aes(x= release, y = Means, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("coral","coral")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+#Saving the plot
+ggsave("Social Boxplot.pdf", width = 5, height = 4, last_plot())
+
 # Subset weight data before treatment
 pre <- subset(fullbudget_social,  release == "pre", Means,
                  drop = TRUE)
@@ -1060,9 +1090,6 @@ plot(pd, type = "profile") + theme_bw()
 ```{r}
 WT_AB_social<- wilcox.test(Means ~ release, data = fullbudget_social, paired = TRUE)
 WT_AB_social
-
-wilcox.test(Means ~ release, data = fullbudget_pred, paired = TRUE,
-       alternative = "less")
 ```
 RESUTLS: There is no significant difference in the troop's mean hourly display of social behaviors pre- and post-release
 
@@ -1073,7 +1100,7 @@ pre_fullbudget_stress<- pre_fullbudget %>%
   filter(behavior.category == "Stress") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "pre")
 pre_fullbudget_stress
@@ -1082,7 +1109,7 @@ post_fullbudget_stress<- post_fullbudget %>%
   filter(behavior.category == "Stress") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "post")
 post_fullbudget_stress
@@ -1106,6 +1133,21 @@ ggboxplot(fullbudget_stress, x = "release", y = "Means",
           order = c("pre", "post"),
           ylab = "Mean Hourly Count", xlab = "Release Stage")
 
+#GGplot2 Plot!
+AB_stress_boxplot<- ggplot(fullbudget_stress, aes(x= release, y = Means, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("lightseagreen","lightseagreen")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+#Saving the plot
+ggsave("Stress Boxplot.pdf", width = 5, height = 4, last_plot())
+
 # Subset weight data before treatment
 pre <- subset(fullbudget_stress,  release == "pre", Means,
                  drop = TRUE)
@@ -1122,7 +1164,7 @@ plot(pd, type = "profile") + theme_bw()
 WT_AB_stress<- wilcox.test(Means ~ release, data = fullbudget_stress, paired = TRUE)
 WT_AB_stress
 ```
-RESULTS: There is no significant difference in the troop's mean hourly display of stress behaviors pre- and post-release.
+RESULTS: There is no significant difference in the troop's mean hourly display of stress behaviors pre- and post-release (V= 57, p=0.8904, n=15).
 
 ### Feeding Category
 *Setting up Table*
@@ -1131,7 +1173,7 @@ pre_fullbudget_feed<- pre_fullbudget %>%
   filter(behavior.category == "Feeding") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "pre")
 pre_fullbudget_feed
@@ -1140,7 +1182,7 @@ post_fullbudget_feed<- post_fullbudget %>%
   filter(behavior.category == "Feeding") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "post")
 post_fullbudget_feed
@@ -1164,6 +1206,21 @@ ggboxplot(fullbudget_feed, x = "release", y = "Means",
           order = c("pre", "post"),
           ylab = "Mean Hourly Count", xlab = "Release Stage")
 
+#GGplot2 Plot!
+AB_feed_boxplot<- ggplot(fullbudget_feed, aes(x= release, y = Means, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("mediumpurple3","mediumpurple3")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+#Saving the plot
+ggsave("Feed Boxplot.pdf", width = 5, height = 4, last_plot())
+
 # Subset weight data before treatment
 pre <- subset(fullbudget_feed,  release == "pre", Means,
                  drop = TRUE)
@@ -1180,7 +1237,7 @@ plot(pd, type = "profile") + theme_bw()
 WT_AB_feed<- wilcox.test(Means ~ release, data = fullbudget_feed, paired = TRUE)
 WT_AB_feed
 ```
-RESULTS: There is no significant difference in the troop's mean hourly display of feeing behaviors pre- and post-release.
+RESULTS: There is no significant difference in the troop's mean hourly display of feeding behaviors pre- and post-release (V= 80, p=0.2769, n=15).
 
 ### Locomote Category
 *Setting up Table*
@@ -1189,7 +1246,7 @@ pre_fullbudget_loc<- pre_fullbudget %>%
   filter(behavior.category == "Locomote") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "pre")
 pre_fullbudget_loc
@@ -1198,7 +1255,7 @@ post_fullbudget_loc<- post_fullbudget %>%
   filter(behavior.category == "Locomote") %>%
   t() %>%
   as.data.frame() %>%
-  slice(2:16) %>%
+  dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "post")
 post_fullbudget_loc
@@ -1222,6 +1279,21 @@ ggboxplot(fullbudget_loc, x = "release", y = "Means",
           order = c("pre", "post"),
           ylab = "Mean Hourly Count", xlab = "Release Stage")
 
+#GGplot2 Plot!
+AB_loc_boxplot<- ggplot(fullbudget_loc, aes(x= release, y = Means, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("lightpink3","lightpink3")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+#Saving the plot
+ggsave("Move Boxplot.pdf", width = 5, height = 4, last_plot())
+
 # Subset weight data before treatment
 pre <- subset(fullbudget_loc,  release == "pre", Means,
                  drop = TRUE)
@@ -1243,6 +1315,83 @@ wilcox.test(Means ~ release, data = fullbudget_loc, paired = TRUE,
 ```
 RESULTS: The troop moved significantly more per hour during the post-release stage (V=120, p=3.052e-05,n=15).
 
+### Other Category
+*Setting up Table*
+```{r}
+pre_fullbudget_other<- pre_fullbudget %>%
+  filter(behavior.category == "Other") %>%
+  t() %>%
+  as.data.frame() %>%
+  dplyr::slice(2:16) %>%
+  rename(Means = V1) %>%
+  mutate(release= "pre")
+pre_fullbudget_other
+
+post_fullbudget_other<- post_fullbudget %>%
+  filter(behavior.category == "Other") %>%
+  t() %>%
+  as.data.frame() %>%
+  dplyr::slice(2:16) %>%
+  rename(Means = V1) %>%
+  mutate(release= "post")
+post_fullbudget_other
+
+fullbudget_other<- bind_rows(pre_fullbudget_other, post_fullbudget_other)
+fullbudget_other$Means <- as.numeric(as.character((fullbudget_other$Means)))
+```
+
+*Creating boxplots and Paired Data Plots*
+```{r}
+#Finding mean/median
+group_by(fullbudget_other, release) %>%
+  summarise(
+    count = n(),
+    median = median(Means, na.rm = TRUE),
+    IQR = IQR(Means, na.rm = TRUE)
+  )
+
+ggboxplot(fullbudget_other, x = "release", y = "Means", 
+          color = "release", palette = c("#00AFBB", "#E7B800"),
+          order = c("pre", "post"),
+          ylab = "Mean Hourly Count", xlab = "Release Stage")
+
+#GGplot2 Plot!
+AB_other_boxplot<- ggplot(fullbudget_other, aes(x= release, y = Means, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("thistle4","thistle4")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+#Saving the plot
+ggsave("Other Boxplot.pdf", width = 5, height = 4, last_plot())
+
+# Subset weight data before treatment
+pre <- subset(fullbudget_loc,  release == "pre", Means,
+                 drop = TRUE)
+# subset weight data after treatment
+post <- subset(fullbudget_loc, release == "post", Means,
+                 drop = TRUE)
+# Plot paired data
+pd <- paired(pre, post)
+plot(pd, type = "profile") + theme_bw()
+```
+
+*Running Wilcoxon Test*
+```{r}
+WT_AB_other<- wilcox.test(Means ~ release, data = fullbudget_other, paired = TRUE)
+WT_AB_other
+
+wilcox.test(Means ~ release, data = fullbudget_other, paired = TRUE,
+        alternative = "greater")
+```
+RESULTS: The troop's mean hourly count of behavior displays from the other cateogiry was significantly higher during the post-release stage (V=103, p=0.006226,n=15).
+
+
 ### Continuous Dataset for Grooming
 ```{r}
 pre_cont_groombudget<- pre_cont %>%
@@ -1251,8 +1400,6 @@ pre_cont_groombudget<- pre_cont %>%
   droplevels() %>%
   mutate(behavior.category = as.character("Grooming")) %>%
   rename(day = DAY)
-unique(pre_focals_budget$behavior.category)
-unique(pre_cont_groombudget$MONTH)
 
 post_cont_groombudget<- post_cont %>%
   filter(BEHAVIOUR %in% c("G+","G-"),
@@ -1617,6 +1764,21 @@ post_groombudget_table[15,2]<- as.numeric(0)
 *Full Grooming Table*
 ```{r}
 full_groombudget_table<- bind_rows(pre_groombudget_table,post_groombudget_table)
+
+#GGplot2 Plot!
+AB_groom_boxplot<- ggplot(full_groombudget_table, aes(x= release, y = Mean, fill = release)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_fill_manual(values = c("tomato3","tomato3")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+#Saving the plot
+ggsave("Groom Boxplot.pdf", width = 5, height = 4, last_plot())
 ```
 
 *Running Wilcoxon Test*
@@ -1624,7 +1786,7 @@ full_groombudget_table<- bind_rows(pre_groombudget_table,post_groombudget_table)
 WT_AB_groom<- wilcox.test(Mean ~ release, data = full_groombudget_table, paired = TRUE)
 WT_AB_groom
 ```
-RESULTS: There is no significant difference in the troop's mean hourly grooming counts pre- and post-release (p= 0.1876). 
+RESULTS: There is no significant difference in the troop's mean hourly grooming counts from the all-occurence continuous dataset pre- and post-release (V= 76, p= 0.1876, n=15). 
 
 ### COUNT Activity Budget Tables (to use for LMM)
 ```{r}
@@ -1697,6 +1859,22 @@ group_by(pre_fullbudget_FULL, behavior.category) %>%
 ggboxplot(pre_fullbudget_FULL, x = "behavior.category", y = "Mean", 
           ylab = "Activity Budget Category", xlab = "Mean Count Per Hour")
 
+#GGplot2 Plot!
+AB_pre_boxplot<- ggplot(pre_fullbudget_FULL, aes(x=behavior.category, y=Mean, fill=behavior.category)) +
+  geom_boxplot(outlier.color = "black") +
+  scale_x_discrete(limits=c("Feeding", "Locomote","Other","Predator","Social","Stress"),name="Behavior Category") +
+  ylab("Mean Count Per Hour") +
+  theme_grey(base_size = 13) +
+  scale_fill_brewer("Accent") +
+  theme(legend.position = "none") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  stat_summary(geom = 'text', label = c("a","b","c","d","c","e"), fun = max, vjust = -1, color = "black", size= 4) +
+  ylim(0,11)
+
+ggsave("AB Pre Plot.pdf", width = 6, height = 4, last_plot())
+
+
 kruskal.test(Mean ~ behavior.category, data = pre_fullbudget_FULL)
 
 #Mann-Whitney U Test
@@ -1729,17 +1907,24 @@ group_by(post_fullbudget_FULL, behavior.category) %>%
   )
 
 #Boxplot
-my_comparisons <- list( c("Predator", "Stress"), c("Social", "Stress"), c("Predator", "Feeding") )
+#my_comparisons <- list( c("Predator", "Stress"),c("Predator", "Social"),c("Predator", "Feeding"),c("Predator", "Locomote"), c("Predator", "Other"), c("Social", "Stress"), c("Social", "Feeding"),c("Social", "Locomote"),c("Social", "Other"),c("Locomote", "Stress"),c("Other", "Stress"),c("Locomote", "Other") )
 
-ggplot(post_fullbudget_FULL, aes(x=behavior.category, y=Mean, color=behavior.category)) +
-  geom_boxplot(outlier.color = "black", notch = FALSE) +
+AB_post_boxplot<- ggplot(post_fullbudget_FULL, aes(x=behavior.category, y=Mean, fill=behavior.category)) +
+  geom_boxplot(outlier.color = "black") +
   scale_x_discrete(limits=c("Feeding", "Locomote","Other","Predator","Social","Stress"),name="Behavior Category") +
-  labs(x= "Activity Budget Category", y= "Mean Count Per Hour",color="Behavior Category") +
+  ylab("Mean Count Per Hour") +
+  theme_grey(base_size = 13) +
+  scale_fill_brewer("Blues") +
+  theme(legend.position = "none") +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background
 panel.background = element_blank(), axis.line = element_line(colour = "black")) +
-  #stat_compare_means(comparisons = my_comparisons) #I need to get ggsignif downloaded before I can do this!
+  stat_summary(geom = 'text', label = c("a","b","c","a","c","e"), fun = max, vjust = -1, color = "black", size= 4) +
+  ylim(0,11)
+
+ggsave("AB Post Plot.pdf", width = 6, height = 4, last_plot())
 
 kruskal.test(Mean ~ behavior.category, data = post_fullbudget_FULL)
+compare_means(Mean ~ behavior.category,  data = post_fullbudget_FULL, method = "kr")
 
 #Mann-Whitney U Test
 ManWhitU_post<- pairwise.wilcox.test(post_fullbudget_FULL$Mean, post_fullbudget_FULL$behavior.category,
@@ -1758,7 +1943,7 @@ multcompLetters(ManWhitU_post2,
                 Letters=letters,
                 reversed = FALSE)
 ```
-RESULTS: There is a significant difference across behavior categories in the troop's activity budget both pre-release (p=2.449e-15) and post-release (p=6.082e-13). The Mann-Whitney U Test shows the troop's average display of predator-releated behaviors per hour are significanlty higher than all other behavior categories during pre-release stage with a mean of 9.02 (n=15). The troop's average display of predatory-related behaviors and feeding behaviors are significantly higher than all other behavior categories during post-release with means of 6.29 and 5.96, respectively (n=15). The troop's average display of stress-related behaviors is significantly lower than all other behavior categories during pre- and post-release, with means of 1.53 and 1.50, respectively (n=15).
+RESULTS: There is a significant difference across behavior categories in the troop's activity budget both pre-release (p=2.449e-15) and post-release (p=6.082e-13). The Mann-Whitney U Test shows the troop's average display of predator-releated behaviors per hour are significanlty higher than all other behavior categories during pre-release stage with a mean of 9.02 (n=15). The troop's average display of predator-related behaviors and feeding behaviors are significantly higher than all other behavior categories during post-release with means of 6.29 and 5.96, respectively (n=15). The troop's average display of stress-related behaviors is significantly lower than all other behavior categories during pre- and post-release, with means of 1.53 and 1.50, respectively (n=15).
 
 ### Kruskal Test for combined AB dataframe
 ```{r}

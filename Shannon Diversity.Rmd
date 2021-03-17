@@ -3,6 +3,10 @@ title: "Shannon Diversity"
 output: html_document
 ---
 
+```{r}
+library(vegan)
+```
+
 ### Purrr method for SD
 ```{r}
 #PRE-RELEASE
@@ -11,7 +15,7 @@ MonkeyIDs_SD<-as.character(unique(pre_focals$FOCAL.ID))
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
 monkey.prelim_SD<-lapply(MonkeyIDs_SD, function(x){pre_focals[pre_focals[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim_SD)
+#head(monkey.prelim_SD)
 
 # 3. Edit the dataframe: combine behavior columns into one, group by month & behavior, and count 
 monkey.prelim_SD2 <-
@@ -34,7 +38,7 @@ head(monkey.prelim_SD_post)
 # 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
 monkey.prelim_SD3 <-
   monkey.prelim_SD_post %>% 
-  purrr::map(~gather(.,"Obs", "behavior", 20:21, na.rm = T)) %>%
+  purrr::map(~gather(.,"Obs", "behavior", 19:20, na.rm = T)) %>%
   purrr::map(~filter(.,behavior != ("ED"))) %>%
   purrr::map(~group_by(.,MONTH,behavior)) %>%
   purrr::map(~summarize(.,count=n()))
@@ -2184,18 +2188,23 @@ SD_combined<- bind_rows(pre_SDs_table,post_SDs_table)
 SD_combined$release= factor(SD_combined$release, levels = c("pre", "post"), ordered = TRUE)
 SD_combined<- SD_combined %>%
   mutate(IDs = fct_relevel(IDs, 
-            "Pops","Jack", "Blue", "Alex", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Mango","Bart","Zip"))
+            "Pops","Blue", "Amy", "Alex", "Toni", "Augustine", "Boo", "Jack", "Mango", "Eddy", "May", "Big Mama", "Neville","Kovu", "Tinker","Bart","Zip"))
 
 full_SD_plot<- ggplot(data=SD_combined, aes(x=IDs, y=SD.Index, fill=release)) +
-  geom_bar(stat = "identity", width = 0.5, position = position_dodge(0.8)) +
-  scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
+  geom_bar(stat = "identity", width = 0.7, position = "dodge") +
+  #scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
   ylim(0,2) +
+  scale_fill_manual(values = c("midnightblue","slategray2")) +
   theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turning labels on an angle
   xlab("Individual") +
   ylab("Shannon-Weaver Index (H)") +
+  labs(fill = "Release Stage") +
+  stat_summary(geom = 'text', label = c("","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","*","*"), fun = max, vjust = 0, color = "black", size= 7) +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
 panel.background = element_blank(), axis.line = element_line(colour = "black"))
 full_SD_plot
+
+ggsave("Full SD Plot.pdf", width= 7, height= 5, last_plot())
 ```
 
 *Running Wilcoxon Test*
@@ -2221,13 +2230,26 @@ WT_SD
 wilcox.test(SD.Index ~ release, data = SD_combined2, paired = TRUE,
        alternative = "greater")
 ```
-RESULTS: The troop's mean Shannon Diversity pre-release is significantly greater than the troop's mean Shannon Diversity post-release. 
+RESULTS: The troop's mean Shannon Diversity pre-release is significantly greater than the troop's mean Shannon Diversity post-release (V= 96, p=0.02063, n=15).
 
 *Boxplot: SD across release stages*
 ```{r}
 ggboxplot(SD_combined2, x = "release", y = "SD.Index", 
           color = "release", palette = c("#00AFBB", "#E7B800"),
           ylab = "Shannon Weaver Index (H)", xlab = "Release Stage")
+
+SD_boxplot<- ggplot(SD_combined2, aes(x= release, y = SD.Index, fill = release)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("lightsteelblue4","lightsteelblue4")) +
+  xlab("Release Stage") +
+  ylab("Shannon Weaver Index (H)") +
+  scale_x_discrete(limits=c("pre", "post"),labels = c("Pre","Post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+ggsave("SD Boxplot.pdf", width = 5, height = 4, last_plot())
 ```
 
 ### Adding in Sex, Age, and Rank into Shannon Diversity Tables
@@ -2261,50 +2283,82 @@ str(post_SDs_table)
 *Plots for SD and Age, Sex, Rank
 ```{r}
 #Pre-release
-pre_SDs_sex_plot<- boxplot(SD.Index ~ sex,
-        data = pre_SDs_table,
-        ylab="Shannon-Weaver Index (H)",
-        xlab="Sex")
-pre_SDs_sex_plot
+pre_SDs_sex_boxplot<- ggplot(pre_SDs_table, aes(x= sex, y = SD.Index, fill = sex)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("palevioletred4","palevioletred4")) +
+  xlab("Sex") +
+  ylab("Shannon Weaver Index (H)") +
+  scale_x_discrete(limits=c("M", "F"),labels = c("Male","Female")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Pre SDs Sex Boxplot.pdf", width = 5, height = 4, last_plot())
 
-pre_SDs_age_plot<- boxplot(SD.Index ~ age,
-        data = pre_SDs_table,
-        ylab="Shannon-Weaver Index (H)",
-        xlab="Age")
-pre_SDs_age_plot
+pre_SDs_age_boxplot<- ggplot(pre_SDs_table, aes(x= age, y = SD.Index, fill = age)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("palevioletred4","palevioletred4","palevioletred4")) +
+  xlab("Age") +
+  ylab("Shannon Weaver Index (H)") +
+  scale_x_discrete(limits=c("A", "SA","J"),labels = c("Adult","Subadult","Juvenile")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Pre SDs Age Boxplot.pdf", width = 6, height = 4, last_plot())
 
 library(ggrepel)
 pre_SDs_rank_plot<- ggplot(data = pre_SDs_table, aes(x=rank, y=SD.Index, shape=sex, color=age)) +
   geom_point(size = 2.5) +
+  scale_color_brewer(palette = "Dark2") +
   geom_text_repel(label=pre_SDs_table$IDs) +
   ylab("Shannon-Weaver Index (H)") +
   xlab("Social Rank") +
+  labs(color = "Age",shape = "Sex") +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
 panel.background = element_blank(), axis.line = element_line(colour = "black"))
 pre_SDs_rank_plot
+ggsave("Pre SDs Rank Scatterplot.pdf", width = 6.5, height = 4, last_plot())
 
 #Post-release
-post_SDs_sex_plot<- boxplot(SD.Index ~ sex,
-        data = post_SDs_table,
-        ylab="Shannon-Weaver Index (H)",
-        xlab="Sex")
-post_SDs_sex_plot
+#Sex
+post_SDs_sex_boxplot<- ggplot(post_SDs_table, aes(x= sex, y = SD.Index, fill = sex)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("turquoise4","turquoise4")) +
+  xlab("Sex") +
+  ylab("Shannon Weaver Index (H)") +
+  scale_x_discrete(limits=c("M", "F"),labels = c("Male","Female")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Post SDs Sex Boxplot.pdf", width = 5, height = 4, last_plot())
 
-post_SDs_age_plot<- boxplot(SD.Index ~ age,
-        data = post_SDs_table,
-        ylab="Shannon-Weaver Index (H)",
-        xlab="Age")
-post_SDs_age_plot
+#Age
+post_SDs_age_boxplot<- ggplot(post_SDs_table, aes(x= age, y = SD.Index, fill = age)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("turquoise4","turquoise4","turquoise4")) +
+  xlab("Sex") +
+  ylab("Shannon Weaver Index (H)") +
+  scale_x_discrete(limits=c("A", "SA","J"),labels = c("Adult","Subadult","Juvenile")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Post SDs Age Boxplot.pdf", width = 6, height = 4, last_plot())
 
 post_SDs_rank_plot<- ggplot(data = post_SDs_table, aes(x=rank, y=SD.Index, shape=sex, color=age)) +
   geom_point(size = 2.5) +
+  scale_color_brewer(palette = "Dark2") +
   geom_text_repel(label=post_SDs_table$IDs) +
   ylim(1.4,1.85) +
   ylab("Shannon-Weaver Index (H)") +
   xlab("Social Rank") +
+  labs(color = "Age",shape = "Sex") +
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background
 panel.background = element_blank(), axis.line = element_line(colour = "black"))
 post_SDs_rank_plot
+ggsave("Post SDs Rank Scatterplot.pdf", width = 6.5, height = 4, last_plot())
 ```
 
 *Kruskal-Wallis Test*
@@ -2319,6 +2373,6 @@ kruskal.test(SD.Index ~ sex, data= post_SDs_table)
 kruskal.test(SD.Index ~ age, data= post_SDs_table)
 kruskal.test(SD.Index ~ rank, data= post_SDs_table)
 ```
-RESULTS: There is a significant difference in mean Shannon Diversity values across sexes pre-release (p= 0.002) and post-release (p= 0.013). There is no significant difference in mean Shannon Diversity values across age groups pre-release (p= 0.311) or post-release (p= 0.426). There is no significant difference in mean Shannon Diversity values across social rank order pre-release (p=0.453) or post-release (p= 0.45).
+RESULTS: There is a significant difference in mean Shannon Diversity values across sexes pre-release (Chi= 9.7071, df= 1, p= 0.002) and post-release (Chi= 6.1534, df= 1, p= 0.013). There is no significant difference in mean Shannon Diversity values across age groups pre-release (Chi= 2.3366, df= 2, p= 0.311) or post-release (Chi= 1.705, df= 2, p= 0.426). There is no significant difference in mean Shannon Diversity values across social rank order pre-release (Chi= 16, df= 16, p=0.453) or post-release (Chi= 14, df= 14, p= 0.45).
 
 

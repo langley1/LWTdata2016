@@ -13,6 +13,10 @@ levels(post_focals$BEHAVIOUR)[levels(post_focals$BEHAVIOUR) == "F"] <- "FE" #cha
 unique(post_focals$BEHAVIOUR)
 head(post_focals)
 
+post_focals_observers<- post_focals %>%
+  gather("X","Observers", 9:10, na.rm= T)
+unique(post_focals_observers$Observers)
+
 post_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_cont_FULL.csv")
 post_cont<- read.csv(post_cont, header = T, na.strings=c(""," ","NA"))
 head(post_cont)
@@ -291,7 +295,8 @@ mortality_cal<- mortality_cal %>%
   mutate(total = sum(c_across(confirmed_death:assumed_death))) #including a column at the end with total confirmed and assumed deaths per month
 
 mortality_cal2<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Mortality%20Cal.csv") #created my own df in excel
-mortality_cal2<- read.csv(mortality_cal2, header = T, na.strings=c(""," "))
+mortality_cal2<- read.csv(mortality_cal2, header = T, na.strings=c(""," ")) %>%
+  drop_na(Type.Death)
 ```
 
 *Creating a plot that shows mortality in each month*
@@ -304,12 +309,15 @@ mortalitycal_plot<- ggplot(data=mortality_cal, aes(x=month, y=, fill=confirmed_d
 mortalitycal_plot
 
 #this version uses the dataframe I made using an excel datasheet 
-mortalitycal_plot<- ggplot(data=mortality_cal2, aes(x=Month, y=Death, fill=Type.Death, yName = "Number of Deaths")) + #fill= Type.Death so I can stack assumed and confirmed deaths for each month
+mortalitycal_plot<- ggplot(data=mortality_cal2, aes(x=Month, y=Death, fill=Type.Death)) +
   geom_bar(stat="identity", width= 0.9) +
   scale_x_discrete(limits=mortality_cal2$Month) + #this stops ggplot from ordering my months alphabetically 
-  scale_fill_discrete(name = "Death Type", labels = c("Assumed Dead", "Confirmed Dead")) +
+  labs(x= "Month",y="Number of Deaths") +
+  scale_fill_discrete(name = "Type of Death", labels = c("Assumed Dead", "Confirmed Dead", "NA")) +
   scale_fill_brewer(palette = "Reds") + theme_minimal()
 mortalitycal_plot #this looks good but the months are unevenly spaced, possibly due to longer/shorter months??
+
+ggsave("Month Mortality Plot.pdf", width = 5, height= 4, last_plot())
 
 #trying code I found online to fix the uneven spacing for months
 niceFormatting <- format(mortality_cal2$Month, "%b") # %b is supposed to be for noting abbreviated months but I get an error with this 
@@ -366,12 +374,12 @@ fems_PIC_plot<- post_focals %>%
 fems_PIC_plot
 
 #Pops, Jack, Mango (adult/SA males) from March-May because Jack dies in June
-Males_canopy_test<- post_focals %>% filter(FOCAL.ID %in% c("PO","JA","MG"), MONTH %in% c("3","4","5")) %>% drop_na(POSITION.IN.CANOPY)
+Males_canopy_test<- post_focals %>% filter(FOCAL.ID %in% c("PO","JA","MG"), MONTH %in% c("3","4","5")) %>% drop_na(POSITION.IN.CANOPY) %>% mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1"))
 str(Males_canopy_test)                                                                      
 #This one looks strange by the x-axis
 ggplot(Males_canopy_test, aes(POSITION.IN.CANOPY, fill = factor(FOCAL.ID))) +
-  geom_bar(position = position_dodge2(preserve = "single")) +
-  geom_bar(aes(y = ..prop..), stat="count") + 
+  geom_bar() +
+  geom_bar(aes(stat="count")) + 
   scale_y_continuous(labels=scales::percent) +
   ylab("prop")
 
@@ -403,20 +411,29 @@ fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A")) %>%
   geom_density(aes(group = FOCAL.ID, 
                    colour = FOCAL.ID, 
                    fill = FOCAL.ID),
-               alpha = 0.2)
+               alpha = 0.2) +
+  xlab("Position in Canopy") +
+  ylab("Density") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 fems_denPIC_plot
+ggsave("Fems PICDensity Plot.pdf", width= 7, height= 4, last_plot())
 
 post_focals %>% filter(POSITION.IN.CANOPY == "Mc1")
 
-#density plot with adult males only
+#density plot with adult males only: CAN'T Figure out how to change legend name
 males_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "M",AGE == "A",FOCAL.ID != "PA") %>% #Taking out Patches because he only had 2 focals
   mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%                         
   drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
   geom_density(aes(group = FOCAL.ID, 
                    colour = FOCAL.ID, 
                    fill = FOCAL.ID),
-               alpha = 0.2)
+               show.legend = T,
+               alpha = 0.2) +
+  xlab("Position in Canopy") +
+  ylab("Density") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 males_denPIC_plot
+ggsave("Males PICDensity Plot.pdf", width = 7, height = 4, last_plot())
 
 #Density plot with subadult and juveniles (males/fems)
 age_denPIC_plot<- ggplot((post_focals %>% filter(AGE %in% c("SA","J"), FOCAL.ID != "RE") %>% #Taking out Red because she only had 2 focal observations
@@ -425,13 +442,18 @@ age_denPIC_plot<- ggplot((post_focals %>% filter(AGE %in% c("SA","J"), FOCAL.ID 
   geom_density(aes(group = FOCAL.ID, 
                    colour = FOCAL.ID, 
                    fill = FOCAL.ID),
-               alpha = 0.2)
+               alpha = 0.2) +
+  xlab("Position in Canopy") +
+  ylab("Density") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 age_denPIC_plot
+ggsave("SA&J PICDensity Plot.pdf", width = 7, height = 4, last_plot())
 
 par(mfrow=c(3,1))
 fems_denPIC_plot
 males_denPIC_plot
 age_denPIC_plot
+ggsave("Full PICDensity Plot.pdf", last_plot())
 ```
 
 METHODS: Density plots were created in ggplot to show the probability density of each indiviudals position in the canopy throughout the post-release stage.
@@ -442,7 +464,7 @@ RESULTS: Cicero and Homer, the two wild males that joined the troop for some tim
 ```{r}
 #Filter out all individuals we don't want for this glmm
 post_focals_glmm<- post_focals %>%
-  filter(AGE != "I", !FOCAL.ID %in% c("RE","PA","SK"), !POSITION.IN.CANOPY %in% c("MMS","NS1")) %>%
+  filter(AGE != "I", !FOCAL.ID %in% c("RE","PA","SK","CI","HO","ZI"), !POSITION.IN.CANOPY %in% c("MMS","NS1")) %>%
   droplevels() %>%
   rename(sex = SEX, #renaming these columns 
          age = AGE,
@@ -485,13 +507,20 @@ summary(m)
 ## Using the Ordinal package- this works?? but not sure
 ```{r}
 library(ordinal)
+library(lsmeans)
+post_focals_glmm$PIC <- ordered(post_focals_glmm$PIC)
+str(post_focals_glmm)
 
 fm1 <- clm(PIC ~ rank, data=post_focals_glmm, link= "logit")
 summary(fm1)
 exp(coef(fm1))
 
-fm2 = clmm(PIC~ sex + age + (1|ID), data = post_focals_glmm, threshold = "equidistant")
+fm2<- clmm(PIC~ sex + age + (1|ID), data = post_focals_glmm, link="probit", threshold = "equidistant")
 summary(fm2)
+lsmeans(fm2, pairwise~sex, adjust="tukey", mode = "mean.class")
+
+
+clmm2(PIC ~ sex + age, random = ID, data = post_focals_glmm, nAGQ= 10)
 ```
 
 ## Trying using the Mixor Package - this does NOT seem to work
@@ -601,10 +630,13 @@ names(survfit_all) #important names are "surv" and "time"
 summary(survfit_all)
 
 #To get median survival days
-survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited) #The median survival days is 225
+survfit_all<- survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited) #The median survival days is 225
 
 #Now let's check the probability of surviving until the end of the observations
 summary(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), times = 228) #shows us that the probability of survival at the end of data collection is 30%
+
+#Now let's check the probability of surviving halfway through
+summary(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), times = 114) #shows us that the probability of surviving halfway is 94%
 
 #Now let's plot survfit object: Horizontal lines represent survival duration for the interval, The height of vertical lines show the change in cumulative probability, Censored observations are indicated by tick marks
 plot(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), mark.time = TRUE, 
@@ -615,6 +647,15 @@ ggsurvplot(
     fit = survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), 
     xlab = "Days", 
     ylab = "Overall survival probability")
+
+ggsurvplot(survfit_all,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
 
 #Survfit across Sex
 survfit_sex<- survfit(Surv(days_surv, status) ~ SEX, data = post_surv_edited)
@@ -672,6 +713,20 @@ ggsurv <- ggsurvplot(survfit_combo, fun = "event", conf.int = TRUE,
 ggsurv$plot +theme_bw() + 
   theme (legend.position = "right")+
   facet_grid(~AGE)
+
+splots <- list()
+splots[[1]] <- ggsurvplot(survfit_all, data = post_surv_edited, risk.table = TRUE, ggtheme = theme_light())
+splots[[2]] <- ggsurvplot(survfit_sex, data = post_surv_edited, risk.table = TRUE, ggtheme = theme_light(), conf.int = T)
+
+# Arrange multiple ggsurvplots and print the output
+arrange_ggsurvplots(splots, print = TRUE,
+  ncol = 2, nrow = 1, risk.table.height = 0.4)
+
+if (FALSE) {
+# Arrange and save into pdf file
+res <- arrange_ggsurvplots(splots, print = FALSE)
+ggsave("Survival Plots.pdf", width= 10, height = 5, res)
+}
 ```
 METHODS: The average survival time was calculated using the median since survival times aren't normally distributed and the mean would be an inappropriate summary. Between-group significance tests were run using a log-rank test.  
 
@@ -745,8 +800,9 @@ ggcoxzph(test.ph)
 #Testing influential observations 
 
 #Specifying the argument type = “dfbeta”, plots the estimated changes in the regression coefficients upon deleting each observation in turn
-ggcoxdiagnostics(cox_multi2, type = "dfbeta",
+InfluenceObs<- ggcoxdiagnostics(cox_multi2, type = "dfbeta",
                  linear.predictions = FALSE, ggtheme = theme_bw()) #I don't fully understand this but it does seem that some of the observations are influential (mostly for rank)
+ggsave("InfluenceObs.pdf", width = 8, height= 5, last_plot())
 
 #The deviance residual is a normalized transform of the martingale residual. These residuals should be roughtly symmetrically distributed about zero with a standard deviation of 1. Positive values correspond to individuals that “died too soon” compared to expected survival times. Negative values correspond to individual that “lived too long”. Very large or small values are outliers, which are poorly predicted by the model.
 ggcoxdiagnostics(cox_multi2, type = "deviance",
@@ -829,8 +885,6 @@ monkeyID_surv_vig<- monkeyID_vigsurv_list %>%
   purrr::map(~mean(.,count))
 head(monkeyID_surv_vig)
 ```
-
-
 
 # Vigilance Counts
 

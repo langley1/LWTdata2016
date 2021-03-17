@@ -61,11 +61,11 @@ gt_table<- gt_table %>%
   ) %>%
   tab_row_group(
     group = "Infants",
-    rows = 25:26
+    rows = 25:30
   ) %>%
   tab_row_group(
     group = "Totals",
-    rows = 27
+    rows = 31
   ) %>%
   row_group_order(
     groups = c("Adults","Subadult","Juveniles","Infants","Totals")
@@ -107,7 +107,7 @@ gt_table<- gt_table %>%
     ),
     locations = cells_body(
       columns = 2:8, # not needed if coloring all columns
-      rows = 1:27)
+      rows = 1:31)
   ) %>%
   tab_style( #making my Names column bold
     style = list(
@@ -140,28 +140,36 @@ gt_table<- gt_table %>%
     missing_text = "---") %>%
   fmt_missing(
     columns = 4:7,
-    rows = 25:26,
+    rows = 25:30,
     missing_text = "---") %>%
   fmt_missing(
     columns = 1,
-    rows = 27,
+    rows = 31,
+    missing_text = "") %>%
+  fmt_missing(
+    columns = 1,
+    rows = 27:30,
     missing_text = "") %>%
   fmt_missing(
     columns = 8,
-    rows = 27,
+    rows = 31,
     missing_text = "") %>%
   fmt_missing(
     columns = 3,
-    rows = 27,
-    missing_text = "")
+    rows = 31,
+    missing_text = "") %>%
+  cols_width(
+    columns = 2:3 ~ px(120)) %>%
+  cols_width(
+    columns = 8 ~ px(200))
   #gra2nd_summary_rows( #this code to create summaries at the bottom isn't working
     #groups = FALSE,
     #columns = 4:7,
     #fns = fns_labels
 gt_table %>% #saving my table as a pdf (note: I had to install webshot for this)
-  gtsave(
-  "overview_table.pdf" 
-)
+  gtsave("overview_table.png")
+
+webshot2::webshot("overview_table.html", "overview_table.png")
 ```
 
 # Activity Budget Description Table
@@ -237,5 +245,339 @@ gt_AB_table<- gt_AB_table %>%
   )
 gt_AB_table %>%
   gtsave("activitybudget_table.pdf")
+```
+
+# Dominance Table 
+```{r}
+ALL_matrix_gt<- as.data.frame(ALL_matrix_rank) #turning it into df
+ALL_matrix_gt <- sapply(ALL_matrix_gt, as.character) #so that my NAs are characters
+ALL_matrix_gt[is.na(ALL_matrix_gt)] <- " " #changing my NAs to blanks
+ALL_matrix_gt<- as.data.frame(unclass(ALL_matrix_gt)) #turning back to factors for the gt()
+
+# I had to make this in formattable first because gt() puts those NAs right back in
+ALL_matrix_format<- formattable(ALL_matrix_gt,
+            align = c("l", "c","c","c","c","c","c","c","c","c","c","c","c","c","c","c","c","c","c","r","r"),
+            list(`IDs` = formatter("span", style = ~ style(font.weight = "bold"))))
+
+#Now I can use gt() to customize even more
+ALL_matrix_gt2<- gt(ALL_matrix_format) %>%
+   cols_label(IDs = md("**IDs**"), AL = md("**AL**"), AM = md("**AM**"), AU = md("**AU**"), BA = md("**BA**"), BL = md("**BL**"), BM = md("**BM**"), BO = md("**BO**"), BT = md("**BT**"), ED = md("**ED**"), JA = md("**JA**"), KO = md("**KO**"), MA = md("**MA**"), MG = md("**MG**"), NE = md("**NE**"), PO = md("**PO**"),TI = md("**TI**"),TO = md("**TO**"),ZI = md("**ZI**"),total = md("**Total**"),Rank = md("**Rank**")
+  ) %>%
+  cols_align( #fixing the alignment of my columns 
+    align = "right",
+    columns = 20:21) %>%
+  cols_align(
+    align = "center",
+    columns = 2:19) %>%
+  cols_align(
+    align = "left",
+    columns = vars(IDs)) %>%
+  tab_style(
+    style = list(
+      cell_text(weight = "bold")),
+    locations = cells_body(
+      columns = vars(IDs)))
+ALL_matrix_gt2 %>%
+  gtsave("Dominance Matrix.pdf") #this isn't saving properly for some reason... 
+```
+
+#Rank Table
+```{r}
+rank_table<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Rank%20Table.csv")
+rank_table<- read.csv(rank_table, header = T, na.strings=c(""," "), stringsAsFactors = F)
+rank_table<- as.data.frame(unclass(rank_table))
+```
+
+##gt() plot
+```{r}
+rank_table_gt<- gt(rank_table) %>%
+  tab_style(
+    style = list(
+      cell_text(weight = "bold")),
+    locations = cells_body(
+      columns = 1)) %>%
+  cols_label(ID = md("**IDs**"), Rank = md("**Rank**"), Rank.1 = md("**Rank**")) %>%
+  cols_align(
+    align = "left",
+    columns = 1) %>%
+  tab_footnote( 
+    footnote = "Wild Male (not released with troop)",
+    locations = cells_body(
+      columns = 1,
+      rows = 5)
+  ) %>%
+  tab_footnote(
+    footnote = "Left troop soon after release",
+    locations = cells_body(
+      columns = 1,
+      rows = 7)
+    ) %>%
+  tab_footnote(
+    footnote = "Left troop soon after release",
+    locations = cells_body(
+      columns = 1,
+      rows = 11)
+    ) %>%
+  tab_footnote(
+    footnote = "Infant during rehabilitation",
+    locations = cells_body(
+      columns = 1,
+      rows = 13)
+    ) %>%
+  tab_footnote(
+    footnote = "Infant during rehabilitation",
+    locations = cells_body(
+      columns = 1,
+      rows = 16)) %>%
+  data_color(
+    columns = 1,
+    colors = "skyblue4"
+  ) %>%
+   tab_spanner(
+    label = "PRE-RELEASE",
+    columns = 2
+  ) %>%
+  tab_spanner(
+    label = "POST-RELEASE",
+    columns = 3)
+  
+  
+rank_table_gt<- rank_table_gt %>%
+  fmt_missing(
+    columns = 3,
+    rows = 5,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 3,
+    rows = 7,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 3,
+    rows = 11,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 2,
+    rows = 13,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 2,
+    rows = 16,
+    missing_text = "---") 
+rank_table_gt %>%
+  gtsave("Rank Table.pdf")
+```
+
+# Activity Budget Wilcoxon results table
+```{r}
+AB_results<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/AB%20Table.csv")
+AB_results<- read.csv(AB_results, header = T, na.strings=c(""," "), stringsAsFactors = F)
+AB_results<- AB_results %>%
+  add_row(Activity.Budget.Category = as.character("Other"), V= as.numeric(103), n= as.numeric(15), p= as.character("<0.01"), .before = 6)
+
+AB_results<- as.data.frame(unclass(AB_results))
+```
+
+##gt() table
+```{r}
+AB_results_gt<- gt(AB_results) %>%
+  cols_align(
+    align = "center",
+    columns = 2:4) %>%
+  cols_align(
+    align = "left",
+    columns = 1) %>%
+  cols_label(Activity.Budget.Category = md("**Activity<br>Budget Category**"), V = md("**V**"), n = md("**n**"), p = md("**p**")) %>%
+  tab_spanner(
+    label = "Paired Wilcoxon Signed Rank Test",
+    columns = 2:4) %>%
+  data_color(
+    columns = 1,
+    colors = "snow3"
+  ) %>%
+  tab_footnote(
+    footnote = md("*ad libitum* data"),
+    locations = cells_body(
+      columns = 1,
+      rows = 7)) %>%
+  tab_style(
+    style = list(
+      cell_text(color = "red")
+      ),
+    locations = cells_body(
+      columns = 4,
+      rows = c(1,5,6))
+  )
+AB_results_gt %>%
+  gtsave("AB WRT Table.pdf")
+```
+
+#Mann-Whiteny U Test
+```{r}
+MWU_table<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/MWU%20Table.csv")
+MWU_table<- read.csv(MWU_table, header = T, stringsAsFactors = F)
+MWU_table<- as.data.frame(unclass(MWU_table))
+```
+
+```{r}
+MWU_gt<- gt(MWU_table) %>%
+  cols_align(
+    align = "center",
+    columns = 2:7) %>%
+  cols_align(
+    align = "left",
+    columns = 1) %>%
+  cols_label(Activity.Budget.Category = md("**Activity<br>Budget Category**"), mean = md("**Mean**"), n = md("**n**"), p = md("**p**"), mean.1 = md("**Mean**"), n.1 = md("**n**"), p.1 = md("**p**")) %>%
+  tab_spanner(
+    label = "PRE-RELEASE",
+    columns = 2:4
+  ) %>%
+  tab_spanner(
+    label = "POST-RELEASE",
+    columns = 5:7) %>%
+  data_color(
+    columns = 1,
+    colors = "snow3"
+  ) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey93")
+      ),
+    locations = cells_body(
+      columns = 7,
+      rows = c(1,4))) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey79")
+      ),
+    locations = cells_body(
+      columns = 7,
+      rows = c(2,6))) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey54")
+      ),
+    locations = cells_body(
+      columns = 7,
+      rows = 5)) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey45"),
+      cell_text(color = "white")
+      ),
+    locations = cells_body(
+      columns = 4,
+      rows = c(2,6))) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey8"),
+      cell_text(color = "white")
+      ),
+    locations = cells_body(
+      columns = 4,
+      rows = 1)) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey21"),
+      cell_text(color = "white")
+      ),
+    locations = cells_body(
+      columns = 4,
+      rows = 4)) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey67"),
+      cell_text(color = "white")
+      ),
+    locations = cells_body(
+      columns = 4,
+      rows = 3)) %>%
+  cols_width(
+    columns = 1 ~ px(150)
+  ) %>%
+  cols_width(
+    columns = 2:7 ~ px(85)
+  ) %>%
+  tab_style(
+    style = list(
+      cell_text(weight = "bold")),
+    locations = cells_body(
+      columns = 1))
+MWU_gt %>%
+  gtsave("ManWhitU AB Table.pdf")
+```
+
+#Spearman's Rank Groom Table
+```{r}
+SR_groom<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/SP%20rank%20table.csv")
+SR_groom<- read.csv(SR_groom, header = T, na.strings=c(""," "), stringsAsFactors = F)
+SR_groom <- sapply(SR_groom, as.character) #so that my NAs are characters
+SR_groom[is.na(SR_groom)] <- " " #changing my NAs to blanks
+SR_groom<- as.data.frame(unclass(SR_groom))
+
+#First using formattable to remove NAs
+SR_groom_format<- formattable(SR_groom)
+```
+
+```{r}
+SR_groom_gt<- gt(SR_groom) %>%
+   cols_label(X = md("**Sex**"), X.1 = md("**Age**"), X.2 = md("**r/p**"), Pre.release = md("**Pre**"), Post.release = md("**Post**")) %>%
+  cols_align( #fixing the alignment of my columns 
+    align = "left",
+    columns = 1:2) %>%
+  cols_align(
+    align = "center",
+    columns = 2:5) %>%
+  tab_spanner(
+    label = "RELEASE STAGE",
+    columns = 3:5) %>%
+  cols_width(
+    columns = 1:2 ~ px(100)
+  ) %>%
+  cols_width(
+    columns = 3:5 ~ px(85)) %>%
+  tab_style(
+    style = list(
+      cell_text(color = "red")
+      ),
+    locations = cells_body(
+      columns = 4,
+      rows = c(2,4))) %>%
+   tab_style(
+    style = list(
+      cell_text(color = "red")
+      ),
+    locations = cells_body(
+      columns = 5,
+      rows = 4)) %>%
+  tab_style(
+    style = list(
+      cell_fill(color = "grey90")
+      ),
+    locations = cells_body(
+      columns = 1:5,
+      rows = c(1,2,5,6))) %>%
+  tab_style(
+      style = cell_borders(
+        sides = c("top"),
+        color = "black",
+        weight = px(1.5),
+        style = "solid"
+      ),
+      locations = cells_body(
+        columns = everything(),
+        rows = c(1,3,5)
+      ))
+SR_groom_gt<- SR_groom_gt %>%
+  fmt_missing(
+    columns = 5,
+    rows = 5:6,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 1:2,
+    rows = c(2,4,6),
+    missing_text = " ") 
+SR_groom_gt %>%
+  gtsave("SP rank groom table.pdf")
+  
 ```
 

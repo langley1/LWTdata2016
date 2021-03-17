@@ -93,7 +93,7 @@ combo_G2<-
     ~if_else(.y %in% monkey_G2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 G2<-combo_G2 %>% 
   mutate(grooms = map2_int(
@@ -121,7 +121,7 @@ monkey_G.prelim2<-
   purrr::map(~filter(.,BEHAVIOUR %in% c("G+","G-"))) %>%
   purrr::map(~group_by(.,ASSOCIATION)) %>%
   purrr::map(~summarize(.,count=n()))
-names(monkey_G.prelim) <- MonkeyIDs
+names(monkey_G.prelim2) <- MonkeyIDs
 
 # 4. Set up your pairwise combinations of interacting monkeys:
 monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients

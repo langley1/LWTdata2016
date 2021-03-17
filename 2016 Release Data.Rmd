@@ -14,6 +14,9 @@ install.packages("tidyr")
 install.packages("formattable")
 
 ```{r}
+save.image(file='myEnvironment.RData')
+dir()
+
 library(curl)
 library(dplyr)
 library(tidyverse)
@@ -49,6 +52,10 @@ pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2
 pre_focals<- read.csv(pre_focals, header=T, na.strings=c(""," ","NA"))
 levels(pre_focals$BEHAVIOUR)[levels(pre_focals$BEHAVIOUR) == "F"] <- "FE" #changing the Fs to FEs
 unique(pre_focals$BEHAVIOUR)
+
+pre_focals_observers<- pre_focals %>%
+  gather("X","Observers", 13:14, na.rm= T)
+unique(pre_focals_observers$Observers)
 ```
 
 ## Importing the pre-continuous dataset (this is NOT FULL)
