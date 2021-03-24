@@ -676,10 +676,21 @@ ggsurvplot(survfit_sex,
           ggtheme = theme_bw(), # Change ggplot2 theme
           palette = c("#E7B800", "#2E9FDF"))
 
+#
+survfit_multi<- survfit(Surv(days_surv, status) ~ AGE + SEX + rank, data = post_surv_edited)
+
 #Survfit across Age
 survfit_age<- survfit(Surv(days_surv, status) ~ AGE, data = post_surv_edited)
 survfit_age
 summary(survfit_age)$table #this still looks funky, median for adults is 210 even though none of them have that number
+
+ggsurvplot(cox_multi2,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw())
 
 #Survfit across Rank
 survfit_rank<- survfit(Surv(days_surv, status) ~ rank, data = post_surv_edited)
