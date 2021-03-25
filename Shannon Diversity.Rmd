@@ -2280,7 +2280,7 @@ post_SDs_table<- post_SDs_table %>%
 str(post_SDs_table)
 ```
 
-*Plots for SD and Age, Sex, Rank
+*Plots for SD and Age, Sex, Rank*
 ```{r}
 #Pre-release
 pre_SDs_sex_boxplot<- ggplot(pre_SDs_table, aes(x= sex, y = SD.Index, fill = sex)) +
@@ -2361,18 +2361,52 @@ post_SDs_rank_plot
 ggsave("Post SDs Rank Scatterplot.pdf", width = 6.5, height = 4, last_plot())
 ```
 
-*Kruskal-Wallis Test*
+```{r}
+# Pre-Release
+pre_SDs_table2<- pre_SDs_table %>%
+  mutate(sex = 
+          case_when(IDs %in% c("Pops","Jack","Neville","Mango","Zip","Bart")~ as.character("M"), 
+                    IDs %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(IDs %in% c("Pops","Jack","Bart", "Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker","Zip")~ as.character("A"),
+                     IDs == "Mango" ~ as.character("SA"),
+                     IDs %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.numeric(c(1,6,9,2,4,10,15,7,3,13,5,8,14,16,12,17,11)))
+
+# Post-Release
+post_SDs_table2<- post_SDs_table %>%
+  mutate(sex = 
+          case_when(IDs %in% c("Pops","Jack","Neville","Mango")~ as.character("M"), 
+                    IDs %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(IDs %in% c("Pops","Jack","Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker")~ as.character("A"),
+                     IDs == "Mango" ~ as.character("SA"),
+                     IDs %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.numeric(c(1,8,2,4,13,6,3,11,5,7,12,14,10,15,9)))
+```
+
+*Kruskal-Wallis & Wilcoxon Test for Age, Sex, Rank*
 ```{r}
 #Pre-release
-kruskal.test(SD.Index ~ sex, data= pre_SDs_table)
+wilcox.test(SD.Index ~ sex, data= pre_SDs_table, alternative = "greater")
 kruskal.test(SD.Index ~ age, data= pre_SDs_table)
 kruskal.test(SD.Index ~ rank, data= pre_SDs_table)
 
 #Post-release
-kruskal.test(SD.Index ~ sex, data= post_SDs_table)
+wilcox.test(SD.Index ~ sex, data= post_SDs_table, alternative = "greater")
 kruskal.test(SD.Index ~ age, data= post_SDs_table)
 kruskal.test(SD.Index ~ rank, data= post_SDs_table)
 ```
-RESULTS: There is a significant difference in mean Shannon Diversity values across sexes pre-release (Chi= 9.7071, df= 1, p= 0.002) and post-release (Chi= 6.1534, df= 1, p= 0.013). There is no significant difference in mean Shannon Diversity values across age groups pre-release (Chi= 2.3366, df= 2, p= 0.311) or post-release (Chi= 1.705, df= 2, p= 0.426). There is no significant difference in mean Shannon Diversity values across social rank order pre-release (Chi= 16, df= 16, p=0.453) or post-release (Chi= 14, df= 14, p= 0.45).
+RESULTS: Females had significantly greater mean Shannon Diversity values than males during pre-release (W = 64, p <0.001, n= 16; Figure 4.3A) and post-release (W = 41, p = 0.005, n = 14; Figure 4.3B). There is no significant difference in mean Shannon Diversity values across age groups pre-release (Chi= 2.3366, df= 2, p= 0.311) or post-release (Chi= 1.705, df= 2, p= 0.426). There is no significant difference in mean Shannon Diversity values across social rank order pre-release (Chi= 16, df= 16, p=0.453) or post-release (Chi= 14, df= 14, p= 0.45).
 
+*Linear regressions for rank*
+```{r}
+shapiro.test(pre_SDs_table2$SD.Index)
 
+rankSD_lm<- lm(SD.Index ~ rank, data = pre_SDs_table2)
+summary(rankSD_lm)
+rankSD_lm2<- lm(SD.Index ~ rank, data= post_SDs_table2)
+summary(rankSD_lm2)
+```
+
+# Shannon Diversity 
