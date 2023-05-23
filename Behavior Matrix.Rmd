@@ -227,7 +227,7 @@ combo_MP2<-
     ~if_else(.y %in% monkey_MP2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 MP2<-combo_MP2 %>% 
   mutate(makeplace = map2_int(
@@ -1465,3 +1465,87 @@ groom_plot_Afems_post
 ggsave("GroomPlot AFems Post.pdf", width= 8, height= 5, last_plot())
 
 ```
+
+## Running analyses with UPDATED DATA
+```{r}
+total_groom_pre<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Fems_TOTALgroom_pre.csv") #this is a table I created by hand of total grooming received using both "focal receives grooming" AND "focal grooms" matrices
+total_groom_pre<- read.csv(total_groom_pre, header = T)
+total_groom_pre$Rank<- as.numeric(total_groom_pre$Rank)
+
+total_groom_post<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/d66c19037572dcdad2b24a59e85aba510267a881/Fems_TOTALgroom_post.csv")
+total_groom_post<- read.csv(total_groom_post, header = T)
+total_groom_post$Rank<- as.numeric(total_groom_post$Rank)
+
+#Taking out adults only
+total_groom_preAfems<- total_groom_pre %>%
+  filter(Age == "A")
+
+total_groom_postAfems<- total_groom_post %>%
+  filter(Age == "A")
+```
+
+#### Spearman's correlation test for rank and grooming
+```{r}
+#PRE
+cortest_pre2 <-cor.test(total_groom_pre$Rank, total_groom_pre$Total,  method = "spearman", exact=F)
+cortest_pre2 #there is a negative correlation between female rank and total grooming recieved (as rank increases, grooming recieved decreases)
+cortest_Afems_pre2<- cor.test(total_groom_preAfems$Rank, total_groom_preAfems$Total, method = "spearman")
+cortest_Afems_pre2 #there is an even stronger negative correlation between ADULT female rank and total grooming recieved 
+
+#POST
+cortest_post2 <-cor.test(total_groom_post$Rank, total_groom_post$Total,  method = "spearman", exact=F)
+cortest_post2 #there is a negative correlation between female rank and total grooming recieved (as rank increases, grooming recieved decreases)
+cortest_Afems_post2<- cor.test(total_groom_postAfems$Rank, total_groom_postAfems$Total, method = "spearman")
+cortest_Afems_post2 #there is an even stronger negative correlation between ADULT female rank and total grooming recieved 
+```
+
+```{r}
+#PRE
+LM_udpated<- lm(Total ~ Rank, data = total_groom_pre)
+summary(LM_udpated)
+LM_updated2<- lm(Total ~ Rank, data = total_groom_preAfems)
+summary(LM_updated2)
+
+#POST
+LM_udpated_post<- lm(Total ~ Rank, data = total_groom_post)
+summary(LM_udpated_post)
+LM_updated2_post<- lm(Total ~ Rank, data = total_groom_postAfems)
+summary(LM_updated2_post)
+```
+
+###Making the Plots
+```{r}
+#Plotting social rank and grooming totals for females only
+groom_plot_fems_pre2<- ggplot(total_groom_pre, aes(x=Rank, y=Total)) + 
+  geom_smooth(method = "lm", formula = y ~ x) +
+  geom_point(aes(shape=Age), size=3) +
+  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
+  scale_color_manual(values = c("seagreen","sandybrown")) +
+  theme(legend.box.background = element_rect(colour = "black")) +
+  geom_text(aes(label= ID),
+  nudge_x = 0.5, nudge_y = 0.5, 
+  check_overlap = T) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+groom_plot_fems_pre2
+
+ggsave("GroomPlot Fems Pre UPDATED.pdf", width= 8, height= 5, last_plot())
+
+#Plotting social rank and grooming totals for females only
+groom_plot_fems_post2<- ggplot(total_groom_post, aes(x=Rank, y=Total)) + 
+  geom_smooth(method = "lm", formula = y ~ x) +
+  geom_point(aes(shape=Age), size=3) +
+  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
+  scale_color_manual(values = c("seagreen","sandybrown")) +
+  theme(legend.box.background = element_rect(colour = "black")) +
+  geom_text(aes(label= ID),
+  nudge_x = 0.5, nudge_y = 0.5, 
+  check_overlap = T) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+groom_plot_fems_post2
+
+ggsave("GroomPlot Fems Post UPDATED.pdf", width= 8, height= 5, last_plot())
+
+```
+

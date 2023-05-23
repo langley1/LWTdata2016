@@ -2409,4 +2409,3 @@ rankSD_lm2<- lm(SD.Index ~ rank, data= post_SDs_table2)
 summary(rankSD_lm2)
 ```
 
-# Shannon Diversity 

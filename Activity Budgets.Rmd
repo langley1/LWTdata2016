@@ -5,6 +5,16 @@ output: html_document
 
 ```{r}
 library(lme4)
+library(tidyr)
+library(ggplot2)
+install.packages("pillar")
+install.packages('Rcpp', dependencies = TRUE)
+library(dplyr)
+
+remove.packages("rlang")
+install.packages("rlang")
+library(rlang)
+library(dplyr)
 ```
 
 ## Activity Budgets PRE RELEASE
@@ -934,7 +944,7 @@ full_budgetplot
 
 ggsave("Pre&Post Troop AB Plot.pdf", width = 6, height = 4, last_plot())
 ```
-RESULTS: This figure shows the troop's mean percentage of behavior occurrences in each cateogry per hour pre- and post-release.  
+RESULTS: This figure shows the troop's mean percentage of behavior occurrences in each category per hour pre- and post-release.  
 
 ## Wilcoxon Tests
 ### Predator Category
@@ -1389,7 +1399,7 @@ WT_AB_other
 wilcox.test(Means ~ release, data = fullbudget_other, paired = TRUE,
         alternative = "greater")
 ```
-RESULTS: The troop's mean hourly count of behavior displays from the other cateogiry was significantly higher during the post-release stage (V=103, p=0.006226,n=15).
+RESULTS: The troop's mean hourly count of behavior displays from the other cateogry was significantly higher during the post-release stage (V=103, p=0.006226,n=15).
 
 
 ### Continuous Dataset for Grooming
@@ -1874,7 +1884,7 @@ panel.background = element_blank(), axis.line = element_line(colour = "black")) 
 
 ggsave("AB Pre Plot.pdf", width = 6, height = 4, last_plot())
 
-
+##HERE IS THE ACTUAL TEST
 kruskal.test(Mean ~ behavior.category, data = pre_fullbudget_FULL)
 
 #Mann-Whitney U Test
@@ -1884,14 +1894,14 @@ ManWhitU_pre<- pairwise.wilcox.test(pre_fullbudget_FULL$Mean, pre_fullbudget_FUL
 library(rcompanion)
 library(multcompView)
 ManWhitU_pre = ManWhitU_pre$p.value
-ManWhitU_pre2 = fullPTable(ManWhitU_pre)
+ManWhitU_pre2 = fullPTable(ManWhitU_pre) #doesn't work?
 ManWhitU_pre2
 
-multcompLetters(ManWhitU_pre2,
+multcompView::multcompLetters(ManWhitU_pre2,
                 compare="<",
                 threshold=0.05,
                 Letters=letters,
-                reversed = FALSE)
+                reversed = FALSE) #gives us the letters to put on the boxplot
 ```
 
 ### Post-Release
@@ -1943,7 +1953,7 @@ multcompLetters(ManWhitU_post2,
                 Letters=letters,
                 reversed = FALSE)
 ```
-RESULTS: There is a significant difference across behavior categories in the troop's activity budget both pre-release (p=2.449e-15) and post-release (p=6.082e-13). The Mann-Whitney U Test shows the troop's average display of predator-releated behaviors per hour are significanlty higher than all other behavior categories during pre-release stage with a mean of 9.02 (n=15). The troop's average display of predator-related behaviors and feeding behaviors are significantly higher than all other behavior categories during post-release with means of 6.29 and 5.96, respectively (n=15). The troop's average display of stress-related behaviors is significantly lower than all other behavior categories during pre- and post-release, with means of 1.53 and 1.50, respectively (n=15).
+RESULTS: There is a significant difference across behavior categories in the troop's activity budget both pre-release (p=2.449e-15) and post-release (p=6.082e-13). The Mann-Whitney U Test shows the troop's average display of predator-releated behaviors per hour are significantly higher than all other behavior categories during pre-release stage with a mean of 9.02 (n=15). The troop's average display of predator-related behaviors and feeding behaviors are significantly higher than all other behavior categories during post-release with means of 6.29 and 5.96, respectively (n=15). The troop's average display of stress-related behaviors is significantly lower than all other behavior categories during pre- and post-release, with means of 1.53 and 1.50, respectively (n=15).
 
 ### Kruskal Test for combined AB dataframe
 ```{r}

@@ -36,6 +36,253 @@ pre_socnet_close<- pre_socnet %>% #creating a new dataframe called pre_socnet_cl
 
 Pipes (%>%) from the tidyverse package are great to use! They can make coding a lot easier and more stremlined. Definitley read up on them online to help you understand how they work if you don't already know! I've removed Batman here because he's the wild male from pre-release. I've also only pulled out data that has proximity code of 1 or 2 because that means the individuals were 5m or less apart from one another. (**NOTE**: this is only the code for pre-release, you'll have to do a very similar thing for the post-release dataset removing those individuals we talked about from both the focal ID column and the association column. Read online about the filter() function and how to properly use it both to keep data in and to remove data. The code is different when you want to keep/remove one thing verses when you want to keep/remove multiple things so it won't be exactly like what I have written above.)
 
+#Make Matrix
+```{r}
+# 1. Create a character vector of all the focal IDs in dataset:
+pre_sn_IDs<-as.character(unique(pre_socnet_close$Focal.ID))
+#pre_sn_IDs
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+pre_sn_monkeylist<-lapply(pre_sn_IDs, function(x){pre_socnet[pre_socnet[["Focal.ID"]] == x, ]})
+# The line above is a little bit confusing. It is creating a separate dataframe for each individual based on their focal id
+#head(pre_sn_monkeylist)
+
+# 3. Group each by focal/associate, and count how many times they are observed close together:
+pre_sn_grouped<-
+  pre_sn_monkeylist %>%
+  purrr::map(~group_by(.,Association)) %>%
+  purrr::map(~summarize(.,count=n())) 
+#pre_sn_grouped
+
+names(pre_sn_grouped) <- pre_sn_IDs #this gives each grouped list the name of the Focal ID
+#pre_sn_grouped
+
+# 4. Set up pairwise combinations of interacting monkeys:
+pre_sn_monkeycombos<-list(focal=pre_sn_IDs, associate=pre_sn_IDs) #create list of all possible focals/associates
+pre_sn_filtf<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+pre_sn_combo<- pre_sn_monkeycombos %>% cross_df(.,.filter=pre_sn_filtf) #get the filtered combined list as a dataframe
+#pre_sn_combo
+```
+
+#Continued
+```{r}
+# 5. Create new dataframes with specific criteria
+pre_sn_combo2<-
+  pre_sn_combo %>%
+  mutate(absent1 = map2_chr( #new column called "absent1"
+    focal,
+    associate,
+    ~if_else(.x %in% names(pre_sn_grouped),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.y %in% pre_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2) #this removes those two new columns you made so you're just left with the ID names
+#Honestly I was quite confused on parts of this, but Laura/Dr. Schmitt gave me this helpful code
+
+pre_sn_combo3<- pre_sn_combo2 %>% 
+  mutate(proximity = map2_int( #new column called "proximity" that is the count for when proximity code = 1 or 2
+    focal, 
+    associate, 
+    ~pre_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+#pre_sn_combo3
+
+# 6. Create your matrix
+pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
+#pre_sn_matrix
+```
+
+#Social Network Plot
+```{r}
+pre_sn_codes <- c("AL", "AM", "AU", "BA", "BL", "BM", "BO", "ED", "JA", "KO", "MA", "MG", "NE", "PO", "TI", "TO", "ZI")
+pre_sn_df <- as.data.frame(pre_sn_matrix, stringsAsFactors = TRUE)
+#pre_sn_df
+```
+
+```{r}
+sortproxf <- pre_sn_combo3[order(pre_sn_combo3$proximity),]
+#sortproxf
+
+pre_sn_edges <- pre_sn_df #assigning the matrix data frame to our edges
+pre_sn_vertices <- c(pre_sn_codes)
+pre_sn_df2 <- as.data.frame(sortproxf, stringsAsFactors = TRUE, row.names = pre_sn_vertices)
+pre_sn_graph <- graph_from_data_frame(d=pre_sn_df2, vertices = pre_sn_vertices, directed = FALSE) #using the step before the matrix
+#pre_sn_graph
+#simplesn<-simplify(pre_sn_graph, remove.multiple = FALSE, remove.loops = TRUE)
+
+pre_sn_proximity <- as.numeric(unlist(dplyr::select(pre_sn_combo3, "proximity"))) #Creating a numeric vector from the proximity values in order to visualize in plot   
+#pre_sn_proximity
+
+#Trying to categorize by color:
+pre_sn_colorrange <- colorRampPalette(c("darkred", "yellow")) #establishes color range
+pre_sn_color <- pre_sn_colorrange(length(pre_sn_proximity)) #how many   
+
+#oranges <- colorRampPalette(c("dark red", "gold"))
+#col <- oranges(max(pre_sn_proximity)+1)
+#col <- col[pre_sn_proximity+1]
+#l <- layout_on_sphere(net.bg)
+
+#pre_sn_combo3[order(-pre_sn_combo3$proximity), ]
+```
+
+```{r}
+par(bg="white")
+plot(pre_sn_graph,
+     vertex.size=(1/25*pre_sn_proximity), #18,
+     vertex.color="lightgrey",
+     vertex.label.color="black",
+     edge.arrow.size=0.5,  # Arrow size, defaults to 1
+     edge.arrow.width=0.5,
+     edge.width=((1/70)*(pre_sn_proximity)), #The thickness of the edges is now related to the proximity strength between indivs
+     edge.curved=0.25, #c(rep(0,500), rep(1,500)),
+     edge.color=pre_sn_color#[pre_sn_graph$proximity]
+     )  #rep(c("darkred","yellow"), (length(pre_sn_proximity))))  #col)    #"black") #pre_sn_color)
+```
+
+## Combined Datasheet
+```{r}
+pre_sn_full<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/SocialProximityTable.csv")
+pre_sn_full<- read.csv(pre_sn_full, header = T, stringsAsFactors = TRUE)
+head(pre_sn_full)
+```
+
+```{r}
+sortproxf <- pre_sn_full[order(pre_sn_full$Total),]
+sortproxf
+
+pre_sn_edges <- pre_sn_df #assigning the matrix data frame to our edges
+pre_sn_vertices <- c(pre_sn_codes)
+pre_sn_df2 <- as.data.frame(sortproxf, stringsAsFactors = TRUE, row.names = pre_sn_vertices)
+pre_sn_graph <- graph_from_data_frame(d=pre_sn_df2, vertices = pre_sn_vertices, directed = FALSE) #using the step before the matrix
+#pre_sn_graph
+#simplesn<-simplify(pre_sn_graph, remove.multiple = FALSE, remove.loops = TRUE)
+
+pre_sn_proximity <- as.numeric(unlist(dplyr::select(pre_sn_combo3, "proximity"))) #Creating a numeric vector from the proximity values in order to visualize in plot   
+#pre_sn_proximity
+
+#Trying to categorize by color:
+pre_sn_colorrange <- colorRampPalette(c("darkred", "yellow")) #establishes color range
+pre_sn_color <- pre_sn_colorrange(length(pre_sn_proximity)) #how many   
+
+#oranges <- colorRampPalette(c("dark red", "gold"))
+#col <- oranges(max(pre_sn_proximity)+1)
+#col <- col[pre_sn_proximity+1]
+#l <- layout_on_sphere(net.bg)
+
+#pre_sn_combo3[order(-pre_sn_combo3$proximity), ]
+```
+
+```{r}
+pre_sn_vertices <- c(pre_sn_codes)
+pre_sn_df2 <- as.data.frame(sortproxf, stringsAsFactors = TRUE, row.names = pre_sn_vertices)
+pre_sn_graph <- graph_from_data_frame(d=pre_sn_df2, vertices = pre_sn_vertices, directed = FALSE)
+```
+```{r}
+par(bg="white")
+plot(pre_sn_graph,
+     vertex.size=(1/25*pre_sn_proximity), #18,
+     vertex.color="lightgrey",
+     vertex.label.color="black",
+     edge.arrow.size=0.5,  # Arrow size, defaults to 1
+     edge.arrow.width=0.5,
+     edge.width=((1/70)*(pre_sn_proximity)), #The thickness of the edges is now related to the proximity strength between indivs
+     edge.curved=0.25, #c(rep(0,500), rep(1,500)),
+     edge.color=pre_sn_color#[pre_sn_graph$proximity]
+     )  #rep(c("darkred","yellow"), (length(pre_sn_proximity))))  #col)    #"black") #pre_sn_color)
+```
+
+# POST-RELEASE
+```{r}
+post_socnet<- curl("https://raw.githubusercontent.com/nickmikulski/Spring2021/main/Post-release_Social%20Proximity_CSV.csv")
+post_socnet<- read.csv(post_socnet, header = T, na.strings=c(""," ","NA"))
+#head(post_socnet)
+#str(post_socnet)
+n_distinct(post_socnet$Focal.ID)
+
+post_socnet_close<- post_socnet %>% #creating a new dataframe called post_socnet_close using data from the original post_socnet dataframe
+  filter(Focal.ID != c("BT"), #this code REMOVES all data that has Batman as the focal ID (BT is wild male from prerelease)
+         Association != c("BT"), #this code REMOVES all data that has Batman in association column
+         Proximity.Code %in% c("1","2") #this code only keeps proximity codes 1,2 (excluding 3,4) because we are focusing on closer proximity
+  ) 
+
+# 1. Create a character vector of all the focal IDs in dataset:
+post_sn_IDs<-sort(as.character(unique(post_socnet_close$Focal.ID)))
+#post_sn_IDs
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+post_sn_monkeylist<-lapply(post_sn_IDs, function(x){post_socnet[post_socnet[["Focal.ID"]] == x, ]})
+# The line above is a little bit confusing. It is creating a separate dataframe for each individual based on their focal id
+#head(post_sn_monkeylist)
+
+# 3. Group each by focal/associate, and count how many times they are observed close together:
+post_sn_grouped<-
+  post_sn_monkeylist %>%
+  purrr::map(~group_by(.,Association)) %>%
+  purrr::map(~summarize(.,count=n())) 
+#post_sn_grouped
+
+names(post_sn_grouped) <- post_sn_IDs #this gives each grouped list the name of the Focal ID
+#post_sn_grouped
+
+# 4. Set up pairwise combinations of interacting monkeys:
+post_sn_monkeycombos<-list(focal=post_sn_IDs, associate=post_sn_IDs) #create list of all possible focals/associates
+post_sn_filtf<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+post_sn_combo<- post_sn_monkeycombos %>% cross_df(.,.filter=post_sn_filtf) #get the filtered combined list as a dataframe
+#post_sn_combo
+
+
+
+# 5. Create new dataframes with specific criteria
+post_sn_combo2<-
+  post_sn_combo %>%
+  mutate(absent1 = map2_chr( #new column called "absent1"
+    focal,
+    associate,
+    ~if_else(.x %in% names(post_sn_grouped),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.y %in% post_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2) #this removes those two new columns you made so you're just left with the ID names
+#Honestly I was quite confused on parts of this, but Laura/Dr. Schmitt gave me this helpful code
+
+post_sn_combo3<- post_sn_combo2 %>% 
+  mutate(proximity = map2_int( #new column called "proximity" that is the count for when proximity code = 1 or 2
+    focal, 
+    associate, 
+    ~post_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+post_sn_combo3
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 # Taking out a sub-sample of the dataframe
 ```{r}
 pre_socnet_sample<- pre_socnet_close %>%
@@ -47,11 +294,11 @@ I'm filtering out just a few individuals here to practice with the matrix code
 ## Example Matrix Code
 ```{r}
 # 1. Create a character vector of all the focal IDs in your dataset:
-pre_sn_sample_IDs<-as.character(unique(pre_socnet_sample$Focal.ID))
+pre_sn_IDs<-as.character(unique(pre_socnet_$Focal.ID))
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
-pre_sn_sample_monkeylist<-lapply(pre_sn_sample_IDs, function(x){pre_socnet_sample[pre_socnet_sample[["Focal.ID"]] == x, ]})
-#head(pre_sn_sample_monkeylist) #this line will load the first 6 lists, remove the # before "head" to take a look at them and see that each is for an individual monkey (I put a # before it so that it doesn't run this code in the markdown file, otherwise it would be very long)
+pre_sn_monkeylist<-lapply(pre_sn_sample_IDs, function(x){pre_socnet_sample[pre_socnet_sample[["Focal.ID"]] == x, ]})
+head(pre_sn_sample_monkeylist) #this line will load the first 6 lists, remove the # before "head" to take a look at them and see that each is for an individual monkey (I put a # before it so that it doesn't run this code in the markdown file, otherwise it would be very long)
 
 # 3. Group each by focal/associate, and count how many times they are observed close together:
 pre_sn_sample_grouped<-
@@ -90,7 +337,25 @@ head(pre_sn_sample_combo3)
 
 # 6. Create your matrix
 pre_sn_sample_matrix<-spread(pre_sn_sample_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
-pre_sn_sample_matrix
+pre_sn_sample_matrix 
+case_when()
+```
+
+#Trying to combine similar pairs together
+```{r}
+dplyr::select(pre_sn_sample_combo3$focal, contains("BL"))
+
+pre_sn_sample_combo3<- as.data.frame(unclass(pre_sn_sample_combo3))
+
+pre_sn_sample_combo3<- pre_sn_sample_combo3 %>%
+  unite(combined, c("focal", "associate"), sep = "", remove = FALSE)
+
+pre_sn_sample_combo3 %>%
+  filter(str_detect(combined, c("BLPO" "POBL")))
+
+pre_sn_sample_combo3 %>%
+  str_extract(combined, "[BLPO]","[POBL]")
+stringr
 ```
 
 This code gets a bit crazy. To be completely honest, I don't fully understand the code for step #5. Dr. Schmitt helped me with this and all I know is that it works! Just work through this slowly and look at each dataframe or list after you create it so that you have an idea of the steps you're doing. Also, even though it makes the code look a bit more complicated, I recommend naming each of your new objects something unique so that you know exactly when you're using each original object in the next step (pre_sn_sample_combo2 --> pre_sn_sample_combo3). (**NOTE**: this is just a sample of the full dataset, you'll have to use the full pre-release social network dataframe you create in this code to get the entire matrix).

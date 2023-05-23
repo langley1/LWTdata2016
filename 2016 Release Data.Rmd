@@ -216,24 +216,42 @@ x
 dev.off()
 ```
 
+
+```{r}
+Bart<- pre_focals %>% filter(FOCAL.ID == "BA")
+Kovu<- pre_focals %>% filter(FOCAL.ID == "KO")
+May<- pre_focals %>% filter(FOCAL.ID == "MA")
+Amy<- pre_focals %>% filter(FOCAL.ID == "AM")
+Nev<- pre_focals %>% filter(FOCAL.ID == "NE")
+Aug<- pre_focals %>% filter(FOCAL.ID == "AU")
+Toni<- pre_focals %>% filter(FOCAL.ID == "TO")
+Bgm<- pre_focals %>% filter(FOCAL.ID == "BM")
+Boo<- pre_focals %>% filter(FOCAL.ID == "BO")
+Eddy<- pre_focals %>% filter(FOCAL.ID == "ED")
+Tink<- pre_focals %>% filter(FOCAL.ID == "TI")
+Mango<- pre_focals %>% filter(FOCAL.ID == "MG")
+```
+
+
 ## Pre-Release Vigilance Counts from each Individual
 ```{r}
 Pops_vig<- Pops %>% 
   gather("Obs", "behavior", 22:23, na.rm = T) %>%
-  group_by(behavior) %>% 
+  group_by(MONTH,day,hour,behavior) %>% 
   filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
   summarize(count=n()) #counting all the vigilance entries
-Pops_vig$prop<- Pops_vig$count/nrow(Pops)
+Pops_vig$avg<- mean(Pops_vig$count)
 Pops_vig$ID<- "Pops"
-Pops_vig
+Pops_vig<- Pops_vig[1,6:7]
 
 Zip_vig<- Zip %>%
   gather("Obs", "behavior", 22:23, na.rm = T) %>%
-  group_by(behavior) %>% 
+  group_by(MONTH,day,hour,behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
-Zip_vig$prop<- Zip_vig$count/nrow(Zip)
+Zip_vig$avg<- mean(Zip_vig$count)
 Zip_vig$ID<- "Zip"
+Zip_vig<- Zip_vig[1,6:7]
 
 Jack_vig<- Jack %>%
   gather("Obs", "behavior", 22:23, na.rm = T) %>%
@@ -357,7 +375,7 @@ Bat_vig$ID<- "Batman"
 
 Mango_vig<- Mango %>%
   gather("Obs", "behavior", 22:23, na.rm = T) %>%
-  group_by(behavior) %>% 
+  group_by(MONTH,day,hour,behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 Mango_vig$prop<- Mango_vig$count/nrow(Mango)
@@ -407,7 +425,7 @@ dev.off()
 ```{r}
 pre_focals_vig<- pre_focals %>%
   gather("Obs", "behavior", 22:23, na.rm = T) %>%
-  group_by(behavior) %>% 
+  group_by(MONTH,day,hour,behavior) %>% 
   filter(behavior == "V") %>% 
   summarize(count=n())
 pre_focals_vig$prop<- pre_focals_vig$count/nrow(pre_focals)

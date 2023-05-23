@@ -1,0 +1,16 @@
+---
+title: "Package Citations"
+output: html_document
+---
+
+```{r}
+citation(package = "tidyverse")
+citation(package = "dplyr")
+citation(package = "vegan")
+citation(package = "ordinal")
+citation(package = "igraph")
+packageVersion("igraph")
+RStudio.Version()
+R.Version()
+```
+

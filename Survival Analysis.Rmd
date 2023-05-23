@@ -1,0 +1,501 @@
+---
+title: "Survival Analysis"
+output: html_document
+---
+
+# Survival Analysis
+
+Note: Red only has a few focals post-release (march/april) but in the demographics file it says she's assumed dead October 4th, Skittles only has 1 focal early on but it says he's assumed dead in November... so not sure if this date is incorrect. Also, Alex and Augustine are declared dead AFTER their last data entry (Nov 1st) but I put Nov 1st in their "Date End" column and gave them a status of 2, which means dead.
+
+## Survival Analysis FULL 
+```{r}
+library(survival)
+library(survminer)
+
+#STEP 1:
+post_focals_surv<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_SURV.csv") #inputting my post focals dataset with data in my "Date End" column 
+post_focals_surv<- read.csv(post_focals_surv, header = T, na.strings=c(""," ","NA"))
+
+#STEP 2:
+post_focals_surv$Date.End <- as.Date(post_focals_surv$Date.End, format = "%Y-%m-%d") #telling R that my "Date End" column is in the y-m-d format and that it needs to be read as "Date" rather than "Factor"
+
+post_focals_surv<- post_focals_surv %>% 
+  unite(Date, c(DAY, MONTH, YEAR), sep = "-", remove = FALSE) %>% #Creating a new column called "Date" using unite(), which combines Day, Month, and Year columns with - as separator
+  mutate(Date = as.Date(Date, format = "%d-%m-%Y")) #using mutate() to turn my date column into accecptable "date" format. NOTE: the format I use in this code is what format my original column IS in...R then turns it into standard Y-M-D format, which will match my "Date End" column 
+
+#STEP 3:
+post_focals_surv<- post_focals_surv %>% filter(!FOCAL.ID %in% c("CI","HO","PA","ZI")) %>% #filtering out these individuals because they are wild males
+  droplevels() %>% #takes the IDs I want to remove from the levels as well 
+  group_by(FOCAL.ID) %>%
+  mutate( #creating a new column called "days_surv"
+    days_surv = 
+      as.numeric( 
+        difftime(Date.End[1], #only selecting the first cell in "Date.End" and "Date" so that it calcultes the difference from the first day of data collection to the day I entered into "Date.End", which is the last day they were observed
+                 Date[1],
+                 units = "days"))) #number of days survived
+
+#STEP 4: status 1 = survived or emigrated; status 2 = confirmed or assumed dead
+post_focals_surv<- post_focals_surv %>% 
+  mutate(status = #creating a new column called "status" to label individuals who die vs those who survive
+    case_when(FOCAL.ID %in% c("PO","MG","BL","AM","KO","ED","MA") ~ as.numeric(1), #for these individuals status=1
+              FOCAL.ID %in% c("JA","NE","AL","TO","AU","BO","BM","TI","SK","RE") ~ as.numeric(2))) #for these indivduals status=2
+
+#STEP 5: adding in social rank column 
+post_focals_surv<- post_focals_surv %>%
+  mutate(rank =
+    case_when(FOCAL.ID == "PO" ~ as.numeric(1),
+              FOCAL.ID == "BL" ~ as.numeric(2),
+              FOCAL.ID == "AM" ~ as.numeric(3),
+              FOCAL.ID == "AL" ~ as.numeric(4),
+              FOCAL.ID == "TO" ~ as.numeric(5),
+              FOCAL.ID == "AU" ~ as.numeric(6),
+              FOCAL.ID == "BO" ~ as.numeric(7),
+              FOCAL.ID == "JA" ~ as.numeric(8),
+              FOCAL.ID == "MG" ~ as.numeric(9),
+              FOCAL.ID == "RE" ~ as.numeric(10),
+              FOCAL.ID == "ED" ~ as.numeric(11),
+              FOCAL.ID == "MA" ~ as.numeric(12),
+              FOCAL.ID == "SK" ~ as.numeric(13),
+              FOCAL.ID == "BM" ~ as.numeric(14),
+              FOCAL.ID == "NE" ~ as.numeric(15),
+              FOCAL.ID == "KO" ~ as.numeric(16),
+              FOCAL.ID == "TI" ~ as.numeric(17)))
+
+#STEP 6: select only the first row for each focal ID and clean up dataframe
+post_surv_edited<-
+post_focals_surv %>% 
+  group_by(FOCAL.ID) %>% 
+  filter(row_number()==1) #only takes the first row
+
+drop <- c("ASSOCIATION", "OBSERVER.1","OBSERVER.2","WEATHER","TEMP","ESTRUS","FOCAL.PERIOD","FOCAL.MINUTE","BEHAVIOUR","BEHAVIOUR.2","FOOD.TYPE","FOOD.Type.2","POSITION.IN.CANOPY","Position2","Position3","PLANT.SPECIES","PLANT.SPECIES.SAT.ON","G.P.S..Location","X","NOteS") #these are all the extra columns I just don't need
+post_surv_edited = post_surv_edited[,!(names(post_surv_edited) %in% drop)]
+
+post_surv_edited[17,14] = as.numeric(228) #manually changing Skittles days_surv number since he only has one focal in April, so his number needed to be changed 
+```
+
+*Adding in Centrality Scores*
+```{r}
+post_surv_edited<- post_surv_edited %>%
+  mutate(prox_cent = #Adding in a new column for post-release social proximity centrality - I broke these up into High, med, low
+           case_when(FOCAL.ID == "PO" ~ as.character("M"),
+              FOCAL.ID == "BL" ~ as.character("M"),
+              FOCAL.ID == "AM" ~ as.character("H"),
+              FOCAL.ID == "AL" ~ as.character("H"),
+              FOCAL.ID == "TO" ~ as.character("M"),
+              FOCAL.ID == "AU" ~ as.character("H"),
+              FOCAL.ID == "BO" ~ as.character("M"),
+              FOCAL.ID == "JA" ~ as.character("L"),
+              FOCAL.ID == "MG" ~ as.character("M"),
+              FOCAL.ID == "RE" ~ as.character("L"),
+              FOCAL.ID == "ED" ~ as.character("H"),
+              FOCAL.ID == "MA" ~ as.character("M"),
+              FOCAL.ID == "SK" ~ as.character("L"),
+              FOCAL.ID == "BM" ~ as.character("M"),
+              FOCAL.ID == "NE" ~ as.character("M"),
+              FOCAL.ID == "KO" ~ as.character("H"),
+              FOCAL.ID == "TI" ~ as.character("M")),
+         groom_cent = #Adding in new column for post-release grooming centrality - also high, med, low
+           case_when(FOCAL.ID == "PO" ~ as.character("M"),
+              FOCAL.ID == "BL" ~ as.character("M"),
+              FOCAL.ID == "AM" ~ as.character("M"),
+              FOCAL.ID == "AL" ~ as.character("M"),
+              FOCAL.ID == "TO" ~ as.character("M"),
+              FOCAL.ID == "AU" ~ as.character("H"),
+              FOCAL.ID == "BO" ~ as.character("M"),
+              FOCAL.ID == "JA" ~ as.character("L"),
+              FOCAL.ID == "MG" ~ as.character("L"),
+              FOCAL.ID == "RE" ~ as.character("M"),
+              FOCAL.ID == "ED" ~ as.character("M"),
+              FOCAL.ID == "MA" ~ as.character("H"),
+              FOCAL.ID == "SK" ~ as.character("L"),
+              FOCAL.ID == "BM" ~ as.character("M"),
+              FOCAL.ID == "NE" ~ as.character("L"),
+              FOCAL.ID == "KO" ~ as.character("M"),
+              FOCAL.ID == "TI" ~ as.character("L")),
+         proxcent_number = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(39),
+              FOCAL.ID == "BL" ~ as.numeric(38),
+              FOCAL.ID == "AM" ~ as.numeric(40),
+              FOCAL.ID == "AL" ~ as.numeric(39),
+              FOCAL.ID == "TO" ~ as.numeric(37),
+              FOCAL.ID == "AU" ~ as.numeric(40),
+              FOCAL.ID == "BO" ~ as.numeric(36),
+              FOCAL.ID == "JA" ~ as.numeric(34),
+              FOCAL.ID == "MG" ~ as.numeric(38),
+              FOCAL.ID == "RE" ~ as.numeric(32),
+              FOCAL.ID == "ED" ~ as.numeric(39),
+              FOCAL.ID == "MA" ~ as.numeric(38),
+              FOCAL.ID == "SK" ~ as.numeric(27),
+              FOCAL.ID == "BM" ~ as.numeric(36),
+              FOCAL.ID == "NE" ~ as.numeric(37),
+              FOCAL.ID == "KO" ~ as.numeric(39),
+              FOCAL.ID == "TI" ~ as.numeric(36)),
+         groomcent_number =
+           case_when(FOCAL.ID == "PO" ~ as.numeric(7),
+              FOCAL.ID == "BL" ~ as.numeric(11),
+              FOCAL.ID == "AM" ~ as.numeric(10),
+              FOCAL.ID == "AL" ~ as.numeric(10),
+              FOCAL.ID == "TO" ~ as.numeric(8),
+              FOCAL.ID == "AU" ~ as.numeric(18),
+              FOCAL.ID == "BO" ~ as.numeric(12),
+              FOCAL.ID == "JA" ~ as.numeric(0),
+              FOCAL.ID == "MG" ~ as.numeric(2),
+              FOCAL.ID == "RE" ~ as.numeric(9),
+              FOCAL.ID == "ED" ~ as.numeric(8),
+              FOCAL.ID == "MA" ~ as.numeric(14),
+              FOCAL.ID == "SK" ~ as.numeric(0),
+              FOCAL.ID == "BM" ~ as.numeric(8),
+              FOCAL.ID == "NE" ~ as.numeric(1),
+              FOCAL.ID == "KO" ~ as.numeric(11),
+              FOCAL.ID == "TI" ~ as.numeric(5)),
+         proxcent_number2 = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(1.00),
+              FOCAL.ID == "BL" ~ as.numeric(0.924),
+              FOCAL.ID == "AM" ~ as.numeric(0.928),
+              FOCAL.ID == "AL" ~ as.numeric(0.874),
+              FOCAL.ID == "TO" ~ as.numeric(0.461),
+              FOCAL.ID == "AU" ~ as.numeric(0.904),
+              FOCAL.ID == "BO" ~ as.numeric(0.682),
+              FOCAL.ID == "JA" ~ as.numeric(0.199),
+              FOCAL.ID == "MG" ~ as.numeric(0.566),
+              FOCAL.ID == "RE" ~ as.numeric(0.400),
+              FOCAL.ID == "ED" ~ as.numeric(0.841),
+              FOCAL.ID == "MA" ~ as.numeric(0.727),
+              FOCAL.ID == "SK" ~ as.numeric(0.401),
+              FOCAL.ID == "BM" ~ as.numeric(0.715),
+              FOCAL.ID == "NE" ~ as.numeric(0.486),
+              FOCAL.ID == "KO" ~ as.numeric(0.895),
+              FOCAL.ID == "TI" ~ as.numeric(0.418)),
+         groomcent_number2 = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(0.217),
+              FOCAL.ID == "BL" ~ as.numeric(1.000),
+              FOCAL.ID == "AM" ~ as.numeric(0.948),
+              FOCAL.ID == "AL" ~ as.numeric(0.419),
+              FOCAL.ID == "TO" ~ as.numeric(0.259),
+              FOCAL.ID == "AU" ~ as.numeric(0.910),
+              FOCAL.ID == "BO" ~ as.numeric(0.449),
+              FOCAL.ID == "JA" ~ as.numeric(0),
+              FOCAL.ID == "MG" ~ as.numeric(0.071),
+              FOCAL.ID == "RE" ~ as.numeric(0.494),
+              FOCAL.ID == "ED" ~ as.numeric(0.983),
+              FOCAL.ID == "MA" ~ as.numeric(0.633),
+              FOCAL.ID == "SK" ~ as.numeric(0),
+              FOCAL.ID == "BM" ~ as.numeric(0.209),
+              FOCAL.ID == "NE" ~ as.numeric(0.003),
+              FOCAL.ID == "KO" ~ as.numeric(0.608),
+              FOCAL.ID == "TI" ~ as.numeric(0.153)))
+
+```
+
+*Survival Probability and curves with Kaplan-Meier*
+```{r}
+Surv(post_surv_edited$days_surv, post_surv_edited$status)[1:17] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+
+#Survival curves
+survfit_all <- survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
+names(survfit_all) #important names are "surv" and "time"
+summary(survfit_all)
+
+#To get median survival days
+survfit_all<- survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited) #The median survival days is 225
+
+#Now let's check the probability of surviving until the end of the observations
+summary(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), times = 228) #shows us that the probability of survival at the end of data collection is 30%
+
+#Now let's check the probability of surviving halfway through
+summary(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), times = 114) #shows us that the probability of surviving halfway is 94%
+
+#Now let's plot survfit object: Horizontal lines represent survival duration for the interval, The height of vertical lines show the change in cumulative probability, Censored observations are indicated by tick marks
+plot(survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), mark.time = TRUE, 
+     xlab = "Days", 
+     ylab = "Overall survival probability")
+
+ggsurvplot(
+    fit = survfit(Surv(days_surv, status) ~ 1, data = post_surv_edited), 
+    xlab = "Days", 
+    ylab = "Overall survival probability")
+
+ggsurvplot(survfit_all,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+
+#Survfit across Sex
+survfit_sex<- survfit(Surv(days_surv, status) ~ SEX, data = post_surv_edited)
+survfit_sex
+summary(survfit_sex) #median survival time for females is 225 and 228 for males
+summary(survfit_sex)$table
+
+sum<- surv_summary(survfit_sex)
+head(sum)
+
+#Plotting for Sex
+ggsurvplot(survfit_sex,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+
+#
+survfit_multi<- survfit(Surv(days_surv, status) ~ AGE + SEX + rank, data = post_surv_edited)
+
+#Survfit across Age
+survfit_age<- survfit(Surv(days_surv, status) ~ AGE, data = post_surv_edited)
+survfit_age
+summary(survfit_age)$table #this still looks funky, median for adults is 210 even though none of them have that number
+
+ggsurvplot(cox_multi2,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw())
+
+#Survfit across Rank
+survfit_rank<- survfit(Surv(days_surv, status) ~ rank, data = post_surv_edited)
+survfit_rank
+summary(survfit_rank)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Rank - doesn't look nice
+ggsurvplot(survfit_rank,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+
+#Survfit across Social Proximity Centrality
+survfit_socprox<- survfit(Surv(days_surv, status) ~ prox_cent, data = post_surv_edited)
+survfit_socprox
+summary(survfit_socprox)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Social Proximity 
+ggsurvplot(survfit_socprox,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+
+#Survfit across Grooming Centrality
+survfit_groom<- survfit(Surv(days_surv, status) ~ groom_cent, data = post_surv_edited)
+survfit_groom
+summary(survfit_socprox)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Social Proximity 
+ggsurvplot(survfit_groom,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+```
+
+
+```{r}
+#Plotting cummulative hazard: corresponds to the number of events that would be expected for each individual by time t if the event were a repeatable process.
+ggsurvplot(survfit_sex,
+          conf.int = TRUE,
+          risk.table.col = "strata", # Change risk table color by groups
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"),
+          fun = "cumhaz")
+
+#Trying to do "complex survival curves" with more than one factor, this doesn't really work for me here
+survfit_combo<- survfit(Surv(days_surv, status) ~ SEX + AGE, data = post_surv_edited)
+survfit_combo
+
+ggsurv <- ggsurvplot(survfit_combo, fun = "event", conf.int = TRUE,
+                     ggtheme = theme_bw())
+   
+ggsurv$plot +theme_bw() + 
+  theme (legend.position = "right")+
+  facet_grid(~AGE)
+
+splots <- list()
+splots[[1]] <- ggsurvplot(survfit_all, data = post_surv_edited, risk.table = TRUE, ggtheme = theme_light())
+splots[[2]] <- ggsurvplot(survfit_sex, data = post_surv_edited, risk.table = TRUE, ggtheme = theme_light(), conf.int = T)
+
+# Arrange multiple ggsurvplots and print the output
+arrange_ggsurvplots(splots, print = TRUE,
+  ncol = 2, nrow = 1, risk.table.height = 0.4)
+
+if (FALSE) {
+# Arrange and save into pdf file
+res <- arrange_ggsurvplots(splots, print = FALSE)
+ggsave("Survival Plots.pdf", width= 10, height = 5, res)
+}
+```
+METHODS: The average survival time was calculated using the median since survival times aren't normally distributed and the mean would be an inappropriate summary. Between-group significance tests were run using a log-rank test.  
+
+RESULTS: The survival probability 9 months after release is 30%. The median survival time for all non-censored (confirmed or presumed dead) individuals is 225 days. The median survival time for all non-censored females and males is 225 and 228, respectively. The median survival time for all non-censorded adults and juveniles is 210(???) and 228, respectively. 
+
+*Log-Rank Test*
+```{r}
+#Differences in survival times between sexes
+survdiff(Surv(days_surv, status) ~ SEX, data = post_surv_edited)
+#Just another way to get the same p-value
+sd <- survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
+1 - pchisq(sd$chisq, length(sd$n) - 1)
+
+#Differences in survival times between ages
+survdiff(Surv(days_surv, status) ~ AGE, data = post_surv_edited)
+
+#Differences in survival times across the ranks
+survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited)
+
+#Differences in survival times across the social proximity numbers
+survdiff(Surv(days_surv, status) ~ proxcent_number, data = post_surv_edited)
+
+#Differences in survival times across the grooming centrality numbers
+survdiff(Surv(days_surv, status) ~ groomcent_number, data = post_surv_edited)
+
+#Differences in survival times across the grooming centrality numbers (done manually)
+survdiff(Surv(days_surv, status) ~ proxcent_number2, data = post_surv_edited)
+```
+
+RESULTS: There is no significant difference in survival times between males and females (p= 0.7). There is no significant difference in survival times across age groups (p=0.7). There is a significant difference in survival times across social rank (p< 0.05). 
+***New Results: There is a significant difference in survival times across post-release social proximity centrality scores (p<0.05). There is no significant difference in survival times across post-release grooming centrality scores. 
+
+## Cox-Regression Models
+```{r}
+#Regression for Sex
+cox_sex<- coxph(Surv(days_surv, status) ~ SEX, data = post_surv_edited) #exp(coef) = hazard ratio, which represents the ratio of hazards between two groups at any particular point in time
+summary(cox_sex)
+
+#Plotting the survival curve for sex, NOT the hazard ratio here
+ggsurvplot(
+    fit = survfit(Surv(days_surv, status) ~ SEX, data = post_focals_surv), 
+    xlab = "Days", 
+    ylab = "Overall survival probability")
+
+#Regression for Age
+cox_age<- coxph(Surv(days_surv, status) ~ AGE, data = post_surv_edited) 
+summary(cox_age)
+
+#Regression for Rank
+cox_rank<- coxph(Surv(days_surv, status) ~ rank, data = post_surv_edited) 
+summary(cox_rank)
+
+#Regression for Social Prox Centrality Categories
+cox_socprox<- coxph(Surv(days_surv, status) ~ prox_cent, data = post_surv_edited) 
+summary(cox_socprox)
+
+#Regression for Grooming Centrality Categories
+cox_groom<- coxph(Surv(days_surv, status) ~ groom_cent, data = post_surv_edited) 
+summary(cox_groom)
+
+#Regression for Social Prox Centrality Scores
+cox_socproxscores<- coxph(Surv(days_surv, status) ~ proxcent_number, data = post_surv_edited) 
+summary(cox_socproxscores)
+
+#Regression for Grooming Centrality Scores
+cox_groomscores<- coxph(Surv(days_surv, status) ~ groomcent_number2, data = post_surv_edited) 
+summary(cox_groomscores)
+
+#Regression for Social Prox Centrality Scores (MANUAL)
+cox_socproxscores2<- coxph(Surv(days_surv, status) ~ proxcent_number2, data = post_surv_edited) 
+summary(cox_socproxscores2)
+```
+
+RESULTS: Neither variables sex (p= 0.694) nor age (SA: p= 0.694; J: p=0.546) have statistically significant coefficients in the cox-regression models. Risk of death does not differ across sexes or age groups. The variable rank has statistically significant coefficients (p< 0.05). Regression coef (coef) is a positive value, which means the risk of death is higher for those with larger social ranking values ("lower" ranked in our case).  
+
+*Cox Multiple regression*
+```{r}
+#This shows us how to factors jointly impact survival
+cox_multi<- coxph(Surv(days_surv, status) ~ SEX + AGE, data = post_surv_edited) #cox-regression on age and sex
+summary(cox_multi)
+
+cox_multi2<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE, data= post_surv_edited)
+summary(cox_multi2)
+
+#Adding in social prox and groom centrality 
+cox_multi4<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + proxcent_number2 + groomcent_number2, data= post_surv_edited)
+summary(cox_multi4)
+
+cox_multi5<- coxph(Surv(days_surv, status) ~ proxcent_number + groomcent_number, data= post_surv_edited)
+summary(cox_multi5)
+
+# Plot the baseline survival function
+ggsurvplot(survfit(cox_multi2), data =post_surv_edited, palette = "#2E9FDF",
+           ggtheme = theme_minimal())
+
+cox_multi6<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + proxcent_number2 + groomcent_number, data= post_surv_edited)
+summary(cox_multi6)
+
+```
+
+RESULTS: In the Cox multiple regression analysis with covariates sex, age, and rank, sex was not statistically significant (p= 0.1841). There is a slighly significant effect of the juvenile age category on survival (p=0.032) and rank on survival (p=0.01). Regression coef indicates that the risk of death is lower in juveniles as well as those ranked higher in the social hierarchy. However, the likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are not statistically significant.
+
+*Proportional Hazards Assumption Test and other statistical tests*
+```{r}
+#Testing for proportional hazards (PH) assumption:
+test.ph <- cox.zph(cox_multi2)
+test.ph #yay we can assume proportional hazards since these covariates don't show statistical significance, Sex is technically 0.05 with this test but comes us as 0.15 when I just run it with Sex and Age
+
+ggcoxzph(test.ph)
+
+#Testing influential observations 
+
+#Specifying the argument type = “dfbeta”, plots the estimated changes in the regression coefficients upon deleting each observation in turn
+InfluenceObs<- ggcoxdiagnostics(cox_multi2, type = "dfbeta",
+                 linear.predictions = FALSE, ggtheme = theme_bw()) #I don't fully understand this but it does seem that some of the observations are influential (mostly for rank)
+ggsave("InfluenceObs.pdf", width = 8, height= 5, last_plot())
+
+#The deviance residual is a normalized transform of the martingale residual. These residuals should be roughtly symmetrically distributed about zero with a standard deviation of 1. Positive values correspond to individuals that “died too soon” compared to expected survival times. Negative values correspond to individual that “lived too long”. Very large or small values are outliers, which are poorly predicted by the model.
+ggcoxdiagnostics(cox_multi2, type = "deviance",
+                 linear.predictions = FALSE, ggtheme = theme_bw()) #this looks fairly symmetrical around 0 but not perfect, is this ok?
+
+ggcoxfunctional(Surv(days_surv, status) ~ rank + log(rank) + sqrt(rank), data = post_focals_surv)
+```
+
+METHODS: Proportional hazards (PH) assumption was tested for the model as a whole as well as each covariate based on scaled Schoenfeld residuals to test for independence between residuals and time. Influential observations were also observed graphically using df beta. One influential case was discovered showing a large influence on the rank variable and removed from the analysis?? Don't know if I have to do this.
+
+RESULTS: The PH assumption test is not statistically significance for each of the covariates, as well as the global test. A graphed diagnostic, which shows graphs of the scaled Schoenfeld residuals against the transformed time, shows no trend in the covariates across time. Therefore, we can assume proportional hazards.
+
+## Survival Analysis Reduced - Adding in Behavioral Data
+*Predator Behaviors*
+```{r}
+surv_pred<- post_surv_edited %>%
+  filter(!FOCAL.ID %in% c("RE","SK")) %>% #these two have very little behavior data post-release so removing them
+  droplevels() %>%
+  mutate(pred = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(7.41), #Taking the mean predator counts from Pops_budget4 df and inputting them here manually
+                     FOCAL.ID == "BL" ~ as.numeric(6.78),
+                     FOCAL.ID == "AM" ~ as.numeric(6.99),
+                     FOCAL.ID == "AL" ~ as.numeric(5.77),
+                     FOCAL.ID == "BO" ~ as.numeric(6.82),
+                     FOCAL.ID == "BM" ~ as.numeric(6.91),
+                     FOCAL.ID == "AU" ~ as.numeric(5.77),
+                     FOCAL.ID == "ED" ~ as.numeric(6.10),
+                     FOCAL.ID == "JA" ~ as.numeric(7.32),
+                     FOCAL.ID == "TI" ~ as.numeric(5.79),
+                     FOCAL.ID == "KO" ~ as.numeric(5.27),
+                     FOCAL.ID == "MG" ~ as.numeric(4.07),
+                     FOCAL.ID == "MA" ~ as.numeric(5.36),
+                     FOCAL.ID == "TO" ~ as.numeric(6.13),
+                     FOCAL.ID == "NE" ~ as.numeric(7.82))
+         )
+
+cox_pred<- coxph(Surv(days_surv, status) ~ pred, data = surv_pred)
+cox_pred
+
+cox_multi3<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + pred + proxcent_number2 + groomcent_number2, data= surv_pred)
+summary(cox_multi3)
+
+cox_multi3<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + pred, data= surv_pred)
+summary(cox_multi3)
+```
+
+RESULTS: In the Cox multiple regression analysis with covariates sex, age, rank, and predator vigilance, neither sex nor predator-vigilance was statistically significant (p= 0.1841, p=0.75). There is a very slight effect of the juvenile age category on survival (p=0.05), though not stastically significant. The effect of rank on survival, however, was significant (p=0.02). Regression coef indicates that the risk of death is lower in juveniles as well as those ranked higher in the social hierarchy. However, the likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are not statistically significant.

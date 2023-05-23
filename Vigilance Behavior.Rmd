@@ -1,0 +1,643 @@
+---
+title: "Vigilance"
+output: html_document
+---
+# Pre-Release
+
+```{r}
+#I only have to do this for some of the individuals since this step was done for a handful in the Shannon Diversity Rmd
+Bart<- pre_focals %>% filter(FOCAL.ID == "BA")
+Kovu<- pre_focals %>% filter(FOCAL.ID == "KO")
+May<- pre_focals %>% filter(FOCAL.ID == "MA")
+Amy<- pre_focals %>% filter(FOCAL.ID == "AM")
+Nev<- pre_focals %>% filter(FOCAL.ID == "NE")
+Aug<- pre_focals %>% filter(FOCAL.ID == "AU")
+Toni<- pre_focals %>% filter(FOCAL.ID == "TO")
+Bgm<- pre_focals %>% filter(FOCAL.ID == "BM")
+Boo<- pre_focals %>% filter(FOCAL.ID == "BO")
+Eddy<- pre_focals %>% filter(FOCAL.ID == "ED")
+Tink<- pre_focals %>% filter(FOCAL.ID == "TI")
+Mango<- pre_focals %>% filter(FOCAL.ID == "MG")
+Bat<- pre_focals %>% filter(FOCAL.ID == "BT")
+```
+
+## Pre-Release Vigilance Counts from each Individual
+```{r}
+Pops_vig<- Pops %>% 
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
+  summarize(count=n()) #counting all the vigilance entries
+Pops_vig$avg<- mean(Pops_vig$count)
+Pops_vig$ID<- "Pops"
+Pops_vig<- Pops_vig[1,6:7]
+
+Zip_vig<- Zip %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Zip_vig$avg<- mean(Zip_vig$count)
+Zip_vig$ID<- "Zip"
+Zip_vig<- Zip_vig[1,6:7]
+
+Jack_vig<- Jack %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Jack_vig$avg<- mean(Jack_vig$count)
+Jack_vig$ID<- "Jack"
+Jack_vig<- Jack_vig[1,6:7]
+
+Blue_vig<- Blue %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Blue_vig$avg<- mean(Blue_vig$count)
+Blue_vig$ID<- "Blue"
+Blue_vig<- Blue_vig[1,6:7]
+
+Alex_vig<- Alex %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Alex_vig$avg<- mean(Alex_vig$count)
+Alex_vig$ID<- "Alex"
+Alex_vig<- Alex_vig[1,6:7]
+
+Bart_vig<- Bart %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bart_vig$avg<- mean(Bart_vig$count)
+Bart_vig$ID<- "Bart"
+Bart_vig<- Bart_vig[1,6:7]
+
+Nev_vig<- Nev %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Nev_vig$avg<- mean(Nev_vig$count)
+Nev_vig$ID<- "Neville"
+Nev_vig<- Nev_vig[1,6:7]
+
+Aug_vig<- Aug %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Aug_vig$avg<- mean(Aug_vig$count)
+Aug_vig$ID<- "Augustine"
+Aug_vig<- Aug_vig[1,6:7]
+
+Amy_vig<- Amy %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Amy_vig$avg<- mean(Amy_vig$count)
+Amy_vig$ID<- "Amy"
+Amy_vig<- Amy_vig[1,6:7]
+
+May_vig<- May %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+May_vig$avg<- mean(May_vig$count)
+May_vig$ID<- "May"
+May_vig<- May_vig[1,6:7]
+
+Toni_vig<- Toni %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Toni_vig$avg<- mean(Toni_vig$count)
+Toni_vig$ID<- "Toni"
+Toni_vig<- Toni_vig[1,6:7]
+
+Boo_vig<- Boo %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Boo_vig$avg<- mean(Boo_vig$count)
+Boo_vig$ID<- "Boo"
+Boo_vig<- Boo_vig[1,6:7]
+
+Bgm_vig<- Bgm %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bgm_vig$avg<- mean(Bgm_vig$count)
+Bgm_vig$ID<- "Big Mama"
+Bgm_vig<- Bgm_vig[1,6:7]
+
+Kovu_vig<- Kovu %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Kovu_vig$avg<- mean(Kovu_vig$count)
+Kovu_vig$ID<- "Kovu"
+Kovu_vig<- Kovu_vig[1,6:7]
+
+Ed_vig<- Eddy %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Ed_vig$avg<- mean(Ed_vig$count)
+Ed_vig$ID<- "Eddy"
+Ed_vig<- Ed_vig[1,6:7]
+
+Tink_vig<- Tink %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Tink_vig$avg<- mean(Tink_vig$count)
+Tink_vig$ID<- "Tinker"
+Tink_vig<- Tink_vig[1,6:7]
+
+Bat_vig<- Bat %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bat_vig$avg<- mean(Bat_vig$count)
+Bat_vig$ID<- "Batman"
+Bat_vig<- Bat_vig[1,6:7]
+
+Mango_vig<- Mango %>%
+  gather("Obs", "behavior", 22:23, na.rm = T) %>%
+  group_by(MONTH,day,hour,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n()) 
+Mango_vig$avg<- mean(Mango_vig$count)
+Mango_vig$ID<- "Mango"
+Mango_vig<- Mango_vig[1,6:7]
+```
+
+*Combining all of the vigilance data into one*
+```{r}
+pre_vig_full<- rbind(Pops_vig,Blue_vig,Zip_vig,Amy_vig,Alex_vig,Aug_vig,May_vig,Toni_vig,Tink_vig,Bgm_vig,Boo_vig,Ed_vig,Mango_vig,Bart_vig,Kovu_vig,Jack_vig,Nev_vig,Bat_vig) %>%
+  mutate(release = "pre")
+```
+
+# Post-Release
+
+### Filtering out each individual from the post-focals dataset
+```{r}
+Pops_post<- post_focals %>% filter(FOCAL.ID == "PO")
+Jack_post<- post_focals %>% filter(FOCAL.ID == "JA")
+Blue_post<- post_focals %>% filter(FOCAL.ID == "BL")
+Amy_post<- post_focals %>% filter(FOCAL.ID == "AM")
+Alex_post<- post_focals %>% filter(FOCAL.ID == "AL")
+Bgm_post<- post_focals %>% filter(FOCAL.ID == "BM")
+Nev_post<- post_focals %>% filter(FOCAL.ID == "NE")
+Mango_post<- post_focals %>% filter(FOCAL.ID == "MG")
+Eddy_post<- post_focals %>% filter(FOCAL.ID == "ED")
+May_post<- post_focals %>% filter(FOCAL.ID == "MA")
+Kovu_post<- post_focals %>% filter(FOCAL.ID == "KO")
+Tink_post<- post_focals %>% filter(FOCAL.ID == "TI")
+Toni_post<- post_focals %>% filter(FOCAL.ID == "TO")
+Boo_post<- post_focals %>% filter(FOCAL.ID == "BO")
+Aug_post<- post_focals %>% filter(FOCAL.ID == "AU")
+Cic_post<- post_focals %>% filter(FOCAL.ID == "CI")
+Homer_post<- post_focals %>% filter(FOCAL.ID == "HO")
+Zip_post<- post_focals %>% filter(FOCAL.ID == "ZI")
+```
+
+```{r}
+Pops_vig2<- Pops_post %>% 
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% #filtering out only the vigilance behavior from this new "behavior" column created by gather()
+  summarize(count=n()) #counting all the vigilance entries
+Pops_vig2$avg<- mean(Pops_vig2$count)
+Pops_vig2$ID<- "Pops"
+Pops_vig2<- Pops_vig2[1,6:7]
+
+Zip_vig2<- Zip_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Zip_vig2$avg<- mean(Zip_vig2$count)
+Zip_vig2$ID<- "Zip"
+Zip_vig2<- Zip_vig2[1,6:7]
+
+Jack_vig2<- Jack_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Jack_vig2$avg<- mean(Jack_vig2$count)
+Jack_vig2$ID<- "Jack"
+Jack_vig2<- Jack_vig2[1,6:7]
+
+Blue_vig2<- Blue_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Blue_vig2$avg<- mean(Blue_vig2$count)
+Blue_vig2$ID<- "Blue"
+Blue_vig2<- Blue_vig2[1,6:7]
+
+Alex_vig2<- Alex_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Alex_vig2$avg<- mean(Alex_vig2$count)
+Alex_vig2$ID<- "Alex"
+Alex_vig2<- Alex_vig2[1,6:7]
+
+Nev_vig2<- Nev_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Nev_vig2$avg<- mean(Nev_vig2$count)
+Nev_vig2$ID<- "Neville"
+Nev_vig2<- Nev_vig2[1,6:7]
+
+Aug_vig2<- Aug_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Aug_vig2$avg<- mean(Aug_vig2$count)
+Aug_vig2$ID<- "Augustine"
+Aug_vig2<- Aug_vig2[1,6:7]
+
+Amy_vig2<- Amy_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Amy_vig2$avg<- mean(Amy_vig2$count)
+Amy_vig2$ID<- "Amy"
+Amy_vig2<- Amy_vig2[1,6:7]
+
+May_vig2<- May_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+May_vig2$avg<- mean(May_vig2$count)
+May_vig2$ID<- "May"
+May_vig2<- May_vig2[1,6:7]
+
+Toni_vig2<- Toni_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Toni_vig2$avg<- mean(Toni_vig2$count)
+Toni_vig2$ID<- "Toni"
+Toni_vig2<- Toni_vig2[1,6:7]
+
+Boo_vig2<- Boo_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Boo_vig2$avg<- mean(Boo_vig2$count)
+Boo_vig2$ID<- "Boo"
+Boo_vig2<- Boo_vig2[1,6:7]
+
+Bgm_vig2<- Bgm_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Bgm_vig2$avg<- mean(Bgm_vig2$count)
+Bgm_vig2$ID<- "Big Mama"
+Bgm_vig2<- Bgm_vig2[1,6:7]
+
+Kovu_vig2<- Kovu_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Kovu_vig2$avg<- mean(Kovu_vig2$count)
+Kovu_vig2$ID<- "Kovu"
+Kovu_vig2<- Kovu_vig2[1,6:7]
+
+Ed_vig2<- Eddy_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Ed_vig2$avg<- mean(Ed_vig2$count)
+Ed_vig2$ID<- "Eddy"
+Ed_vig2<- Ed_vig2[1,6:7]
+
+Tink_vig2<- Tink_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n())
+Tink_vig2$avg<- mean(Tink_vig2$count)
+Tink_vig2$ID<- "Tinker"
+Tink_vig2<- Tink_vig2[1,6:7]
+
+Mango_vig2<- Mango_post %>%
+  gather("Obs", "behavior", 19:20, na.rm = T) %>%
+  group_by(MONTH,DAY,TIME..HOUR.,behavior) %>% 
+  filter(behavior == "V") %>% 
+  summarize(count=n()) 
+Mango_vig2$avg<- mean(Mango_vig2$count)
+Mango_vig2$ID<- "Mango"
+Mango_vig2<- Mango_vig2[1,6:7]
+```
+
+## Combined Analyses
+
+*Combining all of the vigilance data into one*
+```{r}
+post_vig_full<- rbind(Pops_vig2,Blue_vig2,Amy_vig2,Alex_vig2,Aug_vig2,May_vig2,Toni_vig2,Tink_vig2,Bgm_vig2,Boo_vig2,Ed_vig2,Mango_vig2,Kovu_vig2,Jack_vig2,Nev_vig2) %>%
+  mutate(release = "post")
+```
+
+*FULL vigilance table*
+```{r}
+vig_combined<- bind_rows(pre_vig_full,post_vig_full) %>%
+  mutate(prop = avg/60)
+vig_combined$release= factor(vig_combined$release, levels = c("pre", "post"), ordered = TRUE) #reordering the levels so that the bars appear on the barchart in pre-post order
+vig_combined<- vig_combined %>% 
+  mutate(ID = fct_relevel(ID, 
+            "Pops","Blue", "Amy", "Alex", "Toni", "Augustine", "Boo", "Jack", "Mango", "Eddy", "May", "Big Mama", "Neville","Kovu", "Tinker","Bart","Zip","Batman"))
+
+full_vigplot<- ggplot(data=vig_combined, aes(x=ID, y=prop, fill=release)) +
+  geom_bar(position="dodge", width = 0.8, stat="identity") +
+  scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
+  scale_y_continuous(labels=scales::percent) +
+  theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turning labels on an angle
+  labs(x="Individual",y="Mean Percentage Per Hour",fill= "Release Stage") +
+  stat_summary(geom = 'text', label = c("","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","*","*","*"), fun = max, vjust = 0, color = "black", size= 7) +
+  theme(legend.box.background = element_rect(colour = "black")) +
+  theme(legend.position="top") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  scale_fill_manual(values = c("pink4","pink2"))
+full_vigplot
+
+ggsave("Full Vig Plot.pdf", width= 7, height= 6, last_plot())
+```
+
+*Running Wilcoxon Test*
+```{r}
+vig_combined2<- vig_combined %>%
+  filter(!ID %in% c("Zip","Bart","Batman")) #removing Zip,Bart,Batman because they have no post-release data
+
+#Testing for normality first
+ggdensity(vig_combined2$avg)
+ggqqplot(vig_combined2$avg)
+shapiro.test(vig_combined2$avg) #this shows that it's normal!
+
+#T-test
+t.test(avg ~ release, data = vig_combined2, paired = TRUE,
+       alternative = "greater")
+```
+RESULTS: The troop's mean hourly vigilance count pre-release is significantly greater than the troop's mean hourly vigilance count post-release (t= 11.696, df= 14, p=<0.001).
+
+*Boxplot: Vig across release stages*
+```{r}
+vig_boxplot<- ggplot(vig_combined2, aes(x= release, y = avg, fill = release)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("paleturquoise4","paleturquoise4")) +
+  xlab("Release Stage") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("pre", "post"),labels = c("Pre","Post")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+
+ggsave("Vig Boxplot.pdf", width = 5, height = 4, last_plot())
+```
+
+### Adding in Sex, Age, and Rank into Shannon Diversity Tables
+```{r}
+# Pre-Release
+pre_vig_full<- pre_vig_full %>%
+  filter(ID != "Batman") %>%
+  mutate(sex = 
+          case_when(ID %in% c("Pops","Jack","Neville","Mango","Zip","Bart")~ as.character("M"), 
+                    ID %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(ID %in% c("Pops","Jack","Bart", "Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker","Zip")~ as.character("A"),
+                     ID == "Mango" ~ as.character("SA"),
+                     ID %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.character(c("1","2","7","3","4","8","14","6","18","15","9","13","12","11","17","10","16")),
+         rank = fct_relevel(rank, "1", "2", "3", "4", "6", "7", "8", "9", "10","11","12","13","14","15","16","17","18"))
+
+# Post-Release
+post_vig_full<- post_vig_full %>%
+  mutate(sex = 
+          case_when(ID %in% c("Pops","Jack","Neville","Mango")~ as.character("M"), 
+                    ID %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(ID %in% c("Pops","Jack","Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker")~ as.character("A"),
+                     ID == "Mango" ~ as.character("SA"),
+                     ID %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.character(c("1","2","3","4","6","12","5","17","14","7","11","9","16","8","15")),
+         rank = fct_relevel(rank, "1", "2", "3", "4", "5", "6", "7", "8", "9","11","12","14","15","17"))
+```
+
+*Plots for SD and Age, Sex, Rank*
+```{r}
+#Pre-release
+pre_vig_sex_boxplot<- ggplot(pre_vig_full, aes(x= sex, y = avg, fill = sex)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("royalblue4","royalblue4")) +
+  xlab("Sex") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("M", "F"),labels = c("Male","Female")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Pre Vig Sex Boxplot.pdf", width = 5, height = 4, last_plot())
+
+pre_vig_age_boxplot<- ggplot(pre_vig_full, aes(x= age, y = avg, fill = age)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("mediumturquoise","mediumturquoise","mediumturquoise")) +
+  xlab("Age") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("A", "SA","J"),labels = c("Adult","Subadult","Juvenile")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Pre Vig Age Boxplot.pdf", width = 6, height = 4, last_plot())
+
+library(ggrepel)
+pre_vig_rank_plot<- ggplot(data = pre_vig_full, aes(x=rank, y=avg, shape=sex, color=age)) +
+  geom_smooth(method = "lm", formula = y ~ x) + #doesn't work here for some reason
+  geom_point(size = 2.5) +
+  scale_color_brewer(palette = "Dark2") +
+  geom_text_repel(label=pre_vig_full$ID) +
+  ylab("Mean Hourly Count") +
+  xlab("Social Rank") +
+  labs(color = "Age",shape = "Sex") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+pre_vig_rank_plot
+ggsave("Pre Vig Rank Scatterplot.pdf", width = 6.5, height = 4, last_plot())
+
+#Post-release
+post_vig_sex_boxplot<- ggplot(post_vig_full, aes(x= sex, y = avg, fill = sex)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("royalblue4","royalblue4")) +
+  xlab("Sex") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("M", "F"),labels = c("Male","Female")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Post Vig Sex Boxplot.pdf", width = 5, height = 4, last_plot())
+
+post_vig_age_boxplot<- ggplot(post_vig_full, aes(x= age, y = avg, fill = age)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("mediumturquoise","mediumturquoise","mediumturquoise")) +
+  xlab("Age") +
+  ylab("Mean Hourly Count") +
+  scale_x_discrete(limits=c("A", "SA","J"),labels = c("Adult","Subadult","Juvenile")) +
+  theme_grey(base_size = 13) +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
+panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+  theme(legend.position = "none")
+ggsave("Post Vig Age Boxplot.pdf", width = 6, height = 4, last_plot())
+
+library(ggrepel)
+post_vig_rank_plot<- ggplot(data = post_vig_full, aes(x=rank, y=avg, shape=sex, color=age)) +
+  geom_smooth(method = "lm", formula = y ~ x) + #this doesn't work here for some reason
+  geom_point(size = 2.5) +
+  scale_color_brewer(palette = "Dark2") +
+  geom_text_repel(label=post_vig_full$ID) +
+  ylab("Mean Hourly Count") +
+  xlab("Social Rank") +
+  labs(color = "Age",shape = "Sex") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+post_vig_rank_plot
+ggsave("Post Vig Rank Scatterplot.pdf", width = 6.5, height = 4, last_plot())
+```
+
+*Shapiro test for each release stage specifically and male/female*
+```{r}
+shapiro.test(pre_vig_full$avg)
+shapiro.test(post_vig_full$avg) #Both normal
+
+with(pre_vig_full, shapiro.test(avg[sex == "M"])) #p=0.7068
+with(pre_vig_full, shapiro.test(avg[sex == "F"])) #p=0.79
+#both males and females are normally distributed
+
+res.ftest <- var.test(avg ~ sex, data = pre_vig_full)
+res.ftest #no significant difference in variance
+
+with(post_vig_full, shapiro.test(avg[sex == "M"])) #p=0.09
+with(post_vig_full, shapiro.test(avg[sex == "F"])) #p=0.17
+#both males and females are normally distributed
+
+res.ftest2 <- var.test(avg ~ sex, data = post_vig_full)
+res.ftest2 #no significant difference in variance
+```
+
+```{r}
+t.test(avg ~ sex, data= pre_vig_full, alternative = "two.sided", var.equal = T, paired = F)
+t.test(avg ~ sex, data= post_vig_full, alternative = "two.sided", var.equal = T, paired = F)
+
+t.test(avg ~ sex, data= pre_vig_full, alternative = "less", var.equal = T, paired = F)
+t.test(avg ~ sex, data= post_vig_full, alternative = "less", var.equal = T, paired = F)
+```
+RESULTS: There is no significant difference in mean hourly vigilance counts between males and females pre-release (t= -1.982, df= 6.371, p= 0.092) or post-release (t= -1.532, df= 3.833, p=0.203).
+
+## ANVOA tests
+```{r}
+#pre_aov_sex<- aov(avg ~ sex, data= pre_vig_full) #using t-test instead
+#summary(pre_aov_sex)
+#post_aov_sex<- aov(avg ~ sex, data= post_vig_full)
+#summary(post_aov_sex)
+
+library(agricolae)
+pre_aov_age<- aov(avg ~ age, data= pre_vig_full)
+summary(pre_aov_age)
+Tuk<- TukeyHSD(pre_aov_age)
+Tuk<- HSD.test(pre_aov_age, trt = 'age')
+Tuk
+pre_aov_rank<- aov(avg ~ rank, data= pre_vig_full2)
+summary(pre_aov_rank)
+kruskal.test(avg ~ rank, data= pre_vig_full)
+
+post_aov_age<- aov(avg ~ age, data= post_vig_full)
+summary(post_aov_age)
+post_aov_rank<- aov(avg ~ rank, data= post_vig_full)
+summary(post_aov_rank)
+kruskal.test(avg ~ rank, data= post_vig_full)
+```
+RESULTS: There is a significant difference in mean hourly vigilance counts across age groups pre-release [F(2,14)= 5.096, p= 0.0217]. Post-hoc comparisons using a Tukey HSD test indicated that the mean vigilance count for juveniles (M= 7.923, SD= 0.486) was statistically different than for adults (M= 9.65, SD= 1.06). During the post-release stage, this difference in mean hourly vigilance counts across age groups is no longer significant [F(2,12)= 1.11, p= 0.361]. 
+
+*Linear regressions*
+```{r}
+#I have to adjust the rank column here for the lm to work
+#Pre-release
+pre_vig_full2<- pre_vig_full %>%
+  filter(ID != "Batman") %>%
+  mutate(sex = 
+          case_when(ID %in% c("Pops","Jack","Neville","Mango","Zip","Bart")~ as.character("M"), 
+                    ID %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(ID %in% c("Pops","Jack","Bart", "Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker","Zip")~ as.character("A"),
+                     ID == "Mango" ~ as.character("SA"),
+                     ID %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.numeric(c(1,2,7,3,4,8,14,6,18,15,9,13,12,11,17,10,16)))
+
+#Post-release
+post_vig_full2<- post_vig_full %>%
+  mutate(sex = 
+          case_when(ID %in% c("Pops","Jack","Neville","Mango")~ as.character("M"), 
+                    ID %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+         age = 
+           case_when(ID %in% c("Pops","Jack","Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker")~ as.character("A"),
+                     ID == "Mango" ~ as.character("SA"),
+                     ID %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+         rank = as.numeric(c(1,2,3,4,6,12,5,17,14,7,11,9,16,8,15)))
+
+#Linear regression2
+pre_vigrank_lm<- lm(avg ~ rank, data = pre_vig_full2)
+summary(pre_vigrank_lm)
+
+post_vigrank_lm<- lm(avg ~ rank, data = post_vig_full2)
+summary(post_vigrank_lm)
+```
+RESULTS: Linear regression shows a significant association between social rank and mean hourly vigilance counts during pre-release stage (F= 5, r2= 0.2, p=0.041) but not during post-release (F= 0.967, r2= -0.002, p= 0.343).
+
+```{r}
+pre_vig_rank_plot<- ggplot(data = pre_vig_full, aes(x=rank, y=avg)) +
+  geom_point(size = 2.5) +
+  stat_smooth(method=lm , color="red", fill="#69b3a2", se=TRUE) +
+  #scale_color_brewer(palette = "Dark2") +
+  geom_text_repel(label=pre_vig_full$ID) +
+  ylab("Mean Hourly Count") +
+  xlab("Social Rank") +
+  #labs(color = "Age",shape = "Sex") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+panel.background = element_blank(), axis.line = element_line(colour = "black"))
+pre_vig_rank_plot
+ggsave("Pre Vig Rank Scatterplot.pdf", width = 6.5, height = 4, last_plot())
+```
+

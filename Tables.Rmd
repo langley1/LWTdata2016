@@ -186,7 +186,7 @@ gt_AB_table<- gt(activitybudet_table)
 gt_AB_table<- gt_AB_table %>%
   tab_row_group( #this creates row groups: splitting up Behavior Categories by row 
     group = "Feeding",
-    rows = 1:2
+    rows = 1:2,
   ) %>%
   tab_row_group(
     group = "Locomotion",
@@ -341,7 +341,6 @@ rank_table_gt<- gt(rank_table) %>%
     label = "POST-RELEASE",
     columns = 3)
   
-  
 rank_table_gt<- rank_table_gt %>%
   fmt_missing(
     columns = 3,
@@ -411,7 +410,7 @@ AB_results_gt %>%
   gtsave("AB WRT Table.pdf")
 ```
 
-#Mann-Whiteny U Test
+#Mann-Whitney U Test
 ```{r}
 MWU_table<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/MWU%20Table.csv")
 MWU_table<- read.csv(MWU_table, header = T, stringsAsFactors = F)
@@ -548,7 +547,7 @@ SR_groom_gt<- gt(SR_groom) %>%
       ),
     locations = cells_body(
       columns = 5,
-      rows = 4)) %>%
+      rows = c(2,4))) %>%
   tab_style(
     style = list(
       cell_fill(color = "grey90")
@@ -579,5 +578,123 @@ SR_groom_gt<- SR_groom_gt %>%
 SR_groom_gt %>%
   gtsave("SP rank groom table.pdf")
   
+```
+
+```{r}
+centscores<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/CentralityScores.csv")
+centscores<- read.csv(centscores, header = T, na.strings=c(""," "), stringsAsFactors = F)
+centscores <- sapply(centscores, as.character) #so that my NAs are characters
+centscores[is.na(centscores)] <- " " #changing my NAs to blanks
+centscores<- as.data.frame(unclass(centscores))
+
+#First using formattable to remove NAs
+centscores_format<- formattable(centscores)
+```
+
+```{r}
+centscores_gt<- gt(centscores_format) %>%
+  cols_label(Centrality = md("**Centrality**"), Centrality.1 = md("**Centrality**")) %>%
+  cols_align( #fixing the alignment of my columns 
+    align = "left",
+    columns = 1) %>%
+  cols_align(
+    align = "center",
+    columns = 2:3) %>%
+  tab_spanner(
+    label = "PRE-RELEASE",
+    columns = 2) %>%
+  tab_spanner(
+    label = "POST-RELEASE",
+    columns = 3) %>%
+  cols_width(
+    columns = 2:3 ~ px(130)
+  ) %>%
+  data_color(
+    columns = 1,
+    colors = "skyblue4"
+  ) %>%
+    tab_footnote(
+    footnote = "No pre-release data",
+    locations = cells_body(
+      columns = 1,
+      rows = 14:15)
+    ) %>%
+  tab_footnote(
+    footnote = "No post-release data",
+    locations = cells_body(
+      columns = 1,
+      rows = 17:18)
+    )
+  
+centscores_gt<- centscores_gt %>%
+  fmt_missing(
+    columns = 2,
+    rows = 14:15,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 3,
+    rows = 17:18,
+    missing_text = "---")
+centscores_gt %>%
+  gtsave("Centrality Table.pdf")
+```
+
+```{r}
+groom_centscores<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Groom_CentralityScores.csv")
+groom_centscores<- read.csv(groom_centscores, header = T, na.strings=c(""," "), stringsAsFactors = F)
+groom_centscores <- sapply(groom_centscores, as.character) #so that my NAs are characters
+groom_centscores[is.na(groom_centscores)] <- " " #changing my NAs to blanks
+groom_centscores<- as.data.frame(unclass(groom_centscores))
+
+#First using formattable to remove NAs
+groom_centscores_format<- formattable(groom_centscores)
+```
+
+```{r}
+groom_centscores_gt<- gt(groom_centscores_format) %>%
+  cols_label(Centrality = md("**Centrality**"), Centrality.1 = md("**Centrality**")) %>%
+  cols_align( #fixing the alignment of my columns 
+    align = "left",
+    columns = 1) %>%
+  cols_align(
+    align = "center",
+    columns = 2:3) %>%
+  tab_spanner(
+    label = "PRE-RELEASE",
+    columns = 2) %>%
+  tab_spanner(
+    label = "POST-RELEASE",
+    columns = 3) %>%
+  cols_width(
+    columns = 2:3 ~ px(130)
+  ) %>%
+  data_color(
+    columns = 1,
+    colors = "skyblue4"
+  ) %>%
+    tab_footnote(
+    footnote = "No pre-release data",
+    locations = cells_body(
+      columns = 1,
+      rows = c(7,15))
+    ) %>%
+  tab_footnote(
+    footnote = "No post-release data",
+    locations = cells_body(
+      columns = 1,
+      rows = 17:18)
+    )
+  
+groom_centscores_gt<- groom_centscores_gt %>%
+  fmt_missing(
+    columns = 2,
+    rows = 14:15,
+    missing_text = "---") %>%
+  fmt_missing(
+    columns = 3,
+    rows = 17:18,
+    missing_text = "---")
+groom_centscores_gt %>%
+  gtsave("Groom Centrality Table.pdf")
 ```
 
