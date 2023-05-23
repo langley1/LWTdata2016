@@ -1,7 +1,7 @@
 ﻿,,,Pre-release,Post-release
-Females,A & J,r,-0.836,-0.525
-,,p,<0.005,0.079
-Females,A only,r,-0.929,-0.762
-,,p,<0.005,<0.05
-Males,"A, SA, & J",r,-0.071,
+Females,A & J,rho,-0.836,-0.768
+,,p,<0.005,<0.005
+Females,A only,rho,-0.881,-0.814
+,,p,<0.05,<0.05
+Males,"A, SA, & J",rho,-0.071,
 ,,p,0.906,
