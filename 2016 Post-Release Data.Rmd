@@ -1303,3 +1303,18 @@ full_budgetplot<- ggplot(data=combined_budget_table, aes(x=behavior.category, y=
 full_budgetplot
 ```
 
+#Counting the number of days of data collection post-release
+```{r}
+days<- post_focals %>%
+  distinct(DAY, MONTH, YEAR, .keep_all = T)
+days #92
+
+#Pre-release
+days2<- pre_focals %>%
+  distinct(day, MONTH, YEAR, .keep_all = T)
+days2 #200
+
+post_focals %>%
+  distinct(MONTH, .keep_all = T)
+```
+
