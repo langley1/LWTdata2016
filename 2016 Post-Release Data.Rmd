@@ -3,6 +3,13 @@ title: "2016 Post-Release Data"
 output: html_document
 ---
 
+```{r}
+library(purrr)#needed for creating social proximity matrix
+library(dplyr)
+library(tidyr)
+library(igraph)
+```
+
 # Full Post-Release Dataset
 
 ## Importing the dataset
@@ -1318,3 +1325,354 @@ post_focals %>%
   distinct(MONTH, .keep_all = T)
 ```
 
+#Social Proximity Code: Dyadic matrices of close proximity
+
+```{r}
+post_socnet<- curl("https://raw.githubusercontent.com/nickmikulski/Spring2021/main/Post-release_Social%20Proximity_CSV.csv")
+post_socnet<- read.csv(post_socnet, header = T, na.strings=c(""," ","NA"))
+#head(post_socnet)
+#str(post_socnet)
+
+post_socnet_close<- post_socnet %>% #creating a new dataframe called post_socnet_close using data from the original post_socnet dataframe
+  filter(Focal.ID != c("BT"), #this code REMOVES all data that has Batman as the focal ID (BT is wild male from prerelease)
+         Association != c("BT"), #this code REMOVES all data that has Batman in association column
+         Proximity.Code %in% c("1","2") #this code only keeps proximity codes 1,2 (excluding 3,4) because we are focusing on closer proximity
+  ) 
+#head(post_socnet_close)
+```
+
+```{r}
+#library(purrr)
+# 1. Create a character vector of all the focal IDs in dataset:
+post_sn_IDs<-sort(as.character(unique(post_socnet_close$Focal.ID)))
+#post_sn_IDs
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+post_sn_monkeylist<-lapply(post_sn_IDs, function(x){post_socnet_close[post_socnet_close[["Focal.ID"]] == x, ]})
+# The line above is a little bit confusing. It is creating a separate dataframe for each individual based on their focal id
+#head(post_sn_monkeylist)
+
+# 3. Group each by focal/associate, and count how many times they are observed close together:
+post_sn_grouped<-
+  post_sn_monkeylist %>%
+  purrr::map(~group_by(.,Association)) %>%
+  purrr::map(~summarize(.,count=n())) 
+post_sn_grouped
+
+names(post_sn_grouped) <- post_sn_IDs #this gives each grouped list the name of the Focal ID
+#post_sn_grouped
+
+# 4. Set up pairwise combinations of interacting monkeys:
+post_sn_monkeycombos<-list(focal=post_sn_IDs, associate=post_sn_IDs) #create list of all possible focals/associates
+post_sn_filtf<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+post_sn_combo<- post_sn_monkeycombos %>% cross_df(.,.filter=post_sn_filtf) #get the filtered combined list as a dataframe
+#post_sn_combo
+```
+
+```{r}
+# 5. Create new dataframes with specific criteria
+post_sn_combo2<-
+  post_sn_combo %>%
+  mutate(absent1 = map2_chr( #new column called "absent1"
+    focal,
+    associate,
+    ~if_else(.x %in% names(post_sn_grouped),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.y %in% post_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2) #this removes those two new columns you made so you're just left with the ID names
+#Honestly I was quite confused on parts of this, but Laura/Dr. Schmitt gave me this helpful code
+
+post_sn_combo3<- post_sn_combo2 %>% 
+  mutate(proximity = map2_int( #new column called "proximity" that is the count for when proximity code = 1 or 2
+    focal, 
+    associate, 
+    ~post_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+post_sn_combo3
+
+# 6. Create your matrix
+post_sn_matrix<-spread(post_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
+#post_sn_matrix
+```
+
+```{r}
+post_sn_codes <- sort(post_sn_IDs)
+
+post_sn_df <- as.data.frame(post_sn_matrix, stringsAsFactors = TRUE) #creating the matrix data frame
+#post_sn_df
+```
+
+## Adding the total number of focal follows in which proximity info was collected
+```{r}
+post_socnet_TOTALS<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/refs/heads/main/Post-release%20Social%20Proxmity%20TOTALS.csv")
+post_socnet_TOTALS<- read.csv(post_socnet_TOTALS, header = T, na.strings=c(""," ","NA")) #loading in data
+head(post_socnet_TOTALS)
+```
+
+### Doing it for each individual separately 
+```{r}
+post_socnet_TOTALS_AM<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "AM") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) #adding in new column with the number of distinct focal references for that individual
+
+post_socnet_TOTALS_ZI<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "ZI") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_PO<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "PO") %>%
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_AL<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "AL") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_BL<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "BL") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_TO<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "TO") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_AU<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "AU") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_BO<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "BO") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_JA<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "JA") %>%
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_MG<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "MG") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_RE<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "RE") %>%
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_ED<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "ED") %>%
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_MA<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "MA") %>% 
+  filter(Association != c("OS","I")) %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_SK<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "SK") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_BM<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "BM") %>% 
+  filter(Association != c("OS","I")) %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_NE<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "NE") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_KO<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "KO") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_TI<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "TI") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_CI<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "CI") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_HO<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "HO") %>% 
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+post_socnet_TOTALS_PA<- post_socnet_TOTALS %>%
+  filter(Focal.ID == "PA") %>%
+  filter(Association != "OS") %>%
+  mutate(total = n_distinct(FOCAL.REFERENCE)) 
+```
+
+### Making a matrix with Focial ID, Proximity Association & Total follows
+```{r}
+post_socnet_TOTALs_combined<- bind_rows(post_socnet_TOTALS_AL, post_socnet_TOTALS_AM, post_socnet_TOTALS_AU, post_socnet_TOTALS_BL, post_socnet_TOTALS_BM, post_socnet_TOTALS_BO, post_socnet_TOTALS_CI, post_socnet_TOTALS_ED, post_socnet_TOTALS_HO, post_socnet_TOTALS_JA, post_socnet_TOTALS_KO, post_socnet_TOTALS_MA, post_socnet_TOTALS_MG, post_socnet_TOTALS_NE, post_socnet_TOTALS_PA, post_socnet_TOTALS_PO, post_socnet_TOTALS_RE, post_socnet_TOTALS_SK, post_socnet_TOTALS_TI, post_socnet_TOTALS_TO, post_socnet_TOTALS_ZI) #combining the indiviudal dfs
+
+post_socnet_TOTALs_clean <- post_socnet_TOTALs_combined %>%
+  distinct(Focal.ID, Association, total) #have the clean out the Focal ID /Association duplicates from the table because the total focal number will be the same throughout so we don't need the duplicates
+
+post_socnet_TOTALs_matrix <- post_socnet_TOTALs_clean %>% #making it into a pairwise table
+  pivot_wider(
+    names_from = Association,
+    values_from = total,
+    values_fill = 0    # fill missing with 0 instead of NA
+  )
+
+post_socnet_TOTALs_matrix <- post_socnet_TOTALs_matrix %>% 
+  column_to_rownames('Focal.ID') #changing Focal ID column into row names
+
+post_socnet_TOTALs_matrix <- post_socnet_TOTALs_matrix %>%
+  select(AL,AM,AU,BL,BM,BO,CI,ED,HO,JA,KO,MA,MG,NE,PA,PO,RE,SK,TI,TO,ZI) # Specify the new order of column name
+
+post_socnet_TOTALs_matrix<- as.matrix(post_socnet_TOTALs_matrix) #turning it into a matrix, has to come after all the other adjustments to the df
+```
+
+## Trying to account for SURVIVAL OVERLAP across indiviudals in order to make accurate social proximity scores
+```{r}
+#Now I have to do the matrix math but I need to tell it that if there's an NA in the post_sn_matrix, then it should give an NA in the final matrix 
+
+#creating a daily_effort df: columns with focal ID, date, and n_follows for each focal reference number
+post_socnet_TOTALs_combined_withdate<- post_socnet_TOTALs_combined %>%
+  mutate(date = as.Date(paste(Year, Month, Day, sep = "-"))) %>% #
+  group_by(Focal.ID, date) %>%
+  summarise(
+    n_follows = n_distinct(FOCAL.REFERENCE),
+    .groups = "drop"
+  )
+
+#checking to see the total number of focal follows per individual 
+post_socnet_TOTALs_combined_withdate %>%
+  group_by(Focal.ID) %>%
+  summarise(total_follows = sum(n_follows))
+
+# df_alive: ID, start_date, end_date
+post_socnet_TOTALs_alive<- post_socnet_TOTALs_combined_withdate %>%
+  group_by(Focal.ID) %>%
+  summarise(
+    start_date = as.Date("2016-3-18"),
+    end_date   = max(date),
+    .groups = "drop"
+  )
+
+post_socnet_TOTALs_alive <- post_socnet_TOTALs_alive %>% #manually editing the end date for the indiviudals based on whether they survived or died (got this date from supp material table)
+  mutate(
+    end_date = case_when(
+      Focal.ID %in% c("PO","BL","AM","ED","KO","MA","MY","CI","HO") ~ as.Date("2016-12-15"),  
+      Focal.ID == "AL" ~ as.Date("2016-11-18"),
+      Focal.ID == "TO" ~ as.Date("2016-08-23"),
+      Focal.ID == "ZI" ~ as.Date("2016-03-22"),
+      Focal.ID == "AU" ~ as.Date("2016-12-08"),
+      Focal.ID == "BO" ~ as.Date("2016-10-08"),
+      Focal.ID == "JA" ~ as.Date("2016-06-11"),
+      Focal.ID == "MG" ~ as.Date("2016-08-23"),
+      Focal.ID == "RE" ~ as.Date("2016-10-14"),
+      Focal.ID == "SK" ~ as.Date("2016-11-23"),
+      Focal.ID == "BM" ~ as.Date("2016-09-30"),
+      Focal.ID == "NE" ~ as.Date("2016-08-13"),
+      Focal.ID == "TI" ~ as.Date("2016-08-30"),
+      Focal.ID == "PA" ~ as.Date("2016-10-25"),
+    )
+  )
+
+#1. create pairwise table (focal, associate)
+ids <- post_socnet_TOTALs_alive$Focal.ID
+pairs <- expand.grid(focal = ids, associate = ids, stringsAsFactors = FALSE) %>% as_tibble()
+
+#2. join associate alive-range to daily effort rows and filter dates when associate is alive
+# First ensure daily effort df has Focal.ID and date
+denom_by_pair <- post_socnet_TOTALs_combined_withdate %>%
+  rename(focal = Focal.ID) %>%
+  # join pairs to allow filtering by each associate's alive range:
+  left_join(pairs, by = "focal") %>%          # now each row repeats for each associate
+  left_join(post_socnet_TOTALs_alive %>% rename(associate = Focal.ID,
+                               assoc_start = start_date,
+                               assoc_end = end_date),
+            by = "associate") %>%
+  filter(date >= assoc_start & date <= assoc_end) %>%
+  group_by(focal, associate) %>%
+  summarise(total_focal_follows_when_assoc_alive = sum(n_follows, na.rm = TRUE), .groups = "drop")
+
+#3. turn into matrix aligned to our proximity matrix (post_sn_matrix)
+denom_mat2 <- denom_by_pair %>%
+  pivot_wider(names_from = associate, values_from = total_focal_follows_when_assoc_alive, values_fill = 0) %>%
+  column_to_rownames("focal") %>%
+  as.matrix()
+
+#Now dividing the proximity matrix by our "days alive overlap" matrix
+proximity_rate_matrix <- post_sn_matrix / denom_mat2
+proximity_rate_matrix[denom_mat2 == 0] <- NA
+```
+
+The rate (or probability) that associate individual was seen in close proximity during a focal follow of X individual, conditional on both being alive at the same time (the wild immigrant males are still part of both of these matrices but I don't think we'll get eigenvector scores for them).
+
+# Calculating Post-Release Eigenvector Centrality Scores (using proximity rate data)
+## Directed Data
+```{r}
+proximity_rate_clean <- proximity_rate_matrix
+proximity_rate_clean[is.na(proximity_rate_clean)] <- 0 #turning NAs into 0s
+
+# Build a graph from the adjacency matrix
+proximity_rate_graph <- graph_from_adjacency_matrix(
+  proximity_rate_clean,
+  mode = "directed",   # or "undirected", depending on your network
+  weighted = TRUE,
+  diag = FALSE
+)
+
+#calculating post-release eigenvector centrality with DIRECTED relationships (focal -> associate)
+post_eigen_centrality <- eigen_centrality(proximity_rate_graph, directed = TRUE, weights = E(proximity_rate_graph)$weight)
+
+#extracting the scores
+post_eigen_centrality_scores <- post_eigen_centrality$vector
+post_eigen_centrality_scores
+
+#putting eigenvector scores back into a df
+post_eigen_centrality_df <- data.frame(
+  Focal.ID = names(post_eigen_centrality_scores),
+  eigenvector_centrality = post_eigen_centrality_scores
+)
+post_eigen_centrality_df
+```
+
+## Eigenvector centrality using undirected data
+```{r}
+proximity_rate_undirect <- (proximity_rate_clean + t(proximity_rate_clean)) / 2 
+#t() takes the transpose of the matrix so the roles of focal and associate are swapped
+#we add the original matrix and the transposed matrix together 
+#divide by 2 to get the average of the two directional values to reflect the mutual association strength between individuals, rather than two directional rates
+
+proximity_rate_graph_undirect <- graph_from_adjacency_matrix(
+  proximity_rate_undirect, mode = "undirected", weighted = TRUE, diag = FALSE)
+
+#calculating post-release eigenvector centrality with UNDIRECTED relationships (doesn't matter who is focal and who is associate)
+post_eigen_centrality_undirect <- eigen_centrality(proximity_rate_graph_undirect, directed = FALSE, weights = E(proximity_rate_graph_undirect)$weight)
+
+#extracting the scores
+post_eigen_centrality_scores_undirect <- post_eigen_centrality_undirect$vector
+post_eigen_centrality_scores_undirect
+
+#putting eigenvector scores back into a df
+post_eigen_centrality_df_undirect <- data.frame(
+  Focal.ID = names(post_eigen_centrality_scores_undirect),
+  eigenvector_centrality = post_eigen_centrality_scores_undirect
+)
+post_eigen_centrality_df_undirect
+```
+
+The edge in this undirected case means "relationship" rather than "interaction direction" because we want a pairwise association strength, not a directional interaction. 

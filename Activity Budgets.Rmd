@@ -795,24 +795,24 @@ May_budget4$total<- NULL
 May_budget4$Occurrences<- NULL
 
 #Zip
-#Zip_budget3<- post_focals_budget %>%
-  #filter(FOCAL.ID == "ZI") %>%
-  #group_by(MONTH,day,hour,behavior.category) %>%
-  #summarize(count=n())
+Zip_budget3<- post_focals_budget %>%
+  filter(FOCAL.ID == "ZI") %>%
+  group_by(MONTH,day,hour,behavior.category) %>%
+  summarize(count=n())
 
-#Zip_budget4<- Zip_budget3 %>%
-  #group_by(behavior.category) %>%
-  #summarize(total= sum(count)) %>%
-  #mutate(Occurrences = 
-           #case_when(behavior.category == "Feeding" ~ as.numeric(16),
-                     #behavior.category == "Locomote" ~ as.numeric(20),
-                     #behavior.category == "Other" ~ as.numeric(17),
-                     #behavior.category == "Predator" ~ as.numeric(22),
-                     #behavior.category == "Social" ~ as.numeric(2),
-                     #behavior.category == "Stress" ~ as.numeric(3))) %>%
-  #mutate(Mean = (total/Occurrences))
-#Zip_budget4$total<- NULL
-#Zip_budget4$Occurrences<- NULL
+Zip_budget4<- Zip_budget3 %>%
+  group_by(behavior.category) %>%
+  summarize(total= sum(count)) %>%
+  mutate(Occurrences = 
+          case_when(behavior.category == "Feeding" ~ as.numeric(16),
+                     behavior.category == "Locomote" ~ as.numeric(20),
+                     behavior.category == "Other" ~ as.numeric(17),
+                     behavior.category == "Predator" ~ as.numeric(22),
+                     behavior.category == "Social" ~ as.numeric(2),
+                     behavior.category == "Stress" ~ as.numeric(3))) %>%
+  mutate(Mean = (total/Occurrences))
+Zip_budget4$total<- NULL
+Zip_budget4$Occurrences<- NULL
 
 #Cicero
 Cic_budget3<- post_focals_budget %>%

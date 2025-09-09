@@ -75,7 +75,26 @@ post_surv_edited[17,14] = as.numeric(228) #manually changing Skittles days_surv 
 
 *Adding in Centrality Scores*
 ```{r}
-post_surv_edited<- post_surv_edited %>%
+post_surv_edited_with_centrality<- post_surv_edited %>%
+  mutate(Date = as.Date("2016-03-18")) %>%
+  mutate(Date.End =
+           case_when(FOCAL.ID == "PO" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "BL" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "AM" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "ED" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "MA" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "KO" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "AL" ~ as.Date("2016-11-18"),
+                     FOCAL.ID == "TO" ~ as.Date("2016-08-23"),
+                     FOCAL.ID == "AU" ~ as.Date("2016-12-08"),
+                     FOCAL.ID == "BO" ~ as.Date("2016-10-08"),
+                     FOCAL.ID == "JA" ~ as.Date("2016-06-11"),
+                     FOCAL.ID == "MG" ~ as.Date("2016-08-23"),
+                     FOCAL.ID == "RE" ~ as.Date("2016-10-04"),
+                     FOCAL.ID == "SK" ~ as.Date("2016-11-23"),
+                     FOCAL.ID == "BM" ~ as.Date("2016-09-30"),
+                     FOCAL.ID == "NE" ~ as.Date("2016-08-13"),
+                     FOCAL.ID == "TI" ~ as.Date("2016-08-30"))) %>%
   mutate(prox_cent = #Adding in a new column for post-release social proximity centrality - I broke these up into High, med, low
            case_when(FOCAL.ID == "PO" ~ as.character("M"),
               FOCAL.ID == "BL" ~ as.character("M"),
@@ -183,8 +202,33 @@ post_surv_edited<- post_surv_edited %>%
               FOCAL.ID == "BM" ~ as.numeric(0.209),
               FOCAL.ID == "NE" ~ as.numeric(0.003),
               FOCAL.ID == "KO" ~ as.numeric(0.608),
-              FOCAL.ID == "TI" ~ as.numeric(0.153)))
+              FOCAL.ID == "TI" ~ as.numeric(0.153)),
+        NEW_eigencent_scores_2025 = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(0.7986232), #manually adding in the new eigenvector centrality scores from post_eigen_centrality_df_undirect
+              FOCAL.ID == "BL" ~ as.numeric(0.8880804),
+              FOCAL.ID == "AM" ~ as.numeric(0.9748237),
+              FOCAL.ID == "AL" ~ as.numeric(0.8409673),
+              FOCAL.ID == "TO" ~ as.numeric(0.6292328),
+              FOCAL.ID == "AU" ~ as.numeric(1.0000000),
+              FOCAL.ID == "BO" ~ as.numeric(0.7488248),
+              FOCAL.ID == "JA" ~ as.numeric(0.3612819),
+              FOCAL.ID == "MG" ~ as.numeric(0.4971380),
+              FOCAL.ID == "RE" ~ as.numeric(0.5718587),
+              FOCAL.ID == "ED" ~ as.numeric(0.8666694),
+              FOCAL.ID == "MA" ~ as.numeric(0.7496980),
+              FOCAL.ID == "SK" ~ as.numeric(0.4391937),
+              FOCAL.ID == "BM" ~ as.numeric(0.7950169),
+              FOCAL.ID == "NE" ~ as.numeric(0.5963072),
+              FOCAL.ID == "KO" ~ as.numeric(0.9478891),
+              FOCAL.ID == "TI" ~ as.numeric(0.5414905)))
 
+#Adding Zip into the df manually
+post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
+  ungroup() %>%
+  add_row(RELEASE = "POST", Date = as.Date("2016-03-18"), FOCAL.ID = "ZI", SEX = "M", AGE = "A", Date.End = as.Date("2016-03-22"), status = as.numeric(1), NEW_eigencent_scores_2025 = as.numeric(0.2907479))
+
+post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
+  mutate(NEW_days_alive = as.numeric(Date.End - Date) + 1) #calculating a new # of days survived column
 ```
 
 *Survival Probability and curves with Kaplan-Meier*
@@ -358,6 +402,9 @@ survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited)
 #Differences in survival times across the social proximity numbers
 survdiff(Surv(days_surv, status) ~ proxcent_number, data = post_surv_edited)
 
+#Differences in survival times across the social proximity numbers2
+survdiff(Surv(days_surv, status) ~ proxcent_number2, data = post_surv_edited_with_centrality)
+
 #Differences in survival times across the grooming centrality numbers
 survdiff(Surv(days_surv, status) ~ groomcent_number, data = post_surv_edited)
 
@@ -499,3 +546,129 @@ summary(cox_multi3)
 ```
 
 RESULTS: In the Cox multiple regression analysis with covariates sex, age, rank, and predator vigilance, neither sex nor predator-vigilance was statistically significant (p= 0.1841, p=0.75). There is a very slight effect of the juvenile age category on survival (p=0.05), though not stastically significant. The effect of rank on survival, however, was significant (p=0.02). Regression coef indicates that the risk of death is lower in juveniles as well as those ranked higher in the social hierarchy. However, the likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are not statistically significant.
+
+## NEW 2025 analyses
+*Survival Probability and curves with Kaplan-Meier*
+```{r}
+Surv(post_surv_edited_with_centrality$NEW_days_alive, post_surv_edited_with_centrality$status)[1:18] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+
+#Survival curves
+survfit_all <- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
+names(survfit_all) #important names are "surv" and "time"
+summary(survfit_all)
+
+#To get median survival days
+survfit_all<- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #The median survival days is 251
+
+#Now let's check the probability of surviving until the end of the observations
+summary(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), times = 273) #shows us that the probability of survival at the end of data collection is 38%
+
+#Now let's check the probability of surviving halfway through
+summary(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), times = 136) #shows us that the probability of surviving halfway is 94%
+
+#Now let's plot survfit object: Horizontal lines represent survival duration for the interval, The height of vertical lines show the change in cumulative probability, Censored observations are indicated by tick marks
+plot(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), mark.time = TRUE, 
+     xlab = "Days", 
+     ylab = "Overall survival probability")
+
+ggsurvplot(
+    fit = survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), 
+    xlab = "Days", 
+    ylab = "Overall survival probability")
+
+ggsurvplot(survfit_all,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw(), # Change ggplot2 theme
+          palette = c("#E7B800", "#2E9FDF"))
+
+#Survfit across Sex
+survfit_sex<- survfit(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
+survfit_sex
+summary(survfit_sex) #median survival time for females is 256 and 251 for males
+summary(survfit_sex)$table
+
+sum<- surv_summary(survfit_sex)
+head(sum)
+
+#survfit_multi<- survfit(Surv(days_surv, status) ~ AGE + SEX + rank, data = post_surv_edited)
+
+#Survfit across Age
+survfit_age<- survfit(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
+survfit_age
+summary(survfit_age)$table #shows median survival for each age group
+
+####MAYBE DON"T NEED ANYTHING BELOW THIS
+ggsurvplot(cox_multi2,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw())
+
+#Survfit across Rank
+survfit_rank<- survfit(Surv(days_surv, status) ~ rank, data = post_surv_edited)
+survfit_rank
+summary(survfit_rank)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Rank - doesn't look nice
+ggsurvplot(survfit_rank,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+
+#Survfit across Social Proximity Centrality
+survfit_socprox<- survfit(Surv(days_surv, status) ~ prox_cent, data = post_surv_edited)
+survfit_socprox
+summary(survfit_socprox)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Social Proximity 
+ggsurvplot(survfit_socprox,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+
+#Survfit across Grooming Centrality
+survfit_groom<- survfit(Surv(days_surv, status) ~ groom_cent, data = post_surv_edited)
+survfit_groom
+summary(survfit_socprox)$table #can't get much out of this since each individual has a median survival of just how many days they survived
+
+#Plotting for Social Proximity 
+ggsurvplot(survfit_groom,
+          pval = TRUE, conf.int = TRUE,
+          risk.table = TRUE, # Add risk table
+          risk.table.col = "strata", # Change risk table color by groups
+          linetype = "strata", # Change line type by groups
+          surv.median.line = "hv", # Specify median survival
+          ggtheme = theme_bw()) # Change ggplot2 theme
+```
+
+*Log-Rank Test*
+```{r}
+#Differences in survival times between sexes
+survdiff(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
+
+#Just another way to get the same p-value
+sd <- survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
+1 - pchisq(sd$chisq, length(sd$n) - 1)
+
+#Differences in survival times between ages
+survdiff(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
+
+#Differences in survival times across the ranks
+survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited)
+
+#Differences in survival times across the social proximity numbers
+survdiff(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+
+```

@@ -1,5 +1,5 @@
 ---
-title: "2016 release"
+title: "2016 LWT Vervet Monkey Rehab & Release"
 output: html_document
 ---
 install.packages("curl")
@@ -19,7 +19,7 @@ dir()
 
 library(curl)
 library(dplyr)
-library(tidyverse)
+#library(tidyverse)
 library(gplots)
 library(corrplot)
 library(ggplot2)
@@ -74,7 +74,7 @@ pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
 unique(pre_cont$MONTH)
 ```
 
-# Importing the post-focals dataset (Not full?)
+# Importing the post-focals dataset (Not full) See Post-Release Rmd for Full
 ```{r}
 post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_FOCALS.csv")
 post_focals<- read.csv(post_focals, header= T, na.strings=c(""," ","NA"))
@@ -216,7 +216,7 @@ x
 dev.off()
 ```
 
-
+## Filtering out each individual 
 ```{r}
 Bart<- pre_focals %>% filter(FOCAL.ID == "BA")
 Kovu<- pre_focals %>% filter(FOCAL.ID == "KO")
@@ -871,33 +871,149 @@ budget_plot<-ggplot(data=pre_fullbudget, aes(x=behavior.category, y=TroopMean)) 
 budget_plot
 ```
 
-### Batman vs Rehabilitant Males: Activity Budget 
+### Batman vs Pops: Wilcox test for Activity Budgets 
 ```{r}
 #Batman
 Bat_budget<- pre_focals_budget %>%
   filter(FOCAL.ID == "BT") %>%
-  group_by(focal.reference,behavior.category) %>%
+  group_by(MONTH, day, hour, behavior.category) %>%
   summarize(count=n())
 Bat_budget
 
 Bat_budget<- Bat_budget %>%
-  group_by(behavior.category) %>%
-  summarize(total= sum(count)) %>%
-  mutate(Mean = (total/(n_distinct(Bat_budget$focal.reference))))
-Bat_budget$total<- NULL
-
-Pops_budget_pred<- Pops_budget %>%
-  filter(behavior.category == "Predator") %>%
-  mutate(ID = "Pops")
-Pops_budget_pred
-
-Bat_budget_pred<- Bat_budget %>%
-  filter(behavior.category == "Predator") %>%
   mutate(ID = "Batman")
 
-Males_budget<- bind_rows(Pops_budget_pred, Bat_budget_pred)
-Males_budget %>% filter(ID == "Pops")
+#Bat_budget<- Bat_budget %>%
+ # group_by(behavior.category) %>%
+  #summarize(total= sum(count)) %>%
+ # mutate(Mean = (total/(n_distinct(Bat_budget$focal.reference))))
+#Bat_budget$total<- NULL
+
+#Batman VS Pops PREDATOR category
+wilcox.test(Pops_budget$count[Pops_budget$behavior.category == "Predator"], Bat_budget$count[Bat_budget$behavior.category == "Predator"])
+
+#Batman VS Pops SOCIAL category
+wilcox.test(Pops_budget$count[Pops_budget$behavior.category == "Social"], Bat_budget$count[Bat_budget$behavior.category == "Social"])
+
+#Batman VS Pops FEEDING category
+wilcox.test(Pops_budget$count[Pops_budget$behavior.category == "Feeding"], Bat_budget$count[Bat_budget$behavior.category == "Feeding"])
+
+#Batman VS Pops LOCOMOTE category
+wilcox.test(Pops_budget$count[Pops_budget$behavior.category == "Locomote"], Bat_budget$count[Bat_budget$behavior.category == "Locomote"])
+
+#Batman VS Pops OTHER category
+wilcox.test(Pops_budget$count[Pops_budget$behavior.category == "Other"], Bat_budget$count[Bat_budget$behavior.category == "Other"])
+
+#Batman VS Pops STRESS category
+wilcox.test(Pops_budget$count[Pops_budget$behavior.category == "Stress"], Bat_budget$count[Bat_budget$behavior.category == "Stress"])
+
+pvals<- c(0.014, 0.195, 0.824, 0.047, 0.368, 0.067) #The p-values from the wilcox.test
+p.adjust(pvals, method = "bonferroni") #the p-vales after multiple comparisons correction Bonferroni 
+
+#Pops_budget_pred<- Pops_budget %>%
+  #filter(behavior.category == "Predator") %>%
+ # mutate(ID = "Pops")
+#Pops_budget_pred
+
+#Bat_budget_pred<- Bat_budget %>%
+ # filter(behavior.category == "Predator") %>%
+ # mutate(ID = "Batman")
+
+#Males_budget<- bind_rows(Pops_budget_pred, Bat_budget_pred)
+#Males_budget %>% filter(ID == "Pops")
 ```
+
+After a Bonferroni correction, Batman's mean hourly behavior count for each of the six behavioral categories was not signifcantly different from Pop's mean hourly behavioral count. 
+
+### Batman vs Zip: Wilcox test for Activity Budgets 
+```{r}
+Zip_budget<- Zip_budget %>%
+  mutate(ID = "Zip")
+
+#Batman VS Zip PREDATOR category
+wilcox.test(Zip_budget$count[Zip_budget$behavior.category == "Predator"], Bat_budget$count[Bat_budget$behavior.category == "Predator"])
+
+#Batman VS Zip SOCIAL category
+wilcox.test(Zip_budget$count[Zip_budget$behavior.category == "Social"], Bat_budget$count[Bat_budget$behavior.category == "Social"])
+
+#Batman VS Zip FEEDING category
+wilcox.test(Zip_budget$count[Zip_budget$behavior.category == "Feeding"], Bat_budget$count[Bat_budget$behavior.category == "Feeding"])
+
+#Batman VS Zip LOCOMOTE category
+wilcox.test(Zip_budget$count[Zip_budget$behavior.category == "Locomote"], Bat_budget$count[Bat_budget$behavior.category == "Locomote"])
+
+#Batman VS Zip OTHER category
+wilcox.test(Zip_budget$count[Zip_budget$behavior.category == "Other"], Bat_budget$count[Bat_budget$behavior.category == "Other"])
+
+#Batman VS Zip STRESS category
+wilcox.test(Zip_budget$count[Zip_budget$behavior.category == "Stress"], Bat_budget$count[Bat_budget$behavior.category == "Stress"])
+
+pvals<- c(0.312, 0.033, 0.001459, 0.896, 0.0128, 0.0141) #The p-values from the wilcox.test
+p.adjust(pvals, method = "bonferroni") #the p-vales after multiple comparisons correction Bonferroni 
+
+median(Bat_budget$count[Bat_budget$behavior.category == "Feeding"]) #median feeding count of 3 times per hour for Batman
+
+median(Zip_budget$count[Zip_budget$behavior.category == "Feeding"]) #median feeding count of 5 times per hour for Zip
+```
+
+After Bonferroni correction, the time spent feeding was significantly different between Zip and Batman (W = 3247, p <0.05) Batman fed less per hour than Zip, with median feeding counts of 3 and 5 per hour, respectively.
+
+### Batman vs Jack: Wilcox test for Activity Budgets 
+```{r}
+Jack_budget<- Jack_budget %>%
+  mutate(ID = "Jack")
+
+#Batman VS Jack PREDATOR category
+wilcox.test(Jack_budget$count[Jack_budget$behavior.category == "Predator"], Bat_budget$count[Bat_budget$behavior.category == "Predator"])
+
+#Batman VS Jack SOCIAL category
+wilcox.test(Jack_budget$count[Jack_budget$behavior.category == "Social"], Bat_budget$count[Bat_budget$behavior.category == "Social"])
+
+#Batman VS Jack FEEDING category
+wilcox.test(Jack_budget$count[Jack_budget$behavior.category == "Feeding"], Bat_budget$count[Bat_budget$behavior.category == "Feeding"])
+
+#Batman VS Jack LOCOMOTE category
+wilcox.test(Jack_budget$count[Jack_budget$behavior.category == "Locomote"], Bat_budget$count[Bat_budget$behavior.category == "Locomote"])
+
+#Batman VS Jack OTHER category
+wilcox.test(Jack_budget$count[Jack_budget$behavior.category == "Other"], Bat_budget$count[Bat_budget$behavior.category == "Other"])
+
+#Batman VS Jack STRESS category
+wilcox.test(Jack_budget$count[Jack_budget$behavior.category == "Stress"], Bat_budget$count[Bat_budget$behavior.category == "Stress"])
+
+pvals<- c(0.1785, 0.91, 0.03057, 0.3295, 0.06099, 0.02417) #The p-values from the wilcox.test
+p.adjust(pvals, method = "bonferroni") #the p-vales after multiple comparisons correction Bonferroni 
+```
+
+Pre-release behavioral activity budget was not significalty different between Batman and Jack, an adult male who died. 
+
+### Batman vs Bart: Wilcox test for Activity Budgets 
+```{r}
+Bart_budget<- Bart_budget %>%
+  mutate(ID = "Bart")
+
+#Batman VS Bart PREDATOR category
+wilcox.test(Bart_budget$count[Bart_budget$behavior.category == "Predator"], Bat_budget$count[Bat_budget$behavior.category == "Predator"])
+
+#Batman VS Bart SOCIAL category
+wilcox.test(Bart_budget$count[Bart_budget$behavior.category == "Social"], Bat_budget$count[Bat_budget$behavior.category == "Social"])
+
+#Batman VS Bart FEEDING category
+wilcox.test(Bart_budget$count[Bart_budget$behavior.category == "Feeding"], Bat_budget$count[Bat_budget$behavior.category == "Feeding"])
+
+#Batman VS Bart LOCOMOTE category
+wilcox.test(Bart_budget$count[Bart_budget$behavior.category == "Locomote"], Bat_budget$count[Bat_budget$behavior.category == "Locomote"])
+
+#Batman VS Bart OTHER category
+wilcox.test(Bart_budget$count[Bart_budget$behavior.category == "Other"], Bat_budget$count[Bat_budget$behavior.category == "Other"])
+
+#Batman VS Bart STRESS category
+wilcox.test(Bart_budget$count[Bart_budget$behavior.category == "Stress"], Bat_budget$count[Bat_budget$behavior.category == "Stress"])
+
+pvals<- c(0.6065, 0.5958, 0.03961, 0.6351, 0.1641, 0.097) #The p-values from the wilcox.test
+p.adjust(pvals, method = "bonferroni") #the p-vales after multiple comparisons correction Bonferroni 
+```
+Pre-release behavioral activity budget was not significalty different between Batman and Bart, an adult male who disappeared and was presumed to have emigrated.
 
 ### Trying to do Wilcoxon Test with Batman and Pops
 ```{r}
@@ -963,30 +1079,6 @@ monkey_pre_budget<- monkey.list_pre_budget %>%
 monkey_pre_budget
 ```
 
-```{r}
-bp<- ggplot(monkey.list_pre_budget, aes(x="", y=Mean, fill=behavior.category))+
-geom_bar(width = 1, stat = "identity")
-bp
-
-pie <- bp + coord_polar("y", start=0) + geom_text(aes(label = paste0(round(Mean*100), "%")), position = position_stack(vjust = 0.5))
-pie
-
-blank_theme <- theme_minimal()+
-  theme(
-  axis.title.x = element_blank(),
-  axis.title.y = element_blank(),
-  panel.border = element_blank(),
-  panel.grid=element_blank(),
-  axis.ticks = element_blank(),
-  plot.title=element_text(size=14, face="bold")
-  )
-
-library(scales)
-pie + scale_fill_brewer("Blues") + blank_theme +
-  theme(axis.text.x=element_blank())+
-  geom_text(aes(y = Mean/8 + c(0, cumsum(Mean)[-length(Mean)]), 
-                label = percent(Mean/100)), size=2)
 
 
-```
 
