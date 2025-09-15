@@ -420,8 +420,25 @@ A_matrix #focal wins any aggression interaction
 loseA_matrix #focal loses any aggression interaction
 TH_matrix #focal wins any threat interaction
 loseTH_matrix #focal loses any threat interaction
-All_matrix #combination of displacement, threats, and aggression where focal wins
+ALL_matrix #combination of displacement, threats, and aggression where focal wins
 ```
+
+*Calculating David's Scores*
+```{r}
+#First have to make all NAs into 0s for the davids scores
+ALL_matrix_DavidScore<- ALL_matrix
+ALL_matrix_DavidScore[is.na(ALL_matrix_DavidScore)] <- 0
+
+#install.packages("competeR")
+
+#Run David's scores
+#ds_results <- david.score(ALL_matrix_DavidScore)
+
+#print(ds_results)
+```
+
+
+
 
 ## Matrices into Tibbles with total counts column
 

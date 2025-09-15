@@ -51,7 +51,7 @@ post_cont_3<- post_cont %>%
 ## Post-Release Rank Determination
 
 ### For stage 1
-*Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)*
+*Combining displacement, aggression, and threat into one matrix (focal WINS all of these interactions)*
 ```{r}
 # 1. Create a character vector of all the monkey IDs in your dataset:
 post_monkeyIDs1<-as.character(unique(post_cont_1$FOCAL.ID))
@@ -413,8 +413,6 @@ RESULTS: All age groups of both sexes were most frequently positioned on the gro
 ```{r}
 xaxislabels<- c("Ground", "LC <5m", "LC 5-10m", "MC <5m", "MC 5-10m", "TC <5m", "TC 5-10m", "TC 10-20m", "Manmade", "Natural <5m") #creating new labels for the x axis so that I can add these into the density plots
 
-post_focals_colrenamed <- post_focals %>% rename_at('FOCAL.ID', ~ 'ID') #I was struggling with changing the legend title so I created a new df here "post_focals_colrenamed" and changed the FOCAL.ID column title to just "ID" so now that will be the legend title in our density plot
-
 #Density plot with adult females only
 fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A")) %>%
   mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%
@@ -425,13 +423,12 @@ fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A")) %>%
                alpha = 0.2) +
   xlab("Position in Canopy") +
   ylab("Density") +
+  labs(colour = "Focal Individual", fill = "Focal Individual") + #changing legend title name
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 fems_denPIC_plot
 ggsave("Fems PICDensity Plot.pdf", width= 7, height= 4, last_plot())
 
-post_focals %>% filter(POSITION.IN.CANOPY == "Mc1")
-
-#density plot with adult males only: CAN'T Figure out how to change legend name
+#density plot with adult males only:
 males_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "M",AGE == "A",FOCAL.ID != "PA") %>% #Taking out Patches because he only had 2 focals
   mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%                         
   drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
@@ -442,6 +439,7 @@ males_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "M",AGE == "A",FOCAL.I
                alpha = 0.2) +
   xlab("Position in Canopy") +
   ylab("Density") +
+  labs(colour = "Focal Individual", fill = "Focal Individual") + #changing legend title name
   theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 males_denPIC_plot
 ggsave("Males PICDensity Plot.pdf", width = 7, height = 4, last_plot())
@@ -456,7 +454,9 @@ age_denPIC_plot<- ggplot((post_focals %>% filter(AGE %in% c("SA","J"), FOCAL.ID 
                alpha = 0.2) +
   xlab("Position in Canopy") +
   ylab("Density") +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+  labs(colour = "Focal Individual", fill = "Focal Individual") + #changing legend title name
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+  scale_x_discrete(drop = FALSE) #keeping all positions even if there is no data for them (TC3) so they show up in the x-axis
 age_denPIC_plot
 ggsave("SA&J PICDensity Plot.pdf", width = 7, height = 4, last_plot())
 
@@ -985,53 +985,6 @@ histogram(monkey.list_pre_vigAfems$count)
 
 ```
 
-## Social Network Code:
-```{r}
-# 1. Create a character vector of all the focal IDs in your dataset:
-pre_sn_closeIDs<-as.character(unique(pre_socnet_close$Focal.ID))
-
-# 2. Get a list of dataframes, subsetted by monkey ID:
-pre_sn_monkeylist<-lapply(pre_sn_closeIDs, function(x){pre_socnet_close[pre_socnet_close[["Focal.ID"]] == x, ]})
-head(pre_sn_monkeylist) #this will load the first 6 lists, take a look at them and see that each is for an individual monkey
-
-# 3. Group each by focal/associate, and count how many times they are observed close together:
-pre_sn_grouped<-
-  pre_sn_monkeylist %>%
-  purrr::map(~group_by(.,Association)) %>%
-  purrr::map(~summarize(.,count=n())) 
-names(pre_sn_grouped) <- pre_sn_closeIDs #this will give each grouped list the name of the Focal ID
-
-# 4. Set up your pairwise combinations of interacting monkeys:
-pre_sn_monkeycombos<-list(focal=pre_sn_closeIDs, associate=pre_sn_closeIDs) #create list of all possible focals/associates
-pre_sn_filt<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
-pre_sn_combo<- pre_sn_monkeycombos %>% cross_df(.,.filter=pre_sn_filt) #get the filtered combined list as a dataframe
-head(pre_sn_combo)
-
-pre_sn_combo2<-
-  pre_sn_combo %>%
-  mutate(absent1 = map2_chr(
-    focal,
-    associate,
-    ~if_else(.x %in% names(pre_sn_grouped),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    focal,
-    associate,
-    ~if_else(.y %in% pre_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-pre_sn_combo3<- pre_sn_combo2 %>% 
-  mutate(proximity = map2_int(
-    focal, 
-    associate, 
-    ~pre_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
-pre_sn_combo3
-
-pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
-pre_sn_matrix
-```
-
 ## Activity Budgets
 ### Behavior Categories
 ```{r}
@@ -1325,8 +1278,69 @@ post_focals %>%
   distinct(MONTH, .keep_all = T)
 ```
 
-#Social Proximity Code: Dyadic matrices of close proximity
+# Social Network Code: 
+## Pre-release Social Proximity
+```{r}
+pre_socnet<- curl("https://raw.githubusercontent.com/nickmikulski/Spring2021/main/Pre-release_Social%20Proximity_csv.csv")
+pre_socnet<- read.csv(pre_socnet, header = T, na.strings=c(""," ","NA"))
+#head(pre_socnet)
+#str(pre_socnet)
 
+pre_socnet_close<- pre_socnet %>% #creating a new dataframe called pre_socnet_close using data from the original pre_socnet dataframe
+  filter(Focal.ID != "BT", #this code REMOVES all data that has Batman has the focal ID (BT is wild male from prerelease)
+         Association != "BT", #this code REMOVES all data that has Batman in association column
+         Proximity.Code %in% c("1","2") #this code only keeps proximity codes 1,2 (excluding 3,4) because we are focusing on closer proximity
+  ) 
+#head(pre_socnet_close)
+```
+
+```{r}
+# 1. Create a character vector of all the focal IDs in your dataset:
+pre_sn_closeIDs<-as.character(unique(pre_socnet_close$Focal.ID))
+
+# 2. Get a list of dataframes, subsetted by monkey ID:
+pre_sn_monkeylist<-lapply(pre_sn_closeIDs, function(x){pre_socnet_close[pre_socnet_close[["Focal.ID"]] == x, ]})
+head(pre_sn_monkeylist) #this will load the first 6 lists, take a look at them and see that each is for an individual monkey
+
+# 3. Group each by focal/associate, and count how many times they are observed close together:
+pre_sn_grouped<-
+  pre_sn_monkeylist %>%
+  purrr::map(~group_by(.,Association)) %>%
+  purrr::map(~summarize(.,count=n())) 
+names(pre_sn_grouped) <- pre_sn_closeIDs #this will give each grouped list the name of the Focal ID
+
+# 4. Set up your pairwise combinations of interacting monkeys:
+pre_sn_monkeycombos<-list(focal=pre_sn_closeIDs, associate=pre_sn_closeIDs) #create list of all possible focals/associates
+pre_sn_filt<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+pre_sn_combo<- pre_sn_monkeycombos %>% cross_df(.,.filter=pre_sn_filt) #get the filtered combined list as a dataframe
+head(pre_sn_combo)
+
+pre_sn_combo2<-
+  pre_sn_combo %>%
+  mutate(absent1 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.x %in% names(pre_sn_grouped),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    focal,
+    associate,
+    ~if_else(.y %in% pre_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+pre_sn_combo3<- pre_sn_combo2 %>% 
+  mutate(proximity = map2_int(
+    focal, 
+    associate, 
+    ~pre_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+pre_sn_combo3
+
+pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
+pre_sn_matrix
+```
+
+## Post-release social proximity
 ```{r}
 post_socnet<- curl("https://raw.githubusercontent.com/nickmikulski/Spring2021/main/Post-release_Social%20Proximity_CSV.csv")
 post_socnet<- read.csv(post_socnet, header = T, na.strings=c(""," ","NA"))
@@ -1349,7 +1363,7 @@ post_sn_IDs<-sort(as.character(unique(post_socnet_close$Focal.ID)))
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
 post_sn_monkeylist<-lapply(post_sn_IDs, function(x){post_socnet_close[post_socnet_close[["Focal.ID"]] == x, ]})
-# The line above is a little bit confusing. It is creating a separate dataframe for each individual based on their focal id
+# It is creating a separate dataframe for each individual based on their focal id
 #head(post_sn_monkeylist)
 
 # 3. Group each by focal/associate, and count how many times they are observed close together:
@@ -1384,7 +1398,6 @@ post_sn_combo2<-
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
   dplyr::select(-absent1,-absent2) #this removes those two new columns you made so you're just left with the ID names
-#Honestly I was quite confused on parts of this, but Laura/Dr. Schmitt gave me this helpful code
 
 post_sn_combo3<- post_sn_combo2 %>% 
   mutate(proximity = map2_int( #new column called "proximity" that is the count for when proximity code = 1 or 2
@@ -1402,7 +1415,6 @@ post_sn_matrix<-spread(post_sn_combo3,associate,proximity) %>% column_to_rowname
 post_sn_codes <- sort(post_sn_IDs)
 
 post_sn_df <- as.data.frame(post_sn_matrix, stringsAsFactors = TRUE) #creating the matrix data frame
-#post_sn_df
 ```
 
 ## Adding the total number of focal follows in which proximity info was collected
@@ -1416,7 +1428,7 @@ head(post_socnet_TOTALS)
 ```{r}
 post_socnet_TOTALS_AM<- post_socnet_TOTALS %>%
   filter(Focal.ID == "AM") %>% 
-  filter(Association != "OS") %>%
+  filter(Association != "OS") %>% #fitering out "out of sight"
   mutate(total = n_distinct(FOCAL.REFERENCE)) #adding in new column with the number of distinct focal references for that individual
 
 post_socnet_TOTALS_ZI<- post_socnet_TOTALS %>%
@@ -1476,7 +1488,7 @@ post_socnet_TOTALS_ED<- post_socnet_TOTALS %>%
 
 post_socnet_TOTALS_MA<- post_socnet_TOTALS %>%
   filter(Focal.ID == "MA") %>% 
-  filter(Association != c("OS","I")) %>%
+  filter(Association != c("OS","I")) %>% #filtering out "I" for infant
   mutate(total = n_distinct(FOCAL.REFERENCE)) 
 
 post_socnet_TOTALS_SK<- post_socnet_TOTALS %>%

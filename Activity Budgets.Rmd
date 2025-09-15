@@ -40,7 +40,7 @@ unique(pre_focals_budget$behavior.category)
 Pops_budget<- pre_focals_budget %>%
   filter(FOCAL.ID == "PO") %>% #filter out Pops
   group_by(MONTH,day,hour,behavior.category) %>% #group by these columns because I need unique counts PER HOUR
-  summarize(count=n()) %>% #counts up all of the times the behavior in that category was recorded (this is per focal minute)
+  summarize(count=n()) %>% #counts up all of the times the behavior in that category was recorded (this is per focal)
   mutate(ID = "PO")
 Pops_budget
 
@@ -48,7 +48,7 @@ Pops_budget2<- Pops_budget %>%
   group_by(behavior.category) %>% #group by each behavior category
   summarize(total= sum(count)) %>% #this creates a new column called "total" that is the sum of the count column 
   mutate(Occurrences = #new column called "occurrrences"
-           case_when(behavior.category == "Feeding" ~ as.numeric(67), #these numbers are the number of times each category was listed in the dataframe up above (Pops_budget). I have to find these because not ever behavior category has the same number of hours it was recorded in, I need to find the unique number for each category. I found these numbers using table(Pops_budget$behavior.category) in the console
+           case_when(behavior.category == "Feeding" ~ as.numeric(67), #these numbers are the number of times each category was listed in the dataframe up above (Pops_budget). I have to find these because not every behavior category has the same number of hours it was recorded in, I need to find the unique number for each category. I found these numbers using table(Pops_budget$behavior.category) in the console
                      behavior.category == "Locomote" ~ as.numeric(75),
                      behavior.category == "Other" ~ as.numeric(71),
                      behavior.category == "Predator" ~ as.numeric(154),

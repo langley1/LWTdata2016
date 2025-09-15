@@ -460,7 +460,7 @@ RESULTS: Neither variables sex (p= 0.694) nor age (SA: p= 0.694; J: p=0.546) hav
 
 *Cox Multiple regression*
 ```{r}
-#This shows us how to factors jointly impact survival
+#This shows us how multiple factors jointly impact survival
 cox_multi<- coxph(Surv(days_surv, status) ~ SEX + AGE, data = post_surv_edited) #cox-regression on age and sex
 summary(cox_multi)
 
@@ -665,10 +665,56 @@ sd <- survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
 #Differences in survival times between ages
 survdiff(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
 
-#Differences in survival times across the ranks
-survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited)
+#Differences in survival times across the ranks: STILL NEED NEW RANKS!!!
+survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited_with_centrality)
 
 #Differences in survival times across the social proximity numbers
 survdiff(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+```
 
+
+*Cox Multiple regression*
+```{r}
+##STILL NEED NEW RANK!!!
+NEW_cox_multi1<- coxph(Surv(NEW_days_surv, status) ~ rank + SEX + AGE, data= post_surv_edited_with_centrality)
+summary(cox_multi2)
+
+#Adding in social prox eigenvector scores: STILL NEED NEW RANK!!!
+NEW_cox_multi2<- coxph(Surv(NEW_days_alive, status) ~ rank + SEX + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
+summary(cox_multi4)
+
+#Need to create a predator vigilance df
+NEW_surv_pred<- post_surv_edited %>%
+  filter(!FOCAL.ID %in% c("RE","SK")) %>% #these two have very little behavior data post-release so removing them
+  droplevels() %>%
+  mutate(pred = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(7.41), #Taking the mean predator counts from Pops_budget4 df and inputting them here manually
+                     FOCAL.ID == "BL" ~ as.numeric(6.78),
+                     FOCAL.ID == "AM" ~ as.numeric(6.99),
+                     FOCAL.ID == "AL" ~ as.numeric(5.77),
+                     FOCAL.ID == "BO" ~ as.numeric(6.82),
+                     FOCAL.ID == "BM" ~ as.numeric(6.91),
+                     FOCAL.ID == "AU" ~ as.numeric(5.77),
+                     FOCAL.ID == "ED" ~ as.numeric(6.10),
+                     FOCAL.ID == "JA" ~ as.numeric(7.32),
+                     FOCAL.ID == "TI" ~ as.numeric(5.79),
+                     FOCAL.ID == "KO" ~ as.numeric(5.27),
+                     FOCAL.ID == "MG" ~ as.numeric(4.07),
+                     FOCAL.ID == "MA" ~ as.numeric(5.36),
+                     FOCAL.ID == "TO" ~ as.numeric(6.13),
+                     FOCAL.ID == "NE" ~ as.numeric(7.82),
+                     FOCAL.ID == "ZI" ~ as.numeric(0.682))
+         )
+
+#Adding in the pred column in NEW_surv_pred into post_surv_edited_with_centrality
+post_surv_edited_with_centrality_with_pred <- post_surv_edited_with_centrality %>%
+  left_join(NEW_surv_pred %>% select(FOCAL.ID, pred), by = "FOCAL.ID")
+
+#OK, this post_surv_edited_with_centrality_with_pred data DOES NOT HAVE ZIP IN IT. I think I need to go back to post_surv_edited and see if ZI was filtered out if I decide I want to have him in.
+NEW_cox_multi3<- coxph(Surv(NEW_days_alive, status) ~ rank + SEX + AGE + pred + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
+summary(cox_multi3)
+
+#cox_multi3<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + pred, data= surv_pred)
+#summary(cox_multi3)
+```
 ```
