@@ -9,7 +9,7 @@ Note: Red only has a few focals post-release (march/april) but in the demographi
 
 ## Survival Analysis FULL 
 ```{r}
-library(survival)
+#library(survival)
 library(survminer)
 
 #STEP 1:
@@ -95,24 +95,24 @@ post_surv_edited_with_centrality<- post_surv_edited %>%
                      FOCAL.ID == "BM" ~ as.Date("2016-09-30"),
                      FOCAL.ID == "NE" ~ as.Date("2016-08-13"),
                      FOCAL.ID == "TI" ~ as.Date("2016-08-30"))) %>%
-  mutate(prox_cent = #Adding in a new column for post-release social proximity centrality - I broke these up into High, med, low
-           case_when(FOCAL.ID == "PO" ~ as.character("M"),
-              FOCAL.ID == "BL" ~ as.character("M"),
-              FOCAL.ID == "AM" ~ as.character("H"),
-              FOCAL.ID == "AL" ~ as.character("H"),
-              FOCAL.ID == "TO" ~ as.character("M"),
-              FOCAL.ID == "AU" ~ as.character("H"),
-              FOCAL.ID == "BO" ~ as.character("M"),
-              FOCAL.ID == "JA" ~ as.character("L"),
-              FOCAL.ID == "MG" ~ as.character("M"),
-              FOCAL.ID == "RE" ~ as.character("L"),
-              FOCAL.ID == "ED" ~ as.character("H"),
-              FOCAL.ID == "MA" ~ as.character("M"),
-              FOCAL.ID == "SK" ~ as.character("L"),
-              FOCAL.ID == "BM" ~ as.character("M"),
-              FOCAL.ID == "NE" ~ as.character("M"),
-              FOCAL.ID == "KO" ~ as.character("H"),
-              FOCAL.ID == "TI" ~ as.character("M")),
+  mutate(David_scores_post = #Adding in a column for the post_release davids scores
+           case_when(FOCAL.ID == "PO" ~ as.numeric(9.854),
+              FOCAL.ID == "BL" ~ as.numeric(8.932),
+              FOCAL.ID == "AM" ~ as.numeric(8.696),
+              FOCAL.ID == "AL" ~ as.numeric(8.691),
+              FOCAL.ID == "TO" ~ as.numeric(8.211),
+              FOCAL.ID == "AU" ~ as.numeric(7.404),
+              FOCAL.ID == "BO" ~ as.numeric(7.270),
+              FOCAL.ID == "JA" ~ as.numeric(8.181),
+              FOCAL.ID == "MG" ~ as.numeric(7.696),
+              FOCAL.ID == "RE" ~ as.numeric(7.672),
+              FOCAL.ID == "ED" ~ as.numeric(7.518),
+              FOCAL.ID == "MA" ~ as.numeric(7.357),
+              #FOCAL.ID == "SK" ~ as.character("NA"),
+              FOCAL.ID == "BM" ~ as.numeric(8.132),
+              FOCAL.ID == "NE" ~ as.numeric(7.826),
+              FOCAL.ID == "KO" ~ as.numeric(6.434)),
+              #FOCAL.ID == "TI" ~ as.numeric()),
          groom_cent = #Adding in new column for post-release grooming centrality - also high, med, low
            case_when(FOCAL.ID == "PO" ~ as.character("M"),
               FOCAL.ID == "BL" ~ as.character("M"),
@@ -548,12 +548,170 @@ summary(cox_multi3)
 RESULTS: In the Cox multiple regression analysis with covariates sex, age, rank, and predator vigilance, neither sex nor predator-vigilance was statistically significant (p= 0.1841, p=0.75). There is a very slight effect of the juvenile age category on survival (p=0.05), though not stastically significant. The effect of rank on survival, however, was significant (p=0.02). Regression coef indicates that the risk of death is lower in juveniles as well as those ranked higher in the social hierarchy. However, the likelihood ratio test (p= 0.1), Wald test (p=0.2), and The Score (logrank) test (p= 0.07) are not statistically significant.
 
 ## NEW 2025 analyses
+*Adding in Centrality Scores*
+```{r}
+post_surv_edited_with_centrality<- post_surv_edited %>%
+  mutate(Date = as.Date("2016-03-18")) %>%
+  mutate(Date.End =
+           case_when(FOCAL.ID == "PO" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "BL" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "AM" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "ED" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "MA" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "KO" ~ as.Date("2016-12-15"),
+                     FOCAL.ID == "AL" ~ as.Date("2016-11-18"),
+                     FOCAL.ID == "TO" ~ as.Date("2016-08-23"),
+                     FOCAL.ID == "AU" ~ as.Date("2016-12-08"),
+                     FOCAL.ID == "BO" ~ as.Date("2016-10-08"),
+                     FOCAL.ID == "JA" ~ as.Date("2016-06-11"),
+                     FOCAL.ID == "MG" ~ as.Date("2016-08-23"),
+                     FOCAL.ID == "RE" ~ as.Date("2016-10-04"),
+                     FOCAL.ID == "SK" ~ as.Date("2016-11-23"),
+                     FOCAL.ID == "BM" ~ as.Date("2016-09-30"),
+                     FOCAL.ID == "NE" ~ as.Date("2016-08-13"),
+                     FOCAL.ID == "TI" ~ as.Date("2016-08-30"))) %>%
+  mutate(David_scores_post = #Adding in a column for the post_release davids scores
+           case_when(FOCAL.ID == "PO" ~ as.numeric(9.854),
+              FOCAL.ID == "BL" ~ as.numeric(8.932),
+              FOCAL.ID == "AM" ~ as.numeric(8.696),
+              FOCAL.ID == "AL" ~ as.numeric(8.691),
+              FOCAL.ID == "TO" ~ as.numeric(8.211),
+              FOCAL.ID == "AU" ~ as.numeric(7.404),
+              FOCAL.ID == "BO" ~ as.numeric(7.270),
+              FOCAL.ID == "JA" ~ as.numeric(8.181),
+              FOCAL.ID == "MG" ~ as.numeric(7.696),
+              FOCAL.ID == "RE" ~ as.numeric(7.672),
+              FOCAL.ID == "ED" ~ as.numeric(7.518),
+              FOCAL.ID == "MA" ~ as.numeric(7.357),
+              #FOCAL.ID == "SK" ~ as.character("NA"),
+              FOCAL.ID == "BM" ~ as.numeric(8.132),
+              FOCAL.ID == "NE" ~ as.numeric(7.826),
+              FOCAL.ID == "KO" ~ as.numeric(6.434)),
+              #FOCAL.ID == "TI" ~ as.numeric()),
+         groom_cent = #Adding in new column for post-release grooming centrality - also high, med, low
+           case_when(FOCAL.ID == "PO" ~ as.character("M"),
+              FOCAL.ID == "BL" ~ as.character("M"),
+              FOCAL.ID == "AM" ~ as.character("M"),
+              FOCAL.ID == "AL" ~ as.character("M"),
+              FOCAL.ID == "TO" ~ as.character("M"),
+              FOCAL.ID == "AU" ~ as.character("H"),
+              FOCAL.ID == "BO" ~ as.character("M"),
+              FOCAL.ID == "JA" ~ as.character("L"),
+              FOCAL.ID == "MG" ~ as.character("L"),
+              FOCAL.ID == "RE" ~ as.character("M"),
+              FOCAL.ID == "ED" ~ as.character("M"),
+              FOCAL.ID == "MA" ~ as.character("H"),
+              FOCAL.ID == "SK" ~ as.character("L"),
+              FOCAL.ID == "BM" ~ as.character("M"),
+              FOCAL.ID == "NE" ~ as.character("L"),
+              FOCAL.ID == "KO" ~ as.character("M"),
+              FOCAL.ID == "TI" ~ as.character("L")),
+         proxcent_number = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(39),
+              FOCAL.ID == "BL" ~ as.numeric(38),
+              FOCAL.ID == "AM" ~ as.numeric(40),
+              FOCAL.ID == "AL" ~ as.numeric(39),
+              FOCAL.ID == "TO" ~ as.numeric(37),
+              FOCAL.ID == "AU" ~ as.numeric(40),
+              FOCAL.ID == "BO" ~ as.numeric(36),
+              FOCAL.ID == "JA" ~ as.numeric(34),
+              FOCAL.ID == "MG" ~ as.numeric(38),
+              FOCAL.ID == "RE" ~ as.numeric(32),
+              FOCAL.ID == "ED" ~ as.numeric(39),
+              FOCAL.ID == "MA" ~ as.numeric(38),
+              FOCAL.ID == "SK" ~ as.numeric(27),
+              FOCAL.ID == "BM" ~ as.numeric(36),
+              FOCAL.ID == "NE" ~ as.numeric(37),
+              FOCAL.ID == "KO" ~ as.numeric(39),
+              FOCAL.ID == "TI" ~ as.numeric(36)),
+         groomcent_number =
+           case_when(FOCAL.ID == "PO" ~ as.numeric(7),
+              FOCAL.ID == "BL" ~ as.numeric(11),
+              FOCAL.ID == "AM" ~ as.numeric(10),
+              FOCAL.ID == "AL" ~ as.numeric(10),
+              FOCAL.ID == "TO" ~ as.numeric(8),
+              FOCAL.ID == "AU" ~ as.numeric(18),
+              FOCAL.ID == "BO" ~ as.numeric(12),
+              FOCAL.ID == "JA" ~ as.numeric(0),
+              FOCAL.ID == "MG" ~ as.numeric(2),
+              FOCAL.ID == "RE" ~ as.numeric(9),
+              FOCAL.ID == "ED" ~ as.numeric(8),
+              FOCAL.ID == "MA" ~ as.numeric(14),
+              FOCAL.ID == "SK" ~ as.numeric(0),
+              FOCAL.ID == "BM" ~ as.numeric(8),
+              FOCAL.ID == "NE" ~ as.numeric(1),
+              FOCAL.ID == "KO" ~ as.numeric(11),
+              FOCAL.ID == "TI" ~ as.numeric(5)),
+         proxcent_number2 = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(1.00),
+              FOCAL.ID == "BL" ~ as.numeric(0.924),
+              FOCAL.ID == "AM" ~ as.numeric(0.928),
+              FOCAL.ID == "AL" ~ as.numeric(0.874),
+              FOCAL.ID == "TO" ~ as.numeric(0.461),
+              FOCAL.ID == "AU" ~ as.numeric(0.904),
+              FOCAL.ID == "BO" ~ as.numeric(0.682),
+              FOCAL.ID == "JA" ~ as.numeric(0.199),
+              FOCAL.ID == "MG" ~ as.numeric(0.566),
+              FOCAL.ID == "RE" ~ as.numeric(0.400),
+              FOCAL.ID == "ED" ~ as.numeric(0.841),
+              FOCAL.ID == "MA" ~ as.numeric(0.727),
+              FOCAL.ID == "SK" ~ as.numeric(0.401),
+              FOCAL.ID == "BM" ~ as.numeric(0.715),
+              FOCAL.ID == "NE" ~ as.numeric(0.486),
+              FOCAL.ID == "KO" ~ as.numeric(0.895),
+              FOCAL.ID == "TI" ~ as.numeric(0.418)),
+         groomcent_number2 = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(0.217),
+              FOCAL.ID == "BL" ~ as.numeric(1.000),
+              FOCAL.ID == "AM" ~ as.numeric(0.948),
+              FOCAL.ID == "AL" ~ as.numeric(0.419),
+              FOCAL.ID == "TO" ~ as.numeric(0.259),
+              FOCAL.ID == "AU" ~ as.numeric(0.910),
+              FOCAL.ID == "BO" ~ as.numeric(0.449),
+              FOCAL.ID == "JA" ~ as.numeric(0),
+              FOCAL.ID == "MG" ~ as.numeric(0.071),
+              FOCAL.ID == "RE" ~ as.numeric(0.494),
+              FOCAL.ID == "ED" ~ as.numeric(0.983),
+              FOCAL.ID == "MA" ~ as.numeric(0.633),
+              FOCAL.ID == "SK" ~ as.numeric(0),
+              FOCAL.ID == "BM" ~ as.numeric(0.209),
+              FOCAL.ID == "NE" ~ as.numeric(0.003),
+              FOCAL.ID == "KO" ~ as.numeric(0.608),
+              FOCAL.ID == "TI" ~ as.numeric(0.153)),
+        NEW_eigencent_scores_2025 = 
+           case_when(FOCAL.ID == "PO" ~ as.numeric(0.7986232), #manually adding in the new eigenvector centrality scores from post_eigen_centrality_df_undirect
+              FOCAL.ID == "BL" ~ as.numeric(0.8880804),
+              FOCAL.ID == "AM" ~ as.numeric(0.9748237),
+              FOCAL.ID == "AL" ~ as.numeric(0.8409673),
+              FOCAL.ID == "TO" ~ as.numeric(0.6292328),
+              FOCAL.ID == "AU" ~ as.numeric(1.0000000),
+              FOCAL.ID == "BO" ~ as.numeric(0.7488248),
+              FOCAL.ID == "JA" ~ as.numeric(0.3612819),
+              FOCAL.ID == "MG" ~ as.numeric(0.4971380),
+              FOCAL.ID == "RE" ~ as.numeric(0.5718587),
+              FOCAL.ID == "ED" ~ as.numeric(0.8666694),
+              FOCAL.ID == "MA" ~ as.numeric(0.7496980),
+              FOCAL.ID == "SK" ~ as.numeric(0.4391937),
+              FOCAL.ID == "BM" ~ as.numeric(0.7950169),
+              FOCAL.ID == "NE" ~ as.numeric(0.5963072),
+              FOCAL.ID == "KO" ~ as.numeric(0.9478891),
+              FOCAL.ID == "TI" ~ as.numeric(0.5414905)))
+
+#Adding Zip into the df manually
+post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
+  ungroup() %>%
+  add_row(RELEASE = "POST", Date = as.Date("2016-03-18"), FOCAL.ID = "ZI", SEX = "M", AGE = "A", Date.End = as.Date("2016-03-22"), status = as.numeric(1), NEW_eigencent_scores_2025 = as.numeric(0.2907479))
+
+post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
+  mutate(NEW_days_alive = as.numeric(Date.End - Date) + 1) #calculating a new # of days survived column
+```
+
 *Survival Probability and curves with Kaplan-Meier*
 ```{r}
 Surv(post_surv_edited_with_centrality$NEW_days_alive, post_surv_edited_with_centrality$status)[1:18] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
 
 #Survival curves
-survfit_all <- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
+survfit_all_NEW <- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
 names(survfit_all) #important names are "surv" and "time"
 summary(survfit_all)
 
@@ -576,81 +734,21 @@ ggsurvplot(
     xlab = "Days", 
     ylab = "Overall survival probability")
 
-ggsurvplot(survfit_all,
+SURVIVAL_PLOT<- ggsurvplot(survfit_all,
           pval = TRUE, conf.int = TRUE,
           risk.table = TRUE, # Add risk table
           risk.table.col = "strata", # Change risk table color by groups
-          linetype = "strata", # Change line type by groups
+          #linetype = "strata", # Change line type by groups
           surv.median.line = "hv", # Specify median survival
-          ggtheme = theme_bw(), # Change ggplot2 theme
-          palette = c("#E7B800", "#2E9FDF"))
+          ggtheme = theme_bw()) # Change ggplot2 theme
+          #palette = c("#E7B800", "#2E9FDF"))
+ggsave("SURVIVAL_PLOT.pdf", height = 3, width = 7, last_plot())
 
 #Survfit across Sex
 survfit_sex<- survfit(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
 survfit_sex
 summary(survfit_sex) #median survival time for females is 256 and 251 for males
 summary(survfit_sex)$table
-
-sum<- surv_summary(survfit_sex)
-head(sum)
-
-#survfit_multi<- survfit(Surv(days_surv, status) ~ AGE + SEX + rank, data = post_surv_edited)
-
-#Survfit across Age
-survfit_age<- survfit(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
-survfit_age
-summary(survfit_age)$table #shows median survival for each age group
-
-####MAYBE DON"T NEED ANYTHING BELOW THIS
-ggsurvplot(cox_multi2,
-          pval = TRUE, conf.int = TRUE,
-          risk.table = TRUE, # Add risk table
-          risk.table.col = "strata", # Change risk table color by groups
-          linetype = "strata", # Change line type by groups
-          surv.median.line = "hv", # Specify median survival
-          ggtheme = theme_bw())
-
-#Survfit across Rank
-survfit_rank<- survfit(Surv(days_surv, status) ~ rank, data = post_surv_edited)
-survfit_rank
-summary(survfit_rank)$table #can't get much out of this since each individual has a median survival of just how many days they survived
-
-#Plotting for Rank - doesn't look nice
-ggsurvplot(survfit_rank,
-          pval = TRUE, conf.int = TRUE,
-          risk.table = TRUE, # Add risk table
-          risk.table.col = "strata", # Change risk table color by groups
-          linetype = "strata", # Change line type by groups
-          surv.median.line = "hv", # Specify median survival
-          ggtheme = theme_bw()) # Change ggplot2 theme
-
-#Survfit across Social Proximity Centrality
-survfit_socprox<- survfit(Surv(days_surv, status) ~ prox_cent, data = post_surv_edited)
-survfit_socprox
-summary(survfit_socprox)$table #can't get much out of this since each individual has a median survival of just how many days they survived
-
-#Plotting for Social Proximity 
-ggsurvplot(survfit_socprox,
-          pval = TRUE, conf.int = TRUE,
-          risk.table = TRUE, # Add risk table
-          risk.table.col = "strata", # Change risk table color by groups
-          linetype = "strata", # Change line type by groups
-          surv.median.line = "hv", # Specify median survival
-          ggtheme = theme_bw()) # Change ggplot2 theme
-
-#Survfit across Grooming Centrality
-survfit_groom<- survfit(Surv(days_surv, status) ~ groom_cent, data = post_surv_edited)
-survfit_groom
-summary(survfit_socprox)$table #can't get much out of this since each individual has a median survival of just how many days they survived
-
-#Plotting for Social Proximity 
-ggsurvplot(survfit_groom,
-          pval = TRUE, conf.int = TRUE,
-          risk.table = TRUE, # Add risk table
-          risk.table.col = "strata", # Change risk table color by groups
-          linetype = "strata", # Change line type by groups
-          surv.median.line = "hv", # Specify median survival
-          ggtheme = theme_bw()) # Change ggplot2 theme
 ```
 
 *Log-Rank Test*
@@ -666,7 +764,7 @@ sd <- survdiff(Surv(days_surv, status) ~ SEX, data = post_focals_surv)
 survdiff(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
 
 #Differences in survival times across the ranks: STILL NEED NEW RANKS!!!
-survdiff(Surv(days_surv, status) ~ rank, data = post_surv_edited_with_centrality)
+survdiff(Surv(NEW_days_alive, status) ~ David_scores_post, data = post_surv_edited_with_centrality)
 
 #Differences in survival times across the social proximity numbers
 survdiff(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
@@ -675,19 +773,25 @@ survdiff(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_s
 
 *Cox Multiple regression*
 ```{r}
-##STILL NEED NEW RANK!!!
-NEW_cox_multi1<- coxph(Surv(NEW_days_surv, status) ~ rank + SEX + AGE, data= post_surv_edited_with_centrality)
-summary(cox_multi2)
+#Cox proportional hazards for davids scores
+coxph(Surv(NEW_days_alive, status) ~ David_scores_post, data = post_surv_edited_with_centrality)
 
-#Adding in social prox eigenvector scores: STILL NEED NEW RANK!!!
-NEW_cox_multi2<- coxph(Surv(NEW_days_alive, status) ~ rank + SEX + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
-summary(cox_multi4)
+#Cox proportional hazards for eigenvector centrality
+coxph(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+
+#Cox multiple for davids, sex, and age
+NEW_cox_multi1<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE, data= post_surv_edited_with_centrality)
+summary(NEW_cox_multi1)
+
+#Adding in social prox eigenvector scores
+NEW_cox_multi2<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
+summary(NEW_cox_multi2)
 
 #Need to create a predator vigilance df
 NEW_surv_pred<- post_surv_edited %>%
   filter(!FOCAL.ID %in% c("RE","SK")) %>% #these two have very little behavior data post-release so removing them
   droplevels() %>%
-  mutate(pred = 
+  mutate(pred_post = 
            case_when(FOCAL.ID == "PO" ~ as.numeric(7.41), #Taking the mean predator counts from Pops_budget4 df and inputting them here manually
                      FOCAL.ID == "BL" ~ as.numeric(6.78),
                      FOCAL.ID == "AM" ~ as.numeric(6.99),
@@ -703,18 +807,73 @@ NEW_surv_pred<- post_surv_edited %>%
                      FOCAL.ID == "MA" ~ as.numeric(5.36),
                      FOCAL.ID == "TO" ~ as.numeric(6.13),
                      FOCAL.ID == "NE" ~ as.numeric(7.82),
-                     FOCAL.ID == "ZI" ~ as.numeric(0.682))
-         )
+                     FOCAL.ID == "ZI" ~ as.numeric(0.682)),
+         pred_pre = #taking the mean predator counts from Pops_budget2 df and putting them here
+           case_when(FOCAL.ID == "PO" ~ as.numeric(12.23),
+                     FOCAL.ID == "BL" ~ as.numeric(9.22),
+                     FOCAL.ID == "AM" ~ as.numeric(9.32),
+                     FOCAL.ID == "AL" ~ as.numeric(8.76),
+                     FOCAL.ID == "BO" ~ as.numeric(9.33),
+                     FOCAL.ID == "BM" ~ as.numeric(9.88),
+                     FOCAL.ID == "AU" ~ as.numeric(8.83),
+                     FOCAL.ID == "ED" ~ as.numeric(8.17),
+                     FOCAL.ID == "JA" ~ as.numeric(9.84),
+                     FOCAL.ID == "TI" ~ as.numeric(8.66),
+                     FOCAL.ID == "KO" ~ as.numeric(8.04),
+                     FOCAL.ID == "MG" ~ as.numeric(8.53),
+                     FOCAL.ID == "MA" ~ as.numeric(7.23),
+                     FOCAL.ID == "TO" ~ as.numeric(8.89),
+                     FOCAL.ID == "NE" ~ as.numeric(8.35),
+                     FOCAL.ID == "ZI" ~ as.numeric(10.17)))
 
 #Adding in the pred column in NEW_surv_pred into post_surv_edited_with_centrality
 post_surv_edited_with_centrality_with_pred <- post_surv_edited_with_centrality %>%
-  left_join(NEW_surv_pred %>% select(FOCAL.ID, pred), by = "FOCAL.ID")
+  left_join(NEW_surv_pred %>% select(FOCAL.ID, pred_post, pred_pre), by = "FOCAL.ID")
 
-#OK, this post_surv_edited_with_centrality_with_pred data DOES NOT HAVE ZIP IN IT. I think I need to go back to post_surv_edited and see if ZI was filtered out if I decide I want to have him in.
-NEW_cox_multi3<- coxph(Surv(NEW_days_alive, status) ~ rank + SEX + AGE + pred + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
-summary(cox_multi3)
+#Not sure why Zip's pred_pre is still showing NA even though I assigned him a number, just going to do it manually: 
+post_surv_edited_with_centrality_with_pred[nrow(post_surv_edited_with_centrality_with_pred), ncol(post_surv_edited_with_centrality_with_pred)] <- 10.17
 
-#cox_multi3<- coxph(Surv(days_surv, status) ~ rank + SEX + AGE + pred, data= surv_pred)
-#summary(cox_multi3)
+#Cox multiple for Davids scores, sex, age, and predator POST, and social prox
+NEW_cox_multi3<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE + pred_post + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
+summary(NEW_cox_multi3)
+
+coxph(Surv(NEW_days_alive, status) ~ pred_pre, data = post_surv_edited_with_centrality_with_pred)
+
+coxph(Surv(NEW_days_alive, status) ~ pred_post, data = post_surv_edited_with_centrality_with_pred)
+
+#Trying the cox multiple regression models without sex: 
+NEW_cox_multi4<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
+summary(NEW_cox_multi4)
+
+NEW_cox_multi5<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + AGE + pred_post + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
+summary(NEW_cox_multi5)
+#The significant results are the same 
 ```
+
+*Proportional Hazards Assumption Test and other statistical tests*
+```{r}
+#Testing for proportional hazards (PH) assumption:
+test.ph <- cox.zph(cox_multi2)
+test.ph #yay we can assume proportional hazards since these covariates don't show statistical significance, Sex is technically 0.05 with this test but comes us as 0.15 when I just run it with Sex and Age
+NEW_test.ph<- cox.zph(NEW_cox_multi2)
+NEW_test.ph
+
+ggcoxzph(NEW_test.ph)
+
+#Testing influential observations 
+
+#Specifying the argument type = “dfbeta”, plots the estimated changes in the regression coefficients upon deleting each observation in turn
+NEW_InfluenceObs<- ggcoxdiagnostics(NEW_cox_multi2, type = "dfbeta",
+                 linear.predictions = FALSE, ggtheme = theme_bw()) #I don't fully understand this but it does seem that some of the observations are influential (mostly for rank)
+ggsave("InfluenceObs.pdf", width = 8, height= 5, last_plot())
+
+#The deviance residual is a normalized transform of the martingale residual. These residuals should be roughly symmetrically distributed about zero with a standard deviation of 1. Positive values correspond to individuals that “died too soon” compared to expected survival times. Negative values correspond to individual that “lived too long”. Very large or small values are outliers, which are poorly predicted by the model.
+ggcoxdiagnostics(NEW_cox_multi2, type = "deviance",
+                 linear.predictions = FALSE, ggtheme = theme_bw()) #this looks fairly symmetrical around 0 but not perfect
+
+ggcoxfunctional(Surv(days_surv, status) ~ rank + log(rank) + sqrt(rank), data = post_focals_surv)
 ```
+
+METHODS: Proportional hazards (PH) assumption was tested for the model as a whole as well as each covariate based on scaled Schoenfeld residuals to test for independence between residuals and time. Influential observations were also observed graphically using df beta.
+
+RESULTS: The PH assumption test is not statistically significance for the global test. A graphed diagnostic, which shows graphs of the scaled Schoenfeld residuals against the transformed time, shows no trend in the covariates across time. Therefore, we can assume proportional hazards.

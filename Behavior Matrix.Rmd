@@ -39,7 +39,7 @@ MonkeyIDs<-as.character(unique(pre_cont$FOCAL.ID))
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
 monkey.prelim<-lapply(MonkeyIDs, function(x){pre_cont[pre_cont[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim)
+#head(monkey.prelim)
 
 # 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
 monkey_G.prelim<-
@@ -79,7 +79,7 @@ G1<-combo_G %>%
 G1
 
 grooming_matrix<-spread(G1,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix
+#grooming_matrix
 ```
 
 #### Grooming Matrix+ for FEMALES ONLY
@@ -91,7 +91,7 @@ MonkeyIDs_fems
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
 monkey.prelim_fems<-lapply(MonkeyIDs_fems, function(x){pre_cont_fems[pre_cont_fems[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim_fems)
+#head(monkey.prelim_fems)
 
 monkey_Gfems.prelim<-
   monkey.prelim_fems %>%
@@ -122,7 +122,7 @@ G1fems<-combo_Gfems %>%
 G1fems
 
 grooming_matrix_fems<-spread(G1fems,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix_fems
+#grooming_matrix_fems
 ```
 
 ### Grooming Matrix- (focal grooms)
@@ -161,7 +161,7 @@ G2<-combo_G2 %>%
 G2
 
 grooming_matrix2<-spread(G2,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix2
+#grooming_matrix2
 ```
 
 ### Making Place+ Matrix (focal displaces the other individual)
@@ -199,7 +199,7 @@ MP1<-combo_MP %>%
 MP1
 
 MP_matrix<-spread(MP1,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-MP_matrix
+#MP_matrix
 ```
 
 ### Making Place- Matrix (focal gets displaced)
@@ -237,7 +237,7 @@ MP2<-combo_MP2 %>%
 MP2
 
 MP_matrix2<-spread(MP2,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-MP_matrix2
+#MP_matrix2
 ```
 
 ### Aggression+ Matrix with conflict outcome= 1 (focal acts aggressively or recieves aggression and WINS)
@@ -271,7 +271,7 @@ A1<-combo_A %>%
 A1
 
 A_matrix<-spread(A1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-A_matrix
+#A_matrix
 ```
 
 ### Aggression Matrix with conflict outcome= 2 (focal acts aggressively or recieves aggression and LOSES)
@@ -305,7 +305,7 @@ loseA1<-combo_loseA %>%
 loseA1
 
 loseA_matrix<-spread(loseA1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-loseA_matrix
+#loseA_matrix
 ```
 
 ### Threat Matrix with conflict outcome= 1 (focal threatens or recieves threat and WINS)
@@ -339,7 +339,7 @@ TH1<-combo_TH %>%
 TH1
 
 TH_matrix<-spread(TH1,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-TH_matrix
+#TH_matrix
 ```
 
 ### Threat Matrix with conflict outcome= 2 (focal threatens or recieves threat and LOSES)
@@ -373,7 +373,7 @@ TH2<-combo_loseTH %>%
 TH2
 
 loseTH_matrix<-spread(TH2,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-loseTH_matrix
+#loseTH_matrix
 ```
 
 ### Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
@@ -407,20 +407,20 @@ ALL1<-combo_ALL %>%
 ALL1
 
 ALL_matrix<-spread(ALL1,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
-ALL_matrix
+#ALL_matrix
 ```
 
 ### All of the matrices used to determine social rank
 ```{r}
-grooming_matrix #focal recieves grooming
-grooming_matrix2 #focal grooms
-MP_matrix #focal wins, displaces the other
-MP_matrix2 #focal gets displaced
-A_matrix #focal wins any aggression interaction
-loseA_matrix #focal loses any aggression interaction
-TH_matrix #focal wins any threat interaction
-loseTH_matrix #focal loses any threat interaction
-ALL_matrix #combination of displacement, threats, and aggression where focal wins
+#grooming_matrix #focal recieves grooming
+#grooming_matrix2 #focal grooms
+#MP_matrix #focal wins, displaces the other
+#MP_matrix2 #focal gets displaced
+#A_matrix #focal wins any aggression interaction
+#loseA_matrix #focal loses any aggression interaction
+#TH_matrix #focal wins any threat interaction
+#loseTH_matrix #focal loses any threat interaction
+#ALL_matrix #combination of displacement, threats, and aggression where focal wins
 ```
 
 *Calculating David's Scores*
@@ -429,15 +429,32 @@ ALL_matrix #combination of displacement, threats, and aggression where focal win
 ALL_matrix_DavidScore<- ALL_matrix
 ALL_matrix_DavidScore[is.na(ALL_matrix_DavidScore)] <- 0
 
-#install.packages("competeR")
-
 #Run David's scores
-#ds_results <- david.score(ALL_matrix_DavidScore)
+#david_scores <- function(ALL_matrix_DavidScore) {
+  # Step 1: Proportion of wins (P_ij)
+ # P <- ALL_matrix_DavidScore / (ALL_matrix_DavidScore + t(ALL_matrix_DavidScore))
+  #P[is.na(P)] <- 0  # set NaN (0/0 cases) to 0
+  
+  # Step 2: Calculate w, l, w2, l2
+ # w  <- rowSums(P)            # sum of P_ij (direct wins)
+  l  <- colSums(P)            # sum of P_ji (direct losses)
+  #w2 <- P %*% w               # weighted wins (indirect)
+  l2 <- t(P) %*% l            # weighted losses (indirect)
+  
+  # Step 3: David’s Score = w + w2 – l – l2
+  DS <- w + w2 - l - l2
+  return(DS)
+}
 
-#print(ds_results)
+#david_scores(ALL_matrix_DavidScore)
+
+#Now trying it with EloRating 
+install.packages("EloRating")
+library(EloRating)
+
+pre_ds_results<- DS(ALL_matrix_DavidScore)
+
 ```
-
-
 
 
 ## Matrices into Tibbles with total counts column
@@ -744,7 +761,7 @@ G1_post<-combo_G_post %>%
 G1_post
 
 grooming_matrix_post<-spread(G1_post,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix_post
+#grooming_matrix_post
 ```
 
 ### Grooming Matrix- (focal grooms)
@@ -783,7 +800,7 @@ G2_post<-combo_G2_post %>%
 G2_post
 
 grooming_matrix2_post<-spread(G2_post,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix2_post
+#grooming_matrix2_post
 ```
 
 ### Grooming Matrix+ (focal recieves grooming) for FOCAL DATASET
@@ -794,7 +811,7 @@ MonkeyIDs_post_focals
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
 monkey.prelim_post_focals<-lapply(MonkeyIDs_post_focals, function(x){post_focals[post_focals[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim_post_focals)
+#head(monkey.prelim_post_focals)
 
 # 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
 monkey_G.prelim_post_focals<-
@@ -808,7 +825,7 @@ names(monkey_G.prelim_post_focals) <- MonkeyIDs_post_focals
 monkeylist_post_focals<-list(actor=MonkeyIDs_post_focals,recipient=MonkeyIDs_post_focals) #create list of all possible actors/recipients
 filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
 combo_post_focals<- monkeylist_post_focals %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-head(combo_post_focals)
+#head(combo_post_focals)
 
 combo_G_post_focals<-
   combo_post_focals %>%
@@ -832,7 +849,7 @@ G1_post_focals<-combo_G_post_focals %>%
 G1_post_focals
 
 grooming_matrix_post_focals<-spread(G1_post_focals,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix_post_focals
+#grooming_matrix_post_focals
 ```
 
 I started creating matrices for all of the dominance behaviors in the post focal dataset, however, there aren't enough instances of MP, A, or TH in the post focals dataset to add any value to my matrix 
@@ -870,7 +887,7 @@ MP1_post<-combo_MP_post %>%
 MP1_post
 
 MP_matrix_post<-spread(MP1_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-MP_matrix_post
+#MP_matrix_post
 ```
 
 ### *Making Place- Matrix (focal gets displaced) for CONTINUOUS DATASET*
@@ -901,10 +918,10 @@ MP2_post<-combo_MP2_post %>%
     actor, 
     recipient, 
     ~monkey_MP2.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-MP2_post
+#MP2_post
 
 MP_matrix2_post<-spread(MP2_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-MP_matrix2_post
+#MP_matrix2_post
 ```
 
 ## Aggression Matrices for CONTINUOUS DATASET
@@ -940,12 +957,12 @@ A1_post<-combo_A_post %>%
 A1_post
 
 A_matrix_post<-spread(A1_post,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-A_matrix_post
+#A_matrix_post
 
 post_cont %>% filter(BEHAVIOUR %in% c("A+","A-"), CONFLICT.OUTCOME == "1") #two entries here don't show up in the matrix because MT is an infant who is never "focal.id" and PA is an immigrated male who also is never "focal.id" 
 ```
 
-### *Aggression Matrix with conflict outcome= 2 (focal acts aggressively or recieves aggression and LOSES)*
+### *Aggression Matrix with conflict outcome= 2 (focal acts aggressively or receives aggression and LOSES)*
 ```{r}
 monkey_loseA.prelim_post<-
   monkey.prelim_post %>%
@@ -973,15 +990,15 @@ loseA1_post<-combo_loseA_post %>%
     actor, 
     recipient, 
     ~monkey_loseA.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-loseA1_post
+#loseA1_post
 
 loseA_matrix_post<-spread(loseA1_post,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-loseA_matrix_post
+#loseA_matrix_post
 ```
 
 ## Threat Matrices for CONTINUOUS DATASET
 
-### *Threat Matrix with conflict outcome= 1 (focal threatens or recieves threat and WINS)*
+### *Threat Matrix with conflict outcome= 1 (focal threatens or receives threat and WINS)*
 ```{r}
 monkey_TH.prelim_post<-
   monkey.prelim_post %>%
@@ -1009,13 +1026,13 @@ TH1_post<-combo_TH_post %>%
     actor, 
     recipient, 
     ~monkey_TH.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-TH1_post
+#TH1_post
 
 TH_matrix_post<-spread(TH1_post,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-TH_matrix_post
+#TH_matrix_post
 ```
 
-### *Threat Matrix with conflict outcome= 2 (focal threatens or recieves threat and LOSES)*
+### *Threat Matrix with conflict outcome= 2 (focal threatens or receives threat and LOSES)*
 ```{r}
 monkey_loseTH.prelim_post<-
   monkey.prelim_post %>%
@@ -1043,11 +1060,70 @@ TH2_post<-combo_loseTH_post %>%
     actor, 
     recipient, 
     ~monkey_loseTH.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-TH2_post
+#TH2_post
 
 loseTH_matrix_post<-spread(TH2_post,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-loseTH_matrix_post
+#loseTH_matrix_post
 ```
+
+### Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
+```{r}
+monkey_ALL.prelim_post<-
+  monkey.prelim_post %>%
+  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
+  purrr::map(~group_by(.,ASSOCIATION)) %>%
+  purrr::map(~summarize(.,count=n()))
+names(monkey_ALL.prelim_post) <- MonkeyIDs_post
+
+combo_ALL_post<-
+  combo_post %>%
+  mutate(absent1 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.x %in% names(monkey_ALL.prelim_post),true="TRUE",false="FALSE"))) %>%
+    mutate(absent2 = map2_chr(
+    actor,
+    recipient,
+    ~if_else(.y %in% monkey_ALL.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+  filter(absent1 == "TRUE") %>%
+  filter(absent2 == "TRUE") %>%
+  dplyr::select(-absent1,-absent2)
+
+ALL1_post<-combo_ALL_post %>% 
+  mutate(interaction = map2_int(
+    actor, 
+    recipient, 
+    ~monkey_ALL.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+ALL1_post
+
+#I noticed that the actor (row names) and recipient (column names) didn't match
+# 1. Make sure both actor and recipient are factors with the same levels
+all_ids_post <- union(ALL1_post$actor, ALL1_post$recipient)
+
+ALL1_post <- ALL1_post %>%
+  mutate(
+    actor = factor(actor, levels = all_ids_post),
+    recipient = factor(recipient, levels = all_ids_post)
+  )
+
+# 2. Use complete() to ensure all actor–recipient pairs exist
+ALL1_post_complete <- ALL1_post %>%
+  tidyr::complete(actor, recipient, fill = list(interaction = 0))
+
+# 3. Build a proper square matrix
+ALL_matrix_post <- ALL1_post_complete %>%
+  tidyr::pivot_wider(names_from = recipient, values_from = interaction) %>%
+  tibble::column_to_rownames(var = "actor") %>%
+  as.matrix()
+
+ALL_matrix_post
+```
+
+*Calculating David's Scores*
+```{r}
+post_ds_results<- DS(ALL_matrix_post)
+```
+
 
 ## Matrices into Tibbles with total counts column
 
@@ -1411,7 +1487,7 @@ combined_grooming_matrix_post$IDs<- grooming_matrix_rank_post$IDs
 combined_grooming_matrix_post$rank<- grooming_matrix_rank_post$rank
 combined_grooming_matrix_post$sex<- grooming_matrix_rank_post$sex
 
-combined_grooming_matrix_post<- combined_grooming_matrix_post[,c(4,5,6,1,2,7:18,3)] #re-ording the categorical columns so they're in the front
+combined_grooming_matrix_post<- combined_grooming_matrix_post[,c(4,5,6,1,2,7:18,3)] #re-ordeing the categorical columns so they're in the front
 ```
 
 #### Spearman's correlation test for rank and grooming
