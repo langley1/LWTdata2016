@@ -957,7 +957,7 @@ pre_fullbudget_pred<- pre_fullbudget %>%
   dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "pre")
-pre_fullbudget_pred
+#pre_fullbudget_pred
 
 post_fullbudget_pred<- post_fullbudget %>%
   filter(behavior.category == "Predator") %>%
@@ -966,7 +966,7 @@ post_fullbudget_pred<- post_fullbudget %>%
   dplyr::slice(2:16) %>%
   rename(Means = V1) %>%
   mutate(release= "post")
-post_fullbudget_pred
+#post_fullbudget_pred
 
 fullbudget_pred<- bind_rows(pre_fullbudget_pred, post_fullbudget_pred)
 fullbudget_pred$Means <- as.numeric(as.character((fullbudget_pred$Means)))
