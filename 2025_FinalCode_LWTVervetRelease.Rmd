@@ -1,1778 +1,9 @@
----
-title: "Behavior Matrix"
-output: html_document
----
-
-```{r}
-library(curl)
-library(dplyr)
-library(tidyverse)
-library(ggplot2)
-```
-
-# PRE-RELEASE DATASET
-
-**Importing the FULL pre-continuous dataset**
-```{r}
-pre_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_cont_FULL.csv")
-pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
-```
-
-*I don't think I need this code anymore!*
-```{r}
-BL_INF_groom<- pre_cont %>% filter(FOCAL.ID == "BL", BEHAVIOUR == "G-", ASSOCIATION %in% c("I", "INF"))
-grooming_matrix_rank_Afems %>% filter(IDs == "BL")
-grooming_matrix_rank_ALLfems<- select(grooming_matrix_rank_Afems, -c(ED,JA,MG,PO,ZI))
-grooming_matrix_rank_ALLfems<- grooming_matrix_rank_ALLfems %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix_rank_ALLfems
-```
-
-## Code for Behavior Matrices
-
-### Grooming Matrix+ (focal recieves grooming)
-```{r}
-library(tidyverse)
-# 1. Create a character vector of all the monkey IDs in your dataset:
-MonkeyIDs<-as.character(unique(pre_cont$FOCAL.ID))
-
-# 2. Get a list of dataframes, subsetted by monkey ID:
-monkey.prelim<-lapply(MonkeyIDs, function(x){pre_cont[pre_cont[["FOCAL.ID"]] == x, ]})
-#head(monkey.prelim)
-
-# 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
-monkey_G.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G+")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G.prelim) <- MonkeyIDs
-
-# 4. Set up your pairwise combinations of interacting monkeys:
-monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
-filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-head(combo)
-
-combo_G<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-str(combo_G)
-
-G1<-combo_G %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G1
-
-grooming_matrix<-spread(G1,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-#grooming_matrix
-```
-
-#### Grooming Matrix+ for FEMALES ONLY
-```{r}
-# 1. Create a character vector of all the monkey IDs in your dataset:
-pre_cont_fems<- pre_cont %>% filter(sex == "F")
-MonkeyIDs_fems<-as.character(unique(pre_cont_fems$FOCAL.ID))
-MonkeyIDs_fems
-
-# 2. Get a list of dataframes, subsetted by monkey ID:
-monkey.prelim_fems<-lapply(MonkeyIDs_fems, function(x){pre_cont_fems[pre_cont_fems[["FOCAL.ID"]] == x, ]})
-#head(monkey.prelim_fems)
-
-monkey_Gfems.prelim<-
-  monkey.prelim_fems %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G+")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_Gfems.prelim) <- MonkeyIDs_fems
-
-combo_Gfems<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_Gfems.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_Gfems.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-G1fems<-combo_Gfems %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_Gfems.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G1fems
-
-grooming_matrix_fems<-spread(G1fems,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-#grooming_matrix_fems
-```
-
-### Grooming Matrix- (focal grooms)
-```{r}
-monkey_G2.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G-")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G2.prelim) <- MonkeyIDs
-
-# 4. Set up your pairwise combinations of interacting monkeys:
-monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
-filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-
-combo_G2<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G2.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-G2<-combo_G2 %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G2.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G2
-
-grooming_matrix2<-spread(G2,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-#grooming_matrix2
-```
-
-### Making Place+ Matrix (focal displaces the other individual)
-```{r}
-monkey_MP.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR=="MP+")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_MP.prelim) <- MonkeyIDs
-
-monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
-filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-
-combo_MP<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_MP.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_MP.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-MP1<-combo_MP %>% 
-  mutate(makeplace = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_MP.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-MP1
-
-MP_matrix<-spread(MP1,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-#MP_matrix
-```
-
-### Making Place- Matrix (focal gets displaced)
-```{r}
-monkey_MP2.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR=="MP-")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_MP2.prelim) <- MonkeyIDs
-
-monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
-filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-
-combo_MP2<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_MP2.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_MP2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-MP2<-combo_MP2 %>% 
-  mutate(makeplace = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_MP2.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-MP2
-
-MP_matrix2<-spread(MP2,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-#MP_matrix2
-```
-
-### Aggression+ Matrix with conflict outcome= 1 (focal acts aggressively or recieves aggression and WINS)
-```{r}
-monkey_A.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),conflict.outcome=="1")) %>% #adding in a second filter so that I can pull out interactions where the focal won
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_A.prelim) <- MonkeyIDs
-
-combo_A<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_A.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_A.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-A1<-combo_A %>% 
-  mutate(aggress = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_A.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-A1
-
-A_matrix<-spread(A1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-#A_matrix
-```
-
-### Aggression Matrix with conflict outcome= 2 (focal acts aggressively or recieves aggression and LOSES)
-```{r}
-monkey_loseA.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),conflict.outcome=="2")) %>% #adding in a second filter so that I can pull out interactions where the focal loses
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_loseA.prelim) <- MonkeyIDs
-
-combo_loseA<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_loseA.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_loseA.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-loseA1<-combo_loseA %>% 
-  mutate(aggress = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_loseA.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-loseA1
-
-loseA_matrix<-spread(loseA1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-#loseA_matrix
-```
-
-### Threat Matrix with conflict outcome= 1 (focal threatens or recieves threat and WINS)
-```{r}
-monkey_TH.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),conflict.outcome=="1")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_TH.prelim) <- MonkeyIDs
-
-combo_TH<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_TH.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_TH.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-TH1<-combo_TH %>% 
-  mutate(threaten = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_TH.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-TH1
-
-TH_matrix<-spread(TH1,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-#TH_matrix
-```
-
-### Threat Matrix with conflict outcome= 2 (focal threatens or recieves threat and LOSES)
-```{r}
-monkey_loseTH.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),conflict.outcome=="2")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_loseTH.prelim) <- MonkeyIDs
-
-combo_loseTH<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_loseTH.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_loseTH.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-TH2<-combo_loseTH %>% 
-  mutate(threaten = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_loseTH.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-TH2
-
-loseTH_matrix<-spread(TH2,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-#loseTH_matrix
-```
-
-### Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
-```{r}
-monkey_ALL.prelim<-
-  monkey.prelim %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),conflict.outcome=="1")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_ALL.prelim) <- MonkeyIDs
-
-combo_ALL<-
-  combo %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_ALL.prelim),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_ALL.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-ALL1<-combo_ALL %>% 
-  mutate(interaction = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_ALL.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-ALL1
-
-ALL_matrix<-spread(ALL1,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
-#ALL_matrix
-```
-
-#### PERIOD 1: Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
-```{r}
-monkey_ALL.prelim_post_1<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,MONTH %in% 4:7, BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_ALL.prelim_post_1) <- MonkeyIDs_post
-
-combo_ALL_post_1<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_ALL.prelim_post_1),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_ALL.prelim_post_1[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-ALL1_post_1<-combo_ALL_post_1 %>% 
-  mutate(interaction = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_ALL.prelim_post_1 %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-#ALL1_post_1
-
-#I noticed that the actor (row names) and recipient (column names) didn't match
-# 1. Make sure both actor and recipient are factors with the same levels
-all_ids_post_1 <- union(ALL1_post_1$actor, ALL1_post_1$recipient)
-
-ALL1_post_1 <- ALL1_post_1 %>%
-  mutate(
-    actor = factor(actor, levels = all_ids_post_1),
-    recipient = factor(recipient, levels = all_ids_post_1)
-  )
-
-# 2. Use complete() to ensure all actor–recipient pairs exist
-ALL1_post_complete_1 <- ALL1_post_1 %>%
-  tidyr::complete(actor, recipient, fill = list(interaction = 0))
-
-# 3. Build a proper square matrix
-ALL_matrix_post_1 <- ALL1_post_complete_1 %>%
-  tidyr::pivot_wider(names_from = recipient, values_from = interaction) %>%
-  tibble::column_to_rownames(var = "actor") %>%
-  as.matrix()
-
-ALL_matrix_post_1
-```
-
-##### PERIOD 1
-*Calculating David's Scores*
-```{r}
-post_ds_results_1<- DS(ALL_matrix_post_1) #using EloRating package
-post_ds_results_1
-```
-
-### All of the matrices used to determine social rank
-```{r}
-#grooming_matrix #focal recieves grooming
-#grooming_matrix2 #focal grooms
-#MP_matrix #focal wins, displaces the other
-#MP_matrix2 #focal gets displaced
-#A_matrix #focal wins any aggression interaction
-#loseA_matrix #focal loses any aggression interaction
-#TH_matrix #focal wins any threat interaction
-#loseTH_matrix #focal loses any threat interaction
-#ALL_matrix #combination of displacement, threats, and aggression where focal wins
-```
-
-*Calculating David's Scores*
-```{r}
-#First have to make all NAs into 0s for the davids scores
-ALL_matrix_DavidScore<- ALL_matrix
-ALL_matrix_DavidScore[is.na(ALL_matrix_DavidScore)] <- 0
-
-#Run David's scores
-#david_scores <- function(ALL_matrix_DavidScore) {
-  # Step 1: Proportion of wins (P_ij)
- # P <- ALL_matrix_DavidScore / (ALL_matrix_DavidScore + t(ALL_matrix_DavidScore))
-  #P[is.na(P)] <- 0  # set NaN (0/0 cases) to 0
-  
-  # Step 2: Calculate w, l, w2, l2
- # w  <- rowSums(P)            # sum of P_ij (direct wins)
-  l  <- colSums(P)            # sum of P_ji (direct losses)
-  #w2 <- P %*% w               # weighted wins (indirect)
-  l2 <- t(P) %*% l            # weighted losses (indirect)
-  
-  # Step 3: David’s Score = w + w2 – l – l2
-  DS <- w + w2 - l - l2
-  return(DS)
-}
-
-#david_scores(ALL_matrix_DavidScore)
-
-#Now trying it with EloRating 
-install.packages("EloRating")
-library(EloRating)
-
-pre_ds_results<- DS(ALL_matrix_DavidScore)
-
-```
-
-
-## Matrices into Tibbles with total counts column
-
-#### Making Place matrices
-```{r}
-MP_matrixDF<- as.data.frame(MP_matrix) #turning the matrix into a data frame
-MP_matrix_tbl<- 
-  rownames_to_column(MP_matrixDF, var = "IDs") %>%
-  as_tibble() #turning the rownames (monkey IDS) into the first column called "IDs", then turning it into a tibble
-MP_matrix_tbl<- MP_matrix_tbl %>% 
-  rowwise() %>% #this allows us to work with row-wise dataframe where we want to look at each row individually
-  mutate(total = sum(c_across(AL:ZI),na.rm=T)) #mutate adds in a new column called "total" which will be the sum of each row (removing NAs)
-MP_matrix_tbl #focal displaces
-
-MP_matrixDF2<- as.data.frame(MP_matrix2)
-MP_matrix2_tbl<- 
-  rownames_to_column(MP_matrixDF2, var = "IDs") %>%
-  as_tibble()
-MP_matrix2_tbl<- MP_matrix2_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-MP_matrix2_tbl #focal gets displaced
-
-#MP_matrixDF <- cbind(IDs = rownames(MP_matrixDF), MP_matrixDF)
-#rownames(MP_matrixDF) <- NULL
-#MP_matrixDF
-
-#x<- tibble(MP_matrixDF) %>% rowwise() %>% mutate(total = sum(c_across(where(is.numeric))))
-
-#MP_matrixDF<- tibble(MP_matrixDF) %>% rowwise() %>% mutate(total = sum(c_across(AL:ZI)),is.na=T)
-#MP_matrixDF[2:19] <- lapply(MP_matrixDF[2:19], as.numeric)
-```
-
-#### Aggression Matrices
-```{r}
-A_matrixDF<- as.data.frame(A_matrix)
-A_matrix_tbl<- 
-  rownames_to_column(A_matrixDF, var = "IDs") %>%
-  as_tibble()
-A_matrix_tbl<- A_matrix_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-A_matrix_tbl #focal wins any aggressive interaction
-
-loseA_matrixDF<- as.data.frame(loseA_matrix)
-loseA_matrix_tbl<- 
-  rownames_to_column(loseA_matrixDF, var = "IDs") %>%
-  as_tibble()
-loseA_matrix_tbl<- loseA_matrix_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-loseA_matrix_tbl #focal loses any aggressive interaction
-```
-
-#### Threat Matrices
-```{r}
-TH_matrixDF<- as.data.frame(TH_matrix)
-TH_matrix_tbl<- 
-  rownames_to_column(TH_matrixDF, var = "IDs") %>%
-  as_tibble()
-TH_matrix_tbl<- TH_matrix_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-TH_matrix_tbl #focal wins any threat interaction
-
-loseTH_matrixDF<- as.data.frame(loseTH_matrix)
-loseTH_matrix_tbl<- 
-  rownames_to_column(loseTH_matrixDF, var = "IDs") %>%
-  as_tibble()
-loseTH_matrix_tbl<- loseTH_matrix_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-loseTH_matrix_tbl #focal loses any threat interaction
-```
-
-#### ALL matrices (aggression, threat, and making place)
-```{r}
-ALL_matrixDF<- as.data.frame(ALL_matrix)
-ALL_matrix_tbl<- 
-  rownames_to_column(ALL_matrixDF, var = "IDs") %>%
-  as_tibble()
-ALL_matrix_tbl<- ALL_matrix_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-ALL_matrix_tbl
-```
-
-#### Grooming Matrices
-```{r}
-grooming_matrixDF<- as.data.frame(grooming_matrix)
-grooming_matrix_tbl<- 
-  rownames_to_column(grooming_matrixDF, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_tbl<- grooming_matrix_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-grooming_matrix_tbl #focal gets groomed
-
-grooming_matrixDF2<- as.data.frame(grooming_matrix2)
-grooming_matrix2_tbl<- 
-  rownames_to_column(grooming_matrixDF2, var = "IDs") %>%
-  as_tibble()
-grooming_matrix2_tbl<- grooming_matrix2_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T))
-grooming_matrix2_tbl #focal grooms
-
-grooming_matrixDF_fems<- as.data.frame(grooming_matrix_fems)
-#str(grooming_matrixDF_fems)
-grooming_matrix_fems_tbl<- 
-  rownames_to_column(grooming_matrix_fems, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_fems_tbl<- grooming_matrix_fems_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T),rank = c("3","2","5","1","7","6","8","10","9","11","4"))
-grooming_matrix_fems_tbl #focal grooms, females only
-```
-
-```{r}
-#install.packages("ggpubr")
-#library(ggpubr) #this isn't working, I think an updated version of R is required
-```
-
-#### ALL Matrix (aggression, threat, displacement) with Rank and Sex
-```{r}
-ALL_matrix_rank <- ALL_matrix_tbl %>% #creating a new tibble with rank, sex, and age columns
-  add_column(Rank = c(4,3,8,11,2,15,9,5,13,10,17,14,12,16,1,18,6,7), .after = "total") %>%
-  #add_column(Sex = c("F","F","F","M","F","F","F","M","F","M","F","F","M","M","M","F","F","M"), .before ="AL") %>%
-  #add_column(Age = c("A","A","A","SA","A","A","A","A","J","SA","J","J","SA","J","A","A","A","A"), .before = "AL") %>%
-  arrange(Rank) #arranging by rank from 1-18
-ALL_matrix_rank
-```
-
-#### Grooming Matrix with Rank and Sex
-```{r}
-#Focal recieves grooming
-grooming_matrix_rank <- grooming_matrix_tbl %>% #creating a new tibble with rank, sex, and age columns (Pops starts as 12 for highest ranked male)
-  add_column(rank = c(4,3,8,11,2,14,9,5,13,10,17,16,12,15,1,18,6,7), .before = "AL") %>%
-  add_column(sex = c("F","F","F","M","F","F","F","M","F","M","F","F","M","M","M","F","F","M"), .before ="AL") %>%
-  add_column(age = c("A","A","A","SA","A","A","A","A","J","SA","J","J","SA","J","A","A","A","A"), .before = "AL") %>%
-  arrange(rank)#arranging by rank from 1-18
-grooming_matrix_rank
-
-#Focal grooms
-grooming_matrix2_rank<- grooming_matrix2_tbl %>%
-  add_column(rank = c(4,3,8,11,2,14,9,5,13,10,17,16,12,15,1,18,6), .before = "AL") %>%
-  add_column(sex = c("F","F","F","M","F","F","F","M","F","M","F","F","M","M","M","F","F"), .before ="AL") %>%
-  add_column(age = c("A","A","A","SA","A","A","A","A","J","SA","J","J","SA","J","A","A","A"), .before = "AL") %>%
-  arrange(rank)
-grooming_matrix2_rank
-
-#Females only (recieves grooming)
-grooming_matrix_rank_fems<- grooming_matrix_rank %>% 
-  filter(sex == "F") #filtering out females 
-grooming_matrix_rank_fems
-
-#Female ADULTS only (recieves grooming)
-grooming_matrix_rank_Afems<- grooming_matrix_rank_fems %>%
-  filter(age == "A")
-grooming_matrix_rank_Afems
-
-#Males only (recieves grooming)
-grooming_matrix_rank_males<- grooming_matrix_rank %>% 
-  filter(sex == "M") #filtering out males
-grooming_matrix_rank_males
-
-#both are normally distributed
-shapiro.test(grooming_matrix_rank$rank)
-shapiro.test(grooming_matrix_rank$total)
-#ggqqplot(my_data$mpg, ylab = "MPG")
-#ggqqplot(grooming_matrix_rank$total, ylab = "total")
-```
-The Shapiro-Wilk test for normality was used to confirm normal distribution of rank order and total grooming recieved. (p values are over 0.05)
-
-Blue, Alex, and Amy are the three highest ranked females AND are the only females that have infants at the time of pre-release. According to Seyfarth (?) in the Grooming in Adult Females paper, females with young offspring typically recieve more grooming from other females. Big Mama has an biological male offspring but he is a juvenile during this stage and may no longer influence the grooming patterns of the other females in the troop.
-
-#### Spearman's correlation test for rank and grooming
-```{r}
-cortest <-cor.test(grooming_matrix_rank_fems$rank, grooming_matrix_rank_fems$total,  method = "spearman")
-cortest #there is a strong negative correlation between female rank and total grooming recieved (as rank increases, grooming recieved decreases)
-cortest_Afems<- cor.test(grooming_matrix_rank_Afems$rank, grooming_matrix_rank_Afems$total, method = "spearman")
-cortest_Afems #there is an even stronger negative correlation between ADULT female rank and total grooming recieved 
-cortest2<- cor.test(grooming_matrix_rank_males$rank, grooming_matrix_rank_males$total,  method = "spearman")
-cortest2 #there is no correlation between male rank and total grooming recieved (Zip and Batman, which are high rank, recieve little to no grooming, but Pops recieves the most grooming, so this throws off the correlation)
-
-cor(grooming_matrix_rank_fems$rank, grooming_matrix_rank_fems$total) #just another way to see the correlation between two variables
-```
-
-*Linear regression models I/II for rank and grooming totals*
-```{r}
-mI<- lm(total ~ rank, data = grooming_matrix_rank_fems)
-mI_adults<- lm(total ~ rank, data = grooming_matrix_rank_Afems)
-
-install.packages("lmodel2")
-library(lmodel2)
-
-mII <- lmodel2(total ~ rank, data = grooming_matrix_rank_fems, range.y = "relative", range.x = "relative", nperm = 1000)
-mII
-
-summary(mI) #the intercepts and slopes were the same for model I and OLS model II for all females
-summary(mI_adults) #this is showing that the R2 is a bit stronger for just adults but p-value is lower
-```
-
-#### Plotting social rank and total grooming recieved for FEMALES only
-```{r}
-install.packages("car")
-install.packages("hrbrthemes")
-library(car)
-library(hrbrthemes)
-
-plot(grooming_matrix_rank_fems$rank, grooming_matrix_rank_fems$total)
-
-#Plotting social rank and grooming totals for females only
-groom_plot_fems<- ggplot(grooming_matrix_rank_fems, aes(x=rank, y=total)) + 
-  geom_smooth(method = "lm", formula = y ~ x) +
-  geom_point(aes(shape=age), size=3) +
-  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
-  theme(legend.box.background = element_rect(colour = "black")) +
-  geom_text(aes(label= IDs),
-  nudge_x = 0.5, nudge_y = 0.5, 
-  check_overlap = T) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
-groom_plot_fems 
-
-ggsave("GroomPlot Fems Pre.pdf", width= 8, height= 5, last_plot())
-
-#Plotting social rank and grooming totals for female ADULTs only
-groom_plot_Afems<- ggplot(grooming_matrix_rank_Afems, aes(x=rank, y=total)) + 
-  geom_smooth(method = "lm", formula = y ~ x) +
-  geom_point(aes(shape=age), size=3) +
-  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
-  theme(legend.box.background = element_rect(colour = "black")) +
-  geom_text(aes(label= IDs),
-  nudge_x = 0.5, nudge_y = 0.5, 
-  check_overlap = T) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
-groom_plot_Afems 
-
-ggsave("GroomPlot AFems Pre.pdf", width= 8, height= 5, last_plot())
-
-```
-
-RESULTS: There is a negative linear relationship between social ranking and total grooming recieved in females. The higher ranked indiviudals recieve more grooming and the lower ranked individuals recieve less grooming. One exception is Eddy, a juvenile female who recieves more grooming than the lowest ranking adults and other juveniles. This could be because the highest ranking adult females adopted Eddy, since she has no biological mother in the troop. 
-
-# POST-RELEASE DATASET
-
-**Importing the FULL post-continuous dataset**
-```{r}
-post_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_cont_FULL.csv")
-post_cont<- read.csv(post_cont, header=T, na.strings=c(""," ","NA"))
-post_cont = post_cont[-1,] #the first row in this DF is NAs so I'm deleting it here
-head(post_cont)
-head(post_focals)
-```
-
-## Code for Behavior Matrices
-
-### Grooming Matrix+ (focal recieves grooming) for CONT DATASET
-```{r}
-# 1. Create a character vector of all the monkey IDs in your dataset:
-MonkeyIDs_post<-as.character(unique(post_cont$FOCAL.ID))
-MonkeyIDs_post
-
-# 2. Get a list of dataframes, subsetted by monkey ID:
-monkey.prelim_post<-lapply(MonkeyIDs_post, function(x){post_cont[post_cont[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim_post)
-
-# 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
-monkey_G.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G+")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G.prelim_post) <- MonkeyIDs_post
-
-# 4. Set up your pairwise combinations of interacting monkeys:
-monkeylist_post<-list(actor=MonkeyIDs_post,recipient=MonkeyIDs_post) #create list of all possible actors/recipients
-filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-combo_post <- monkeylist_post %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-head(combo_post)
-
-combo_G_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-G1_post<-combo_G_post %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G1_post
-
-grooming_matrix_post<-spread(G1_post,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-#grooming_matrix_post
-```
-
-### Grooming Matrix- (focal grooms)
-```{r}
-monkey_G2.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G-")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G2.prelim_post) <- MonkeyIDs_post
-
-# 4. Set up your pairwise combinations of interacting monkeys:
-#monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
-#filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-#combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-
-combo_G2_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G2.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G2.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-G2_post<-combo_G2_post %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G2.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G2_post
-
-grooming_matrix2_post<-spread(G2_post,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-#grooming_matrix2_post
-```
-
-### Grooming Matrix+ (focal recieves grooming) for FOCAL DATASET
-```{r}
-# 1. Create a character vector of all the monkey IDs in your dataset:
-MonkeyIDs_post_focals<-as.character(unique(post_focals$FOCAL.ID))
-MonkeyIDs_post_focals
-
-# 2. Get a list of dataframes, subsetted by monkey ID:
-monkey.prelim_post_focals<-lapply(MonkeyIDs_post_focals, function(x){post_focals[post_focals[["FOCAL.ID"]] == x, ]})
-#head(monkey.prelim_post_focals)
-
-# 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
-monkey_G.prelim_post_focals<-
-  monkey.prelim_post_focals %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G+")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G.prelim_post_focals) <- MonkeyIDs_post_focals
-
-# 4. Set up your pairwise combinations of interacting monkeys:
-monkeylist_post_focals<-list(actor=MonkeyIDs_post_focals,recipient=MonkeyIDs_post_focals) #create list of all possible actors/recipients
-filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
-combo_post_focals<- monkeylist_post_focals %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
-#head(combo_post_focals)
-
-combo_G_post_focals<-
-  combo_post_focals %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G.prelim_post_focals),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G.prelim_post_focals[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-G1_post_focals<-combo_G_post_focals %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G.prelim_post_focals %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G1_post_focals
-
-grooming_matrix_post_focals<-spread(G1_post_focals,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-#grooming_matrix_post_focals
-```
-
-I started creating matrices for all of the dominance behaviors in the post focal dataset, however, there aren't enough instances of MP, A, or TH in the post focals dataset to add any value to my matrix 
-
-## Making Place Matrices for CONTINUOUS DATASET
-
-### *Making Place+ Matrix (focal displaces the other individual)*
-```{r}
-monkey_MP.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="MP+")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_MP.prelim_post) <- MonkeyIDs_post
-
-combo_MP_post<-
-  combo_post %>% #from grooming matrix
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_MP.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_MP.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-MP1_post<-combo_MP_post %>% 
-  mutate(makeplace = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_MP.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-MP1_post
-
-MP_matrix_post<-spread(MP1_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-#MP_matrix_post
-```
-
-### *Making Place- Matrix (focal gets displaced) for CONTINUOUS DATASET*
-```{r}
-monkey_MP2.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="MP-")) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_MP2.prelim_post) <- MonkeyIDs_post
-
-combo_MP2_post<-
-  combo_post %>% #from grooming matrix
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_MP2.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_MP2.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-MP2_post<-combo_MP2_post %>% 
-  mutate(makeplace = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_MP2.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-#MP2_post
-
-MP_matrix2_post<-spread(MP2_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
-#MP_matrix2_post
-```
-
-## Aggression Matrices for CONTINUOUS DATASET
-
-### *Aggression+ Matrix with conflict outcome= 1 (focal acts aggressively or recieves aggression and WINS)*
-```{r}
-monkey_A.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),CONFLICT.OUTCOME== "1")) %>% #adding in a second filter so that I can pull out interactions where the focal won
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_A.prelim_post) <- MonkeyIDs_post
-
-combo_A_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_A.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_A.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-A1_post<-combo_A_post %>% 
-  mutate(aggress = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_A.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-A1_post
-
-A_matrix_post<-spread(A1_post,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-#A_matrix_post
-
-post_cont %>% filter(BEHAVIOUR %in% c("A+","A-"), CONFLICT.OUTCOME == "1") #two entries here don't show up in the matrix because MT is an infant who is never "focal.id" and PA is an immigrated male who also is never "focal.id" 
-```
-
-### *Aggression Matrix with conflict outcome= 2 (focal acts aggressively or receives aggression and LOSES)*
-```{r}
-monkey_loseA.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),CONFLICT.OUTCOME=="2")) %>% #adding in a second filter so that I can pull out interactions where the focal loses
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_loseA.prelim_post) <- MonkeyIDs_post
-
-combo_loseA_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_loseA.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_loseA.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-loseA1_post<-combo_loseA_post %>% 
-  mutate(aggress = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_loseA.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-#loseA1_post
-
-loseA_matrix_post<-spread(loseA1_post,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
-#loseA_matrix_post
-```
-
-## Threat Matrices for CONTINUOUS DATASET
-
-### *Threat Matrix with conflict outcome= 1 (focal threatens or receives threat and WINS)*
-```{r}
-monkey_TH.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_TH.prelim_post) <- MonkeyIDs_post
-
-combo_TH_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_TH.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_TH.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-TH1_post<-combo_TH_post %>% 
-  mutate(threaten = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_TH.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-#TH1_post
-
-TH_matrix_post<-spread(TH1_post,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-#TH_matrix_post
-```
-
-### *Threat Matrix with conflict outcome= 2 (focal threatens or receives threat and LOSES)*
-```{r}
-monkey_loseTH.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),CONFLICT.OUTCOME=="2")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_loseTH.prelim_post) <- MonkeyIDs_post
-
-combo_loseTH_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_loseTH.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_loseTH.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-TH2_post<-combo_loseTH_post %>% 
-  mutate(threaten = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_loseTH.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-#TH2_post
-
-loseTH_matrix_post<-spread(TH2_post,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
-#loseTH_matrix_post
-```
-
-### Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
-```{r}
-monkey_ALL.prelim_post<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_ALL.prelim_post) <- MonkeyIDs_post
-
-combo_ALL_post<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_ALL.prelim_post),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_ALL.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-ALL1_post<-combo_ALL_post %>% 
-  mutate(interaction = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_ALL.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-ALL1_post
-
-#I noticed that the actor (row names) and recipient (column names) didn't match
-# 1. Make sure both actor and recipient are factors with the same levels
-all_ids_post <- union(ALL1_post$actor, ALL1_post$recipient)
-
-ALL1_post <- ALL1_post %>%
-  mutate(
-    actor = factor(actor, levels = all_ids_post),
-    recipient = factor(recipient, levels = all_ids_post)
-  )
-
-# 2. Use complete() to ensure all actor–recipient pairs exist
-ALL1_post_complete <- ALL1_post %>%
-  tidyr::complete(actor, recipient, fill = list(interaction = 0))
-
-# 3. Build a proper square matrix
-ALL_matrix_post <- ALL1_post_complete %>%
-  tidyr::pivot_wider(names_from = recipient, values_from = interaction) %>%
-  tibble::column_to_rownames(var = "actor") %>%
-  as.matrix()
-
-ALL_matrix_post
-```
-
-*Calculating David's Scores*
-```{r}
-post_ds_results<- DS(ALL_matrix_post)
-```
-
-#### PERIOD 2: Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
-```{r}
-monkey_ALL.prelim_post_2<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,MONTH %in% 8:11, BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_ALL.prelim_post_2) <- MonkeyIDs_post
-
-combo_ALL_post_2<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_ALL.prelim_post_2),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_ALL.prelim_post_2[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  dplyr::select(-absent1,-absent2)
-
-ALL1_post_2<-combo_ALL_post_2 %>% 
-  mutate(interaction = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_ALL.prelim_post_2 %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-#ALL1_post_2
-
-#I noticed that the actor (row names) and recipient (column names) didn't match
-# 1. Make sure both actor and recipient are factors with the same levels
-all_ids_post_2 <- union(ALL1_post_2$actor, ALL1_post_2$recipient)
-
-ALL1_post_2 <- ALL1_post_2 %>%
-  mutate(
-    actor = factor(actor, levels = all_ids_post_2),
-    recipient = factor(recipient, levels = all_ids_post_2)
-  )
-
-# 2. Use complete() to ensure all actor–recipient pairs exist
-ALL1_post_complete_2 <- ALL1_post_2 %>%
-  tidyr::complete(actor, recipient, fill = list(interaction = 0))
-
-# 3. Build a proper square matrix
-ALL_matrix_post_2 <- ALL1_post_complete_2 %>%
-  tidyr::pivot_wider(names_from = recipient, values_from = interaction) %>%
-  tibble::column_to_rownames(var = "actor") %>%
-  as.matrix()
-
-ALL_matrix_post_2
-```
-
-##### PERIOD 2
-*Calculating David's Scores*
-```{r}
-post_ds_results_2<- DS(ALL_matrix_post_2) #using EloRating package
-post_ds_results_2
-```
-
-
-## Matrices into Tibbles with total counts column
-
-#### Making Place matrices
-```{r}
-MP_matrixDF_post<- as.data.frame(MP_matrix_post) #turning the matrix into a data frame
-MP_matrix_tbl_post<- 
-  rownames_to_column(MP_matrixDF_post, var = "IDs") %>%
-  as_tibble() #turning the rownames (monkey IDS) into the first column called "IDs", then turning it into a tibble
-MP_matrix_tbl_post<- MP_matrix_tbl_post %>% 
-  rowwise() %>% #this allows us to work with row-wise dataframe where we want to look at each row individually
-  mutate(total = sum(c_across(AL:TO),na.rm=T)) #mutate adds in a new column called "total" which will be the sum of each row (removing NAs)
-MP_matrix_tbl_post #focal displaces
-
-MP_matrixDF2_post<- as.data.frame(MP_matrix2_post)
-MP_matrix2_tbl_post<- 
-  rownames_to_column(MP_matrixDF2_post, var = "IDs") %>%
-  as_tibble()
-MP_matrix2_tbl_post<- MP_matrix2_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-MP_matrix2_tbl_post #focal gets displaced
-```
-
-#### Aggression Matrices
-```{r}
-A_matrixDF_post<- as.data.frame(A_matrix_post)
-A_matrix_tbl_post<- 
-  rownames_to_column(A_matrixDF_post, var = "IDs") %>%
-  as_tibble()
-A_matrix_tbl_post<- A_matrix_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:NE),na.rm=T))
-A_matrix_tbl_post #focal wins any aggressive interaction
-
-loseA_matrixDF_post<- as.data.frame(loseA_matrix_post)
-loseA_matrix_tbl_post<- 
-  rownames_to_column(loseA_matrixDF_post, var = "IDs") %>%
-  as_tibble()
-loseA_matrix_tbl_post<- loseA_matrix_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AM:TO),na.rm=T))
-loseA_matrix_tbl_post #focal loses any aggressive interaction
-```
-
-#### Threat Matrices
-```{r}
-TH_matrixDF_post<- as.data.frame(TH_matrix_post)
-TH_matrix_tbl_post<- 
-  rownames_to_column(TH_matrixDF_post, var = "IDs") %>%
-  as_tibble()
-TH_matrix_tbl_post<- TH_matrix_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AM:RE),na.rm=T))
-TH_matrix_tbl_post #focal wins any threat interaction
-
-loseTH_matrixDF_post<- as.data.frame(loseTH_matrix_post)
-loseTH_matrix_tbl_post<- 
-  rownames_to_column(loseTH_matrixDF_post, var = "IDs") %>%
-  as_tibble()
-loseTH_matrix_tbl_post<- loseTH_matrix_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:PO),na.rm=T))
-loseTH_matrix_tbl_post #focal loses any threat interaction
-```
-
-#### Grooming Matrices
-```{r}
-grooming_matrixDF_post<- as.data.frame(grooming_matrix_post)
-grooming_matrix_tbl_post<- 
-  rownames_to_column(grooming_matrixDF_post, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_tbl_post<- grooming_matrix_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix_tbl_post #focal gets groomed
-
-grooming_matrixDF2_post<- as.data.frame(grooming_matrix2_post)
-grooming_matrix2_tbl_post<- 
-  rownames_to_column(grooming_matrixDF2_post, var = "IDs") %>%
-  as_tibble()
-grooming_matrix2_tbl_post<- grooming_matrix2_tbl_post %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix2_tbl_post #focal grooms
-
-# I'm pretty sure this doesn't work?
-grooming_matrixDF_fems<- as.data.frame(grooming_matrix_fems)
-#str(grooming_matrixDF_fems)
-grooming_matrix_fems_tbl<- 
-  rownames_to_column(grooming_matrix_fems, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_fems_tbl<- grooming_matrix_fems_tbl %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:ZI),na.rm=T),rank = c("3","2","5","1","7","6","8","10","9","11","4"))
-grooming_matrix_fems_tbl #focal grooms, females only
-
-# Grooming matrix for FOCAL DATASET
-grooming_matrixDF_post_focals<- as.data.frame(grooming_matrix_post_focals)
-grooming_matrix_tbl_post_focals<- 
-  rownames_to_column(grooming_matrixDF_post_focals, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_tbl_post_focals<- grooming_matrix_tbl_post_focals %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix_tbl_post_focals #focal gets groomed
-```
-
-### Breaking grooming up into pre-births and post-births during the release stage
-
-#### Grooming+ Matrix Pre-Births (focal receives grooming)
-```{r}
-#Months 3-6 = pre-births
-#Months 7-11 = post-births
-
-monkey_G.prelim_post_prebirths<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G+", MONTH %in% c("3","4","5","6"))) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G.prelim_post_prebirths) <- MonkeyIDs_post
-
-combo_G_post_prebirths<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G.prelim_post_prebirths),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G.prelim_post_prebirths[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-G_post_prebirths<-combo_G_post_prebirths %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G.prelim_post_prebirths %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G_post_prebirths
-
-grooming_matrix_post_prebirths<-spread(G_post_prebirths,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix_post_prebirths
-```
-
-#### Grooming- Matrix Pre-Births (focal grooms)
-```{r}
-monkey_G2.prelim_post_prebirths<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G-", MONTH %in% c("3","4","5","6"))) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G2.prelim_post_prebirths) <- MonkeyIDs_post
-
-combo_G2_post_prebirths<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G2.prelim_post_prebirths),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G2.prelim_post_prebirths[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-G2_post_prebirths<-combo_G2_post_prebirths %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G2.prelim_post_prebirths %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G2_post_prebirths
-
-grooming_matrix2_post_prebirths<-spread(G2_post_prebirths,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix2_post_prebirths
-```
-
-#### Grooming+ Matrix Post-Births (focal receives grooming)
-```{r}
-#Months 7-11 = post-births
-
-monkey_G.prelim_post_postbirths<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G+", MONTH %in% c("7","8","9","10","11"))) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G.prelim_post_postbirths) <- MonkeyIDs_post
-
-combo_G_post_postbirths<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G.prelim_post_postbirths),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G.prelim_post_postbirths[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-G_post_postbirths<-combo_G_post_postbirths %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G.prelim_post_postbirths %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G_post_postbirths
-
-grooming_matrix_post_postbirths<-spread(G_post_postbirths,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix_post_postbirths
-```
-
-#### Grooming- Matrix Pre-Births (focal grooms)
-```{r}
-monkey_G2.prelim_post_postbirths<-
-  monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR=="G-", MONTH %in% c("3","4","5","6"))) %>%
-  purrr::map(~group_by(.,ASSOCIATION)) %>%
-  purrr::map(~summarize(.,count=n()))
-names(monkey_G2.prelim_post_postbirths) <- MonkeyIDs_post
-
-combo_G2_post_postbirths<-
-  combo_post %>%
-  mutate(absent1 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.x %in% names(monkey_G2.prelim_post_postbirths),true="TRUE",false="FALSE"))) %>%
-    mutate(absent2 = map2_chr(
-    actor,
-    recipient,
-    ~if_else(.y %in% monkey_G2.prelim_post_postbirths[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
-  filter(absent1 == "TRUE") %>%
-  filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
-
-G2_post_postbirths<-combo_G2_post_postbirths %>% 
-  mutate(grooms = map2_int(
-    actor, 
-    recipient, 
-    ~monkey_G2.prelim_post_postbirths %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-G2_post_postbirths
-
-grooming_matrix2_post_postbirths<-spread(G2_post_postbirths,recipient,grooms) %>% column_to_rownames(var="actor") %>% data.matrix()
-grooming_matrix2_post_postbirths
-```
-
-#### Pre/Post-birth Grooming Matrices to tbls
-```{r}
-grooming_matrixDF_post_prebirths<- as.data.frame(grooming_matrix_post_prebirths)
-grooming_matrix_tbl_post_prebirths<- 
-  rownames_to_column(grooming_matrixDF_post_prebirths, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_tbl_post_prebirths<- grooming_matrix_tbl_post_prebirths %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix_tbl_post_prebirths #focal gets groomed
-
-grooming_matrixDF2_post_prebirths<- as.data.frame(grooming_matrix2_post_prebirths)
-grooming_matrix2_tbl_post_prebirths<- 
-  rownames_to_column(grooming_matrixDF2_post_prebirths, var = "IDs") %>%
-  as_tibble()
-grooming_matrix2_tbl_post_prebirths<- grooming_matrix2_tbl_post_prebirths %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix2_tbl_post_prebirths #focal grooms
-
-grooming_matrixDF_post_postbirths<- as.data.frame(grooming_matrix_post_postbirths)
-grooming_matrix_tbl_post_postbirths<- 
-  rownames_to_column(grooming_matrixDF_post_postbirths, var = "IDs") %>%
-  as_tibble()
-grooming_matrix_tbl_post_postbirths<- grooming_matrix_tbl_post_postbirths %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AM:TO),na.rm=T))
-grooming_matrix_tbl_post_postbirths
-
-grooming_matrixDF2_post_postbirths<- as.data.frame(grooming_matrix2_post_postbirths)
-grooming_matrix2_tbl_post_postbirths<- 
-  rownames_to_column(grooming_matrixDF2_post_postbirths, var = "IDs") %>%
-  as_tibble()
-grooming_matrix2_tbl_post_postbirths<- grooming_matrix2_tbl_post_postbirths %>% 
-  rowwise() %>%
-  mutate(total = sum(c_across(AL:TO),na.rm=T))
-grooming_matrix2_tbl_post_postbirths #focal grooms
-```
-
-A quick glance at this does look like Amy's grooming increased by a lot during the post-births phase, however, all of the grooming bouts were done BEFORE her infant was born in November. Blue and Boo groomed her more, maybe they could tell she was pregnant? No idea. Also, Big Mama didn't have any increase in grooming and Tinker actually decreased in grooming by a lot. Most of the infants during release stage only lived for a few days (Amy's lived for 1 month), so I guess you wouldn't expect to see much change in grooming. Amy had a lot of offspring during this whole period... 2 during pre-release, another born right at release (died), then another in November (died).
-
-- determine rank during release
-- Look at grooming- matrix
-- predator vigilance counts
-
-#### Grooming Matrix with Rank and Sex Post Release for FOCAL DATASET
-```{r}
-#Focal recieves grooming
-grooming_matrix_rank_post_focals <- grooming_matrix_tbl_post_focals %>%
-  add_column(rank = c(3,2,5,1,7,6,14,9,11,10,16,13,8,12,4), .before = "AL") %>%
-  arrange(rank) %>% #arranging by rank from 1-16
-  add_column(sex = c("F","F","F","F","F","F","F","F","F","F","F","F","M","M","M"), .before ="AL") %>%
-  add_column(age = c("A","A","A","A","A","A","A","J","J","J","J","A","A","A","SA"), .before = "AL")
-grooming_matrix_rank_post_focals
-```
-
-#### Grooming Matrix with Rank and Sex Post Release for CONT DATASET
-```{r}
-#Focal recieves grooming
-grooming_matrix_rank_post <- grooming_matrix_tbl_post %>% #creating a new tibble with rank, sex, and age columns (Pops starts as 12 for highest ranked male)
-  add_column(rank = c(3,2,5,1,7,6,14,9,11,10,16,13,8,12,4), .before = "AL") %>%
-  arrange(rank) %>% #arranging by rank from 1-16
-  add_column(sex = c("F","F","F","F","F","F","F","F","F","F","F","F","M","M","M"), .before ="AL") %>%
-  add_column(age = c("A","A","A","A","A","A","A","J","J","J","J","A","A","A","SA"), .before = "AL")
-grooming_matrix_rank_post
-
-#Focal grooms
-grooming_matrix2_rank_post<- grooming_matrix2_tbl_post %>%
-  add_column(rank = c(3,2,5,1,7,6,14,9,11,10,16,13,8,12,4), .before = "AL") %>%
-  arrange(rank) %>% #arranging by rank from 1-16
-  add_column(sex = c("F","F","F","F","F","F","F","F","F","F","F","F","M","M","M"), .before ="AL") %>%
-  add_column(age = c("A","A","A","A","A","A","A","J","J","J","J","A","A","A","SA"), .before = "AL")
-grooming_matrix2_rank_post
-
-#Females only
-grooming_matrix_rank_post_fems<- grooming_matrix_rank_post %>% 
-  filter(rank < 13) #filtering out ranks less than 12 to pull out only females
-grooming_matrix_rank_post_fems
-
-#Female ADULTS only
-grooming_matrix_rank_post_Afems<- grooming_matrix_rank_post_fems %>%
-  filter(age == "A")
-grooming_matrix_rank_post_Afems
-
-#Males only
-grooming_matrix_rank_post_males<- grooming_matrix_post_rank %>% 
-  filter(rank > 11) #filtering out ranks more than 11 to pull out only males
-grooming_matrix_rank_males
-
-#both are normally distributed
-shapiro.test(grooming_matrix_rank_post$rank)
-shapiro.test(grooming_matrix_rank_post$total)
-```
-
-#### Combining Grooming Matrices from Cont and Focals together
-```{r}
-# Need to make these matrices be the exact same size
-grooming_matrix_post_edited<- select(grooming_matrix_rank_post,-IDs,-rank,-sex,-age,-PO) #removing the categorical columns as well as Pop's column (only had 1 grooming event) because theres no Pops column in the focals matrix
-grooming_matrix_post_edited_focals<- select(grooming_matrix_rank_post_focals,-IDs,-rank,-sex,-age,-SK) #removing the categorical columns as well as SKittle's column (her mom, Amy, was groomed by her only) because theres no Skittles column in the cont matrix
-
-grooming_matrix_post_edited<- as.matrix(grooming_matrix_post_edited) #turning these back into a legitamite matrices so I can add them together
-grooming_matrix_post_edited_focals<- as.matrix(grooming_matrix_post_edited_focals)
-
-combined_grooming_matrix_post<- grooming_matrix_post_edited + grooming_matrix_post_edited_focals #adding the matrices together
-combined_grooming_matrix_post<- combined_grooming_matrix_post %>%
-  as.tibble() #turning it back into a tibble
-
-#adding back in the categorical columns 
-combined_grooming_matrix_post$IDs<- grooming_matrix_rank_post$IDs
-combined_grooming_matrix_post$rank<- grooming_matrix_rank_post$rank
-combined_grooming_matrix_post$sex<- grooming_matrix_rank_post$sex
-
-combined_grooming_matrix_post<- combined_grooming_matrix_post[,c(4,5,6,1,2,7:18,3)] #re-ordeing the categorical columns so they're in the front
-```
-
-#### Spearman's correlation test for rank and grooming
-```{r}
-cortest_post <-cor.test(grooming_matrix_rank_post_fems$rank, grooming_matrix_rank_post_fems$total,  method = "spearman", exact=F)
-cortest_post #there is a negative correlation between female rank and total grooming recieved (as rank increases, grooming recieved decreases)
-cortest_Afems_post<- cor.test(grooming_matrix_rank_post_Afems$rank, grooming_matrix_rank_post_Afems$total, method = "spearman")
-cortest_Afems_post #there is an even stronger negative correlation between ADULT female rank and total grooming recieved 
-cortest2<- cor.test(grooming_matrix_rank_males$rank, grooming_matrix_rank_males$total,  method = "spearman")
-cortest2 #there is no correlation between male rank and total grooming recieved (Zip and Batman, which are high rank, recieve little to no grooming, but Pops recieves the most grooming, so this throws off the correlation)
-
-cor(grooming_matrix_rank_post_fems$rank, grooming_matrix_rank_post_fems$total) #just another way to see the correlation between two variables
-```
-
-*Linear regression models I/II for rank and grooming totals*
-```{r}
-mI<- lm(total ~ rank, data = grooming_matrix_rank_post_fems)
-mI_adults<- lm(total ~ rank, data = grooming_matrix_rank_post_Afems)
-
-install.packages("lmodel2")
-library(lmodel2)
-
-mII <- lmodel2(total ~ rank, data = grooming_matrix_rank_post_fems, range.y = "relative", range.x = "relative", nperm = 1000)
-mII
-
-summary(mI)
-summary(mI_adults) 
-```
-
-#### Plotting social rank and total grooming recieved for FEMALES only
-```{r}
-install.packages("car")
-install.packages("hrbrthemes")
-library(car)
-library(hrbrthemes)
-
-plot(grooming_matrix_rank_fems$rank, grooming_matrix_rank_fems$total)
-
-#Plotting social rank and grooming totals for females only
-groom_plot_fems_post<- ggplot(grooming_matrix_rank_post_fems, aes(x=rank, y=total)) + 
-  geom_smooth(method = "lm", formula = y ~ x) +
-  geom_point(aes(shape=age), size=3) +
-  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
-  scale_color_manual(values = c("seagreen","sandybrown")) +
-  theme(legend.box.background = element_rect(colour = "black")) +
-  geom_text(aes(label= IDs),
-  nudge_x = 0.5, nudge_y = 0.5, 
-  check_overlap = T) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
-groom_plot_fems_post
-
-ggsave("GroomPlot Fems Post.pdf", width= 8, height= 5, last_plot())
-
-#Plotting social rank and grooming totals for female ADULTs only
-groom_plot_Afems_post<- ggplot(grooming_matrix_rank_post_Afems, aes(x=rank, y=total)) + 
-  geom_smooth(method = "lm", formula = y ~ x) +
-  geom_point(aes(shape=age), size=3) +
-  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
-  theme(legend.box.background = element_rect(colour = "black")) +
-  geom_text(aes(label= IDs),
-  nudge_x = 0.5, nudge_y = 0.5, 
-  check_overlap = T) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
-groom_plot_Afems_post
-
-ggsave("GroomPlot AFems Post.pdf", width= 8, height= 5, last_plot())
-
-```
-
-## Running analyses with UPDATED DATA
-```{r}
-total_groom_pre<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/Fems_TOTALgroom_pre.csv") #this is a table I created by hand of total grooming received using both "focal receives grooming" AND "focal grooms" matrices
-total_groom_pre<- read.csv(total_groom_pre, header = T)
-total_groom_pre$Rank<- as.numeric(total_groom_pre$Rank)
-
-total_groom_post<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/d66c19037572dcdad2b24a59e85aba510267a881/Fems_TOTALgroom_post.csv")
-total_groom_post<- read.csv(total_groom_post, header = T)
-total_groom_post$Rank<- as.numeric(total_groom_post$Rank)
-
-#Taking out adults only
-total_groom_preAfems<- total_groom_pre %>%
-  filter(Age == "A")
-
-total_groom_postAfems<- total_groom_post %>%
-  filter(Age == "A")
-```
-
-#### Spearman's correlation test for rank and grooming
-```{r}
-#PRE
-cortest_pre2 <-cor.test(total_groom_pre$Rank, total_groom_pre$Total,  method = "spearman", exact=F)
-cortest_pre2 #there is a negative correlation between female rank and total grooming recieved (as rank increases, grooming recieved decreases)
-cortest_Afems_pre2<- cor.test(total_groom_preAfems$Rank, total_groom_preAfems$Total, method = "spearman")
-cortest_Afems_pre2 #there is an even stronger negative correlation between ADULT female rank and total grooming recieved 
-
-#POST
-cortest_post2 <-cor.test(total_groom_post$Rank, total_groom_post$Total,  method = "spearman", exact=F)
-cortest_post2 #there is a negative correlation between female rank and total grooming recieved (as rank increases, grooming recieved decreases)
-cortest_Afems_post2<- cor.test(total_groom_postAfems$Rank, total_groom_postAfems$Total, method = "spearman")
-cortest_Afems_post2 #there is an even stronger negative correlation between ADULT female rank and total grooming recieved 
-```
-
-```{r}
-#PRE
-LM_udpated<- lm(Total ~ Rank, data = total_groom_pre)
-summary(LM_udpated)
-LM_updated2<- lm(Total ~ Rank, data = total_groom_preAfems)
-summary(LM_updated2)
-
-#POST
-LM_udpated_post<- lm(Total ~ Rank, data = total_groom_post)
-summary(LM_udpated_post)
-LM_updated2_post<- lm(Total ~ Rank, data = total_groom_postAfems)
-summary(LM_updated2_post)
-```
-
-###Making the Plots
-```{r}
-#Plotting social rank and grooming totals for females only
-groom_plot_fems_pre2<- ggplot(total_groom_pre, aes(x=Rank, y=Total)) + 
-  geom_smooth(method = "lm", formula = y ~ x) +
-  geom_point(aes(shape=Age), size=3) +
-  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
-  scale_color_manual(values = c("seagreen","sandybrown")) +
-  theme(legend.box.background = element_rect(colour = "black")) +
-  geom_text(aes(label= ID),
-  nudge_x = 0.5, nudge_y = 0.5, 
-  check_overlap = T) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
-groom_plot_fems_pre2
-
-ggsave("GroomPlot Fems Pre UPDATED.pdf", width= 8, height= 5, last_plot())
-
-#Plotting social rank and grooming totals for females only
-groom_plot_fems_post2<- ggplot(total_groom_post, aes(x=Rank, y=Total)) + 
-  geom_smooth(method = "lm", formula = y ~ x) +
-  geom_point(aes(shape=Age), size=3) +
-  labs(x= "Social Rank", y= "Total Grooming Received", shape = "Age") +
-  scale_color_manual(values = c("seagreen","sandybrown")) +
-  theme(legend.box.background = element_rect(colour = "black")) +
-  geom_text(aes(label= ID),
-  nudge_x = 0.5, nudge_y = 0.5, 
-  check_overlap = T) +
-  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(),
-panel.background = element_blank(), axis.line = element_line(colour = "black"))
-groom_plot_fems_post2
-
-ggsave("GroomPlot Fems Post UPDATED.pdf", width= 8, height= 5, last_plot())
-
-```
-
----
-output:
-  html_document: default
-  pdf_document: default
----
 
 # **NEW ORGANIZED CODE FOR 2025 MANUSCRIPT**
 
 ---
-title: "Angley et al. 2016: Post-release survival and behavior of rehabilitated vervet monkeys (*Chlorocebus pygerythrus rufoviridis*) in Malawi"
-output: html_document
+title: "Post-release survival and behavior of rehabilitated vervet monkeys (*Chlorocebus pygerythrus rufoviridis*) in Malawi"
+output: md_document
 ---
 install.packages("curl")
 install.packages("dplyr")
@@ -1794,6 +25,7 @@ install.packages("survminer")
 
 *Load in packages*
 ```{r}
+knitr::opts_chunk$set(eval = FALSE)
 library(curl)
 library(dplyr)
 library(tidyverse)
@@ -2875,7 +1107,7 @@ The troop moved significantly more post-release than pre-release.
 
 ## **SHANNON DIVERSITY**
 ### Purrr method
-```{r}
+```{r, message=FALSE}
 #PRE-RELEASE
 # 1. Create a character vector of all the monkey IDs in your dataset:
 MonkeyIDs_SD<-as.character(unique(pre_focals$FOCAL.ID))
@@ -5105,7 +3337,7 @@ ALL1<-combo_ALL %>%
     actor, 
     recipient, 
     ~monkey_ALL.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-ALL1
+#ALL1
 
 ALL_matrix<-spread(ALL1,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
 #ALL_matrix
@@ -5128,7 +3360,8 @@ ALL_matrix<-spread(ALL1,recipient,interaction) %>% column_to_rownames(var="actor
 ALL_matrix_DavidScore<- ALL_matrix
 ALL_matrix_DavidScore[is.na(ALL_matrix_DavidScore)] <- 0
 
-pre_ds_results<- DS(ALL_matrix_DavidScore) #This uses the EloRating package
+pre_ds_results<- DS(ALL_matrix_DavidScore)#This uses the EloRating package
+pre_ds_results
 ```
 
 ### Post-release Dataset
@@ -5147,7 +3380,7 @@ MonkeyIDs_post
 
 # 2. Get a list of dataframes, subsetted by monkey ID:
 monkey.prelim_post<-lapply(MonkeyIDs_post, function(x){post_cont[post_cont[["FOCAL.ID"]] == x, ]})
-head(monkey.prelim_post)
+#head(monkey.prelim_post)
 
 # 3. Set up your pairwise combinations of interacting monkeys:
 monkeylist_post<-list(actor=MonkeyIDs_post,recipient=MonkeyIDs_post) #create list of all possible actors/recipients
@@ -5177,20 +3410,20 @@ combo_MP_post<-
     ~if_else(.y %in% monkey_MP.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 MP1_post<-combo_MP_post %>% 
   mutate(makeplace = map2_int(
     actor, 
     recipient, 
     ~monkey_MP.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
-MP1_post
+#MP1_post
 
 MP_matrix_post<-spread(MP1_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
 #MP_matrix_post
 ```
 
-### Making Place- Matrix (focal gets displaced) for CONTINUOUS DATASET
+#### Making Place- Matrix (focal gets displaced) for CONTINUOUS DATASET
 ```{r}
 monkey_MP2.prelim_post<-
   monkey.prelim_post %>%
@@ -5211,7 +3444,7 @@ combo_MP2_post<-
     ~if_else(.y %in% monkey_MP2.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 MP2_post<-combo_MP2_post %>% 
   mutate(makeplace = map2_int(
@@ -5245,7 +3478,7 @@ combo_A_post<-
     ~if_else(.y %in% monkey_A.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 A1_post<-combo_A_post %>% 
   mutate(aggress = map2_int(
@@ -5281,7 +3514,7 @@ combo_loseA_post<-
     ~if_else(.y %in% monkey_loseA.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 loseA1_post<-combo_loseA_post %>% 
   mutate(aggress = map2_int(
@@ -5315,7 +3548,7 @@ combo_TH_post<-
     ~if_else(.y %in% monkey_TH.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 TH1_post<-combo_TH_post %>% 
   mutate(threaten = map2_int(
@@ -5349,7 +3582,7 @@ combo_loseTH_post<-
     ~if_else(.y %in% monkey_loseTH.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
   filter(absent1 == "TRUE") %>%
   filter(absent2 == "TRUE") %>%
-  select(-absent1,-absent2)
+  dplyr::select(-absent1,-absent2)
 
 TH2_post<-combo_loseTH_post %>% 
   mutate(threaten = map2_int(
@@ -5366,7 +3599,7 @@ loseTH_matrix_post<-spread(TH2_post,recipient,threaten) %>% column_to_rownames(v
 ```{r}
 monkey_ALL.prelim_post<-
   monkey.prelim_post %>%
-  purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
+  purrr::map(~filter(.,FOCAL.ID=="CI", BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
   purrr::map(~group_by(.,ASSOCIATION)) %>%
   purrr::map(~summarize(.,count=n()))
 names(monkey_ALL.prelim_post) <- MonkeyIDs_post
@@ -5417,7 +3650,8 @@ ALL_matrix_post
 
 *Calculating David's Scores*
 ```{r}
-post_ds_results<- DS(ALL_matrix_post)
+post_ds_results<- DS(ALL_matrix_post) #using EloRating package
+post_ds_results
 ```
 
 ## **SOCIAL NETWORK** 
@@ -5485,30 +3719,6 @@ pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(
 pre_sn_codes <- sort(pre_sn_closeIDs)
 
 pre_sn_df <- as.data.frame(pre_sn_matrix, stringsAsFactors = TRUE) #creating the matrix data frame
-```
-
-#### Social Network Figures 
-```{r}
-pre_sortprox<- pre_sn_combo3[order(pre_sn_combo3$proximity),]
-
-pre_sn_edges<- pre_sn_df
-pre_sn_vertices<- c(pre_sn_codes)
-pre_sn_df2<- as.data.frame(pre_sortprox, stringsAsFactors = TRUE, row.names = pre_sn_vertices)
-pre_sn_graph<- graph_from_data_frame(d=pre_sn_df2, vertices = pre_sn_vertices, directed = FALSE)
-
-pre_sn_proximity<- as.numeric(unlist(dplyr::select(pre_sn_combo3, "proximity")))
-```
-
-*social network figure*
-```{r}
-par(bg = "white")
-pre_social_network_fig<- plot(pre_sn_graph,
-      vertex.size = 10,
-      vertex.color = "lightgrey",
-      vertex.label.color = "black",
-      edge.width=((1/50)*(pre_sn_proximity)),
-      edge.curved = 0.25)
-#pre_social_network_fig
 ```
 
 #### Adding the total number of focal follows in which proximity info was collected
@@ -5782,30 +3992,6 @@ post_sn_codes <- sort(post_sn_IDs)
 post_sn_df <- as.data.frame(post_sn_matrix, stringsAsFactors = TRUE) #creating the matrix data frame
 ```
 
-#### Social Network Figures 
-```{r}
-post_sortprox<- post_sn_combo3[order(post_sn_combo3$proximity),]
-
-post_sn_edges<- post_sn_df
-post_sn_vertices<- c(post_sn_codes)
-post_sn_df2<- as.data.frame(post_sortprox, stringsAsFactors = TRUE, row.names = post_sn_vertices)
-post_sn_graph<- graph_from_data_frame(d=post_sn_df2, vertices = post_sn_vertices, directed = FALSE)
-
-post_sn_proximity<- as.numeric(unlist(dplyr::select(post_sn_combo3, "proximity")))
-```
-
-*social network figure*
-```{r}
-par(bg = "white")
-post_social_network_fig<- plot(post_sn_graph,
-      vertex.size = 10,
-      vertex.color = "lightgrey",
-      vertex.label.color = "black",
-      edge.width=((1/50)*(post_sn_proximity)),
-      edge.curved = 0.25)
-#post_social_network_fig
-```
-
 #### Adding the total number of focal follows in which proximity info was collected
 ```{r}
 post_socnet_TOTALS<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/refs/heads/main/Post-release%20Social%20Proxmity%20TOTALS.csv")
@@ -5939,7 +4125,7 @@ post_socnet_TOTALs_matrix <- post_socnet_TOTALs_matrix %>%
   column_to_rownames('Focal.ID') #changing Focal ID column into row names
 
 post_socnet_TOTALs_matrix <- post_socnet_TOTALs_matrix %>%
-  select(AL,AM,AU,BL,BM,BO,CI,ED,HO,JA,KO,MA,MG,NE,PA,PO,RE,SK,TI,TO,ZI) # Specify the new order of column name
+  dplyr::select(AL,AM,AU,BL,BM,BO,CI,ED,HO,JA,KO,MA,MG,NE,PA,PO,RE,SK,TI,TO,ZI) # Specify the new order of column name
 
 post_socnet_TOTALs_matrix<- as.matrix(post_socnet_TOTALs_matrix) #turning it into a matrix, has to come after all the other adjustments to the df
 ```
@@ -6040,7 +4226,7 @@ post_eigen_centrality_undirect <- eigen_centrality(proximity_rate_graph_undirect
 
 #extracting the scores
 post_eigen_centrality_scores_undirect <- post_eigen_centrality_undirect$vector
-post_eigen_centrality_scores_undirect
+#post_eigen_centrality_scores_undirect
 
 #putting eigenvector scores back into a df
 post_eigen_centrality_df_undirect <- data.frame(
@@ -6051,6 +4237,58 @@ post_eigen_centrality_df_undirect
 ```
 
 The edge in this undirected case means "relationship" rather than "interaction direction" because we want a pairwise association strength, not a directional interaction. 
+
+#### Social Network Figures - PRE RELEASE
+```{r}
+#Pre release
+pre_sortprox<- pre_sn_combo3[order(pre_sn_combo3$proximity),]
+
+pre_sn_edges<- pre_sn_df
+pre_sn_vertices<- c(pre_sn_codes)
+pre_sn_df2<- as.data.frame(pre_sortprox, stringsAsFactors = TRUE, row.names = pre_sn_vertices)
+pre_sn_graph<- graph_from_data_frame(d=pre_sn_df2, vertices = pre_sn_vertices, directed = FALSE)
+
+pre_sn_proximity<- as.numeric(unlist(dplyr::select(pre_sn_combo3, "proximity")))
+```
+
+*social network figure*
+```{r}
+#making those with higher eigen values larger nodes
+layout_fr <- layout_with_fr(pre_sn_graph)  # Fruchterman-Reingold
+plot(pre_sn_graph,
+     layout = layout_fr,
+     vertex.size = 10 + 20 * pre_eigen_centrality_df_undirect$eigenvector_centrality,
+     vertex.color = "lightgrey",
+     vertex.label.color = "black",
+     edge.width = ((1/50) * pre_sn_proximity),
+     edge.curved = 0.25)
+```
+
+#### Social Network Figures - POST RELEASE
+```{r}
+post_sortprox<- post_sn_combo3[order(post_sn_combo3$proximity),]
+
+post_sn_edges<- post_sn_df
+post_sn_vertices<- c(post_sn_codes)
+post_sn_df2<- as.data.frame(post_sortprox, stringsAsFactors = TRUE, row.names = post_sn_vertices)
+post_sn_graph<- graph_from_data_frame(d=post_sn_df2, vertices = post_sn_vertices, directed = FALSE)
+
+post_sn_proximity<- as.numeric(unlist(dplyr::select(post_sn_combo3, "proximity")))
+```
+
+*social network figure*
+```{r}
+#eigenvector values reflect size of node
+layout_fr <- layout_with_fr(post_sn_graph)  # Fruchterman-Reingold
+plot(post_sn_graph,
+     layout = layout_fr,
+     vertex.size = 10 + 20 * post_eigen_centrality_df_undirect$eigenvector_centrality,
+     vertex.color = "lightgrey",
+     vertex.label.color = "black",
+     edge.width = ((1/50) * post_sn_proximity),
+     edge.curved = 0.25)
+```
+
 
 ## **SURVIVAL ANALYSIS**
 ### Post-release only (no deaths pre-release)
@@ -6200,7 +4438,7 @@ post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
 ```
 
 #### Survival Probability and curves with Kaplan-Meier
-```{r}
+```{r, warning=FALSE}
 Surv(post_surv_edited_with_centrality$NEW_days_alive, post_surv_edited_with_centrality$status)[1:18] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
 
 #Survival curves
@@ -6235,37 +4473,32 @@ SURVIVAL_PLOT<- ggsurvplot(survfit_all,
           surv.median.line = "hv", # Specify median survival
           ggtheme = theme_bw()) # Change ggplot2 theme
           #palette = c("#E7B800", "#2E9FDF"))
-ggsave("SURVIVAL_PLOT.pdf", height = 3, width = 7, last_plot())
+#ggsave("SURVIVAL_PLOT.pdf", height = 3, width = 7, last_plot())
 
 #Survfit across Sex
 survfit_sex<- survfit(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
-survfit_sex
-summary(survfit_sex) #median survival time for females is 256 and 251 for males
+#survfit_sex
+#summary(survfit_sex) #median survival time for females is 256 and 251 for males
 summary(survfit_sex)$table
 ```
 
 *Log-Rank Test*
 ```{r}
 #Differences in survival times between sexes
-survdiff(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
+survdiff_SEX<- survdiff(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
 
 #Differences in survival times between ages
-survdiff(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
-
-#Differences in survival times across the ranks
-survdiff(Surv(NEW_days_alive, status) ~ David_scores_post, data = post_surv_edited_with_centrality)
-
-#Differences in survival times across the social proximity numbers
-survdiff(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+survdiff_AGE<- survdiff(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
 ```
 
 *Cox Multiple regression*
 ```{r}
 #Cox proportional hazards for davids scores
-coxph(Surv(NEW_days_alive, status) ~ David_scores_post, data = post_surv_edited_with_centrality)
+coxph_RANK<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post, data = post_surv_edited_with_centrality)
 
 #Cox proportional hazards for eigenvector centrality
-coxph(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+coxph_CENT<- coxph(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+coxph_CENT #significant p-value
 
 #Cox multiple for davids, sex, and age
 NEW_cox_multi1<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE, data= post_surv_edited_with_centrality)
@@ -6316,18 +4549,21 @@ NEW_surv_pred<- post_surv_edited %>%
 
 #Adding in the pred column in NEW_surv_pred into post_surv_edited_with_centrality
 post_surv_edited_with_centrality_with_pred <- post_surv_edited_with_centrality %>%
-  left_join(NEW_surv_pred %>% select(FOCAL.ID, pred_post, pred_pre), by = "FOCAL.ID")
+  left_join(NEW_surv_pred %>% dplyr::select(FOCAL.ID, pred_post, pred_pre), by = "FOCAL.ID")
 
 #Not sure why Zip's pred_pre is still showing NA even though I assigned him a number, just going to do it manually: 
 post_surv_edited_with_centrality_with_pred[nrow(post_surv_edited_with_centrality_with_pred), ncol(post_surv_edited_with_centrality_with_pred)] <- 10.17
 
+#Cox proportional hazards for anti-predator behaviors
+coxph_PRED_pre<- coxph(Surv(NEW_days_alive, status) ~ pred_pre, data = post_surv_edited_with_centrality_with_pred)
+#summary(coxph_PRED_pre)
+
+coxph_PRED_post<- coxph(Surv(NEW_days_alive, status) ~ pred_post, data = post_surv_edited_with_centrality_with_pred)
+#summary(coxph_PRED_post)
+
 #Cox multiple for Davids scores, sex, age, and predator POST, and social proximity
 NEW_cox_multi3<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE + pred_post + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
-summary(NEW_cox_multi3)
-
-coxph(Surv(NEW_days_alive, status) ~ pred_pre, data = post_surv_edited_with_centrality_with_pred)
-
-coxph(Surv(NEW_days_alive, status) ~ pred_post, data = post_surv_edited_with_centrality_with_pred)
+#summary(NEW_cox_multi3)
 
 #Trying the cox multiple regression models without sex: 
 NEW_cox_multi4<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
@@ -6341,20 +4577,21 @@ summary(NEW_cox_multi5)
 *Proportional Hazards Assumption Test and other statistical tests*
 ```{r}
 #Testing for proportional hazards (PH) assumption:
-NEW_test.ph<- cox.zph(NEW_cox_multi2)
-NEW_test.ph #great, not significant for the model as a whole
+NEW_test.ph<- cox.zph(NEW_cox_multi2) #this includes sex as a covariate
+#NEW_test.ph #great, model as a whole meets assumption but sex does not meet assumption
 
-#ggcoxzph(NEW_test.ph)
+#Now testing the model WITHOUT sex
+NEW_test.ph_2<- cox.zph(NEW_cox_multi4) #model and all covariates meet assumption
 
 #Testing influential observations 
 
 #Specifying the argument type = “dfbeta”, plots the estimated changes in the regression coefficients upon deleting each observation in turn
 NEW_InfluenceObs<- ggcoxdiagnostics(NEW_cox_multi2, type = "dfbeta",
                  linear.predictions = FALSE, ggtheme = theme_bw()) #I think sex is slightly influential because it appears to have an outlier 
-ggsave("InfluenceObs.pdf", width = 8, height= 5, last_plot())
+#ggsave("InfluenceObs.pdf", width = 8, height= 5, last_plot())
 
 #The deviance residual is a normalized transform of the martingale residual. These residuals should be roughly symmetrically distributed about zero with a standard deviation of 1. Positive values correspond to individuals that “died too soon” compared to expected survival times. Negative values correspond to individual that “lived too long”. Very large or small values are outliers, which are poorly predicted by the model.
-ggcoxdiagnostics(NEW_cox_multi2, type = "deviance",
+ggcoxdiagnostics(NEW_cox_multi4, type = "deviance",
                  linear.predictions = FALSE, ggtheme = theme_bw()) #this looks fairly symmetrical around 0 but not perfect
 ```
 

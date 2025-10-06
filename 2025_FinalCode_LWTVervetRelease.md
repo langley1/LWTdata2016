@@ -1,0 +1,4644 @@
+# **NEW ORGANIZED CODE FOR 2025 MANUSCRIPT**
+
+install.packages(“curl”) install.packages(“dplyr”)
+install.packages(“tidyverse”) install.packages(“gplots”)
+install.packages(“corrplot”) install.packages(“ggplot2”)
+install.packages(“vegan”) install.packages(“data.table”)
+install.packages(“tidyr”) install.packages(“formattable”)
+install.packages(“purrr”) install.packages(“igraph”)
+install.packages(“EloRating) install.packages(”ggraph”)
+install.packages(“ordinal”) install.packages(“survival”)
+install.packages(“survminer”)
+
+*Load in packages*
+
+    knitr::opts_chunk$set(eval = FALSE)
+    library(curl)
+    library(dplyr)
+    library(tidyverse)
+    library(gplots)
+    library(corrplot)
+    library(ggplot2)
+    library(data.table)
+    library(tidyr)
+    library(formattable)
+    library(purrr)
+    library(EloRating)
+    library(igraph)
+    library(ggraph)
+    library(ordinal)
+    library(vegan)
+    library(survival)
+    library(survminer)
+
+## **Main Pre-release Focal Follow dataset**
+
+    pre_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/refs/heads/main/2016_pre-release_focals_FULL.csv")
+    pre_focals<- read.csv(pre_focals, header = T)
+    levels(pre_focals$BEHAVIOUR)[levels(pre_focals$BEHAVIOUR) == "F"] <- "FE"
+    head(pre_focals)
+    #unique(pre_focals$MONTH)
+    unique(pre_focals$BEHAVIOUR)
+
+    #Making sure both behavior columns are both character columns because I'm going to gather() them below
+    pre_focals[,c("BEHAVIOUR","BEHAVIOUR.2")] <- lapply(pre_focals[,c("BEHAVIOUR","BEHAVIOUR.2")], as.character)
+
+## **Main Post-release Focal Follow dataset**
+
+    post_focals<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_FULL.csv") #this is FULL dataset
+    post_focals<- read.csv(post_focals, header = T, na.strings=c(""," ","NA"))
+    levels(post_focals$BEHAVIOUR)[levels(post_focals$BEHAVIOUR) == "F"] <- "FE" #changing the Fs to FEs
+    #unique(post_focals$BEHAVIOUR)
+    head(post_focals)
+
+## **Activity Budgets**
+
+### Pre-release
+
+*Focal Dataset*
+
+    #Organizing the dataset and creating the behavior categories 
+    pre_focals_budget<- pre_focals %>%
+      gather("Obs", "behavior", 22:23, na.rm = T) %>% #gathering the two behavior columns
+      filter(!behavior %in% c("AL","BL","PO")) %>% #removing these from the behavior column becuase they're mistakes
+      mutate(behavior.category = #creating new column for behavior categories
+               case_when(behavior %in% c("G+","G-","PR-","PR+","C","CL","N","NU","SU","PL","MA","MO","A+","A-","TH+","TH-","MP+","MP-") ~ as.character("Social"),
+                         behavior %in% c("F","FE","FO") ~ as.character("Feeding"),
+                         behavior == "L" ~ as.character("Locomote"),
+                         behavior %in% c("V","PA") ~ as.character("Predator"),
+                         behavior %in% c("YA","SC","SG","SM","PC") ~ as.character("Stress"),
+                         behavior %in% c("O","OS","R","PH","AH")~ as.character("Other")))
+    unique(pre_focals_budget$behavior.category)
+
+#### Mean Activity Budget Per Hour
+
+    #Pops
+    Pops_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "PO") %>% #filter out Pops
+      group_by(MONTH,day,hour,behavior.category) %>% #group by these columns because I need unique counts PER HOUR
+      summarize(count=n(), .groups = "drop") %>% #counts up all of the times the behavior in that category was recorded (this is per focal)
+      mutate(ID = "PO")
+    #Pops_budget
+
+    Pops_budget2<- Pops_budget %>%
+      group_by(behavior.category) %>% #group by each behavior category
+      summarize(total= sum(count)) %>% #this creates a new column called "total" that is the sum of the count column 
+      mutate(Occurrences = #new column called "occurrences"
+               case_when(behavior.category == "Feeding" ~ as.numeric(67), #these numbers are the number of times each category was listed in the dataframe up above (Pops_budget). I have to find these because not every behavior category has the same number of hours it was recorded in, I need to find the unique number for each category. I found these numbers using table(Pops_budget$behavior.category) in the console
+                         behavior.category == "Locomote" ~ as.numeric(75),
+                         behavior.category == "Other" ~ as.numeric(71),
+                         behavior.category == "Predator" ~ as.numeric(154),
+                         behavior.category == "Social" ~ as.numeric(45),
+                         behavior.category == "Stress" ~ as.numeric(39))) %>%
+      mutate(Mean = (total/Occurrences)) #new column called "mean" which is the total sum of each behavior category divided by the number of hours it is recorded in (i.e the occurrences column)
+    Pops_budget2$total<- NULL
+    Pops_budget2$Occurrences<- NULL
+
+    #Blue
+    Blue_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "BL") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop") %>%
+      mutate(ID = "BL")
+
+    Blue_budget2<- Blue_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(101),
+                         behavior.category == "Locomote" ~ as.numeric(76),
+                         behavior.category == "Other" ~ as.numeric(87),
+                         behavior.category == "Predator" ~ as.numeric(139),
+                         behavior.category == "Social" ~ as.numeric(81),
+                         behavior.category == "Stress" ~ as.numeric(17))) %>%
+      mutate(Mean = (total/Occurrences))
+    Blue_budget2$total<- NULL
+    Blue_budget2$Occurrences<- NULL
+
+    #Amy
+    Amy_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "AM") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop") %>%
+      mutate(ID = "AM")
+
+    Amy_budget2<- Amy_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(103),
+                         behavior.category == "Locomote" ~ as.numeric(88),
+                         behavior.category == "Other" ~ as.numeric(68),
+                         behavior.category == "Predator" ~ as.numeric(139),
+                         behavior.category == "Social" ~ as.numeric(86),
+                         behavior.category == "Stress" ~ as.numeric(26))) %>%
+      mutate(Mean = (total/Occurrences))
+    Amy_budget2$total<- NULL
+    Amy_budget2$Occurrences<- NULL
+
+    #Alex
+    Alex_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "AL") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Alex_budget2<- Alex_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(96),
+                         behavior.category == "Locomote" ~ as.numeric(82),
+                         behavior.category == "Other" ~ as.numeric(80),
+                         behavior.category == "Predator" ~ as.numeric(140),
+                         behavior.category == "Social" ~ as.numeric(86),
+                         behavior.category == "Stress" ~ as.numeric(33))) %>%
+      mutate(Mean = (total/Occurrences))
+    Alex_budget2$total<- NULL
+    Alex_budget2$Occurrences<- NULL
+
+    #Boo
+    Boo_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "BO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Boo_budget2<- Boo_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(100),
+                         behavior.category == "Locomote" ~ as.numeric(86),
+                         behavior.category == "Other" ~ as.numeric(80),
+                         behavior.category == "Predator" ~ as.numeric(133),
+                         behavior.category == "Social" ~ as.numeric(81),
+                         behavior.category == "Stress" ~ as.numeric(22))) %>%
+      mutate(Mean = (total/Occurrences))
+    Boo_budget2$total<- NULL
+    Boo_budget2$Occurrences<- NULL
+
+    #Big Mama
+    Bgm_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "BM") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Bgm_budget2<- Bgm_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(92),
+                         behavior.category == "Locomote" ~ as.numeric(89),
+                         behavior.category == "Other" ~ as.numeric(85),
+                         behavior.category == "Predator" ~ as.numeric(151),
+                         behavior.category == "Social" ~ as.numeric(78),
+                         behavior.category == "Stress" ~ as.numeric(25))) %>%
+      mutate(Mean = (total/Occurrences))
+    Bgm_budget2$total<- NULL
+    Bgm_budget2$Occurrences<- NULL
+
+    #Augustine
+    Aug_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "AU") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Aug_budget2<- Aug_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(99),
+                         behavior.category == "Locomote" ~ as.numeric(93),
+                         behavior.category == "Other" ~ as.numeric(95),
+                         behavior.category == "Predator" ~ as.numeric(144),
+                         behavior.category == "Social" ~ as.numeric(72),
+                         behavior.category == "Stress" ~ as.numeric(30))) %>%
+      mutate(Mean = (total/Occurrences))
+    Aug_budget2$total<- NULL
+    Aug_budget2$Occurrences<- NULL
+
+    #Bart
+    Bart_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "BA") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Bart_budget2<- Bart_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(107),
+                         behavior.category == "Locomote" ~ as.numeric(84),
+                         behavior.category == "Other" ~ as.numeric(85),
+                         behavior.category == "Predator" ~ as.numeric(147),
+                         behavior.category == "Social" ~ as.numeric(26),
+                         behavior.category == "Stress" ~ as.numeric(45))) %>%
+      mutate(Mean = (total/Occurrences))
+    Bart_budget2$total<- NULL
+    Bart_budget2$Occurrences<- NULL
+
+    #Eddy
+    Ed_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "ED") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Ed_budget2<- Ed_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(117),
+                         behavior.category == "Locomote" ~ as.numeric(83),
+                         behavior.category == "Other" ~ as.numeric(86),
+                         behavior.category == "Predator" ~ as.numeric(146),
+                         behavior.category == "Social" ~ as.numeric(90),
+                         behavior.category == "Stress" ~ as.numeric(18))) %>%
+      mutate(Mean = (total/Occurrences))
+    Ed_budget2$total<- NULL
+    Ed_budget2$Occurrences<- NULL
+
+    #Jack
+    Jack_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "JA") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Jack_budget2<- Jack_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(92),
+                         behavior.category == "Locomote" ~ as.numeric(89),
+                         behavior.category == "Other" ~ as.numeric(97),
+                         behavior.category == "Predator" ~ as.numeric(146),
+                         behavior.category == "Social" ~ as.numeric(30),
+                         behavior.category == "Stress" ~ as.numeric(37))) %>%
+      mutate(Mean = (total/Occurrences))
+    Jack_budget2$total<- NULL
+    Jack_budget2$Occurrences<- NULL
+
+    #Tinker
+    Tink_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "TI") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Tink_budget2<- Tink_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(105),
+                         behavior.category == "Locomote" ~ as.numeric(89),
+                         behavior.category == "Other" ~ as.numeric(89),
+                         behavior.category == "Predator" ~ as.numeric(145),
+                         behavior.category == "Social" ~ as.numeric(69),
+                         behavior.category == "Stress" ~ as.numeric(31))) %>%
+      mutate(Mean = (total/Occurrences))
+    Tink_budget2$total<- NULL
+    Tink_budget2$Occurrences<- NULL
+
+    #Kovu
+    Kovu_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "KO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Kovu_budget2<- Kovu_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(114),
+                         behavior.category == "Locomote" ~ as.numeric(81),
+                         behavior.category == "Other" ~ as.numeric(99),
+                         behavior.category == "Predator" ~ as.numeric(137),
+                         behavior.category == "Social" ~ as.numeric(78),
+                         behavior.category == "Stress" ~ as.numeric(25))) %>%
+      mutate(Mean = (total/Occurrences))
+    Kovu_budget2$total<- NULL
+    Kovu_budget2$Occurrences<- NULL
+
+    #Mango
+    Mango_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "MG") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Mango_budget2<- Mango_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(105),
+                         behavior.category == "Locomote" ~ as.numeric(76),
+                         behavior.category == "Other" ~ as.numeric(85),
+                         behavior.category == "Predator" ~ as.numeric(153),
+                         behavior.category == "Social" ~ as.numeric(32),
+                         behavior.category == "Stress" ~ as.numeric(37))) %>%
+      mutate(Mean = (total/Occurrences))
+    Mango_budget2$total<- NULL
+    Mango_budget2$Occurrences<- NULL
+
+    #Neville
+    Nev_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "NE") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Nev_budget2<- Nev_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(236),
+                         behavior.category == "Locomote" ~ as.numeric(96),
+                         behavior.category == "Other" ~ as.numeric(84),
+                         behavior.category == "Predator" ~ as.numeric(154),
+                         behavior.category == "Social" ~ as.numeric(61),
+                         behavior.category == "Stress" ~ as.numeric(31))) %>%
+      mutate(Mean = (total/Occurrences))
+    Nev_budget2$total<- NULL
+    Nev_budget2$Occurrences<- NULL
+
+    #Toni
+    Toni_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "TO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Toni_budget2<- Toni_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(103),
+                         behavior.category == "Locomote" ~ as.numeric(77),
+                         behavior.category == "Other" ~ as.numeric(90),
+                         behavior.category == "Predator" ~ as.numeric(147),
+                         behavior.category == "Social" ~ as.numeric(80),
+                         behavior.category == "Stress" ~ as.numeric(24))) %>%
+      mutate(Mean = (total/Occurrences))
+    Toni_budget2$total<- NULL
+    Toni_budget2$Occurrences<- NULL
+
+    #May
+    May_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "MA") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    May_budget2<- May_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(122),
+                         behavior.category == "Locomote" ~ as.numeric(93),
+                         behavior.category == "Other" ~ as.numeric(90),
+                         behavior.category == "Predator" ~ as.numeric(138),
+                         behavior.category == "Social" ~ as.numeric(71),
+                         behavior.category == "Stress" ~ as.numeric(28))) %>%
+      mutate(Mean = (total/Occurrences))
+    May_budget2$total<- NULL
+    May_budget2$Occurrences<- NULL
+
+    #Zip
+    Zip_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "ZI") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Zip_budget2<- Zip_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(84),
+                         behavior.category == "Locomote" ~ as.numeric(73),
+                         behavior.category == "Other" ~ as.numeric(91),
+                         behavior.category == "Predator" ~ as.numeric(147),
+                         behavior.category == "Social" ~ as.numeric(27),
+                         behavior.category == "Stress" ~ as.numeric(36))) %>%
+      mutate(Mean = (total/Occurrences)) %>%
+      mutate(ID = "ZI")
+    Zip_budget2$total<- NULL
+    Zip_budget2$Occurrences<- NULL
+
+    #Batman
+    Bat_budget<- pre_focals_budget %>%
+      filter(FOCAL.ID == "BT") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Bat_budget2<- Bat_budget %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(59),
+                         behavior.category == "Locomote" ~ as.numeric(71),
+                         behavior.category == "Other" ~ as.numeric(98),
+                         behavior.category == "Predator" ~ as.numeric(149),
+                         behavior.category == "Social" ~ as.numeric(23),
+                         behavior.category == "Stress" ~ as.numeric(43))) %>%
+      mutate(Mean = (total/Occurrences)) %>%
+      mutate(ID = "BT")
+    Bat_budget2$total<- NULL
+    Bat_budget2$Occurrences<- NULL
+
+*Troop Mean Activity Budgets*
+
+    pre_fullbudget<- Pops_budget2 %>%
+      full_join(Blue_budget2,by= "behavior.category") %>%
+      full_join(Amy_budget2,by= "behavior.category") %>%
+      full_join(Alex_budget2,by= "behavior.category") %>%
+      full_join(Boo_budget2,by= "behavior.category") %>%
+      full_join(Bgm_budget2,by= "behavior.category") %>%
+      full_join(Aug_budget2,by= "behavior.category") %>%
+      full_join(Ed_budget2,by= "behavior.category") %>%
+      full_join(Jack_budget2,by= "behavior.category") %>%
+      full_join(Tink_budget2,by= "behavior.category") %>%
+      full_join(Kovu_budget2,by= "behavior.category") %>%
+      full_join(Mango_budget2,by= "behavior.category") %>%
+      full_join(May_budget2,by= "behavior.category") %>%
+      full_join(Toni_budget2,by= "behavior.category") %>%
+      full_join(Nev_budget2,by= "behavior.category") %>%
+      rowwise() %>% #this allows us to work with row-wise dataframe where we want to look at each row individually
+      mutate(TroopMean = ((sum(c_across(2:16),na.rm=T))/15), #adding up all the means per category and dividing by 17 monkeys to get average
+            release = "pre") #adding column to identify pre-release
+
+    pre_fullbudget_reduced<- pre_fullbudget[,c("behavior.category","TroopMean","release")] #these are the only columns I want to look at now
+    #pre_fullbudget_reduced
+
+    #A different table for this:
+    pre_fullbudget_FULL<- bind_rows(Pops_budget2,Blue_budget2,Amy_budget2,Alex_budget2,Boo_budget2,Bgm_budget2,Aug_budget2,Ed_budget2,Jack_budget2,Tink_budget2,Kovu_budget2,Mango_budget2,May_budget2,Toni_budget2,Nev_budget2)
+
+### Post-release
+
+*Focal Dataset*
+
+    post_focals_budget<- post_focals %>%
+      mutate(across(19:20, as.character)) %>%
+      gather("Obs", "behavior", 19:20, na.rm = T) %>% #gathering the two behavior columns
+      filter(!behavior %in% c("ED","TH","VL")) %>% #removing these from the behavior column because they're mistakes
+      mutate(behavior.category = #creating new column for behavior categories
+               case_when(behavior %in% c("G+","G-","PR-","PR+","C","CL","N","SU","PL","MA","MO","A+","A-","TH+","TH-","MP+","MP-") ~ as.character("Social"),
+                         behavior %in% c("F","FE","FO") ~ as.character("Feeding"),
+                         behavior %in% c("L") ~ as.character("Locomote"),
+                         behavior %in% c("V","PA") ~ as.character("Predator"),
+                         behavior %in% c("YA","SC","SG","SM","PC") ~ as.character("Stress"),
+                         behavior %in% c("O","OS","oS","R","PH","AH")~ as.character("Other"))) %>%
+      rename(focal.reference = FOCAL.REFERENCE.CODE,
+             day = DAY,
+            hour = TIME..HOUR.)
+    unique(post_focals_budget$behavior.category)
+
+#### Mean Activity Budget Per Focal
+
+    #Pops
+    Pops_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "PO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop") %>%
+      mutate(ID = "PO")
+
+    Pops_budget4<- Pops_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(64),
+                         behavior.category == "Locomote" ~ as.numeric(59),
+                         behavior.category == "Other" ~ as.numeric(48),
+                         behavior.category == "Predator" ~ as.numeric(87),
+                         behavior.category == "Social" ~ as.numeric(6),
+                         behavior.category == "Stress" ~ as.numeric(14))) %>%
+      mutate(Mean = (total/Occurrences))
+    Pops_budget4$total<- NULL
+    Pops_budget4$Occurrences<- NULL
+
+    #Blue
+    Blue_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "BL") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop") %>%
+      mutate(ID = "BL")
+
+    Blue_budget4<- Blue_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(58),
+                         behavior.category == "Locomote" ~ as.numeric(59),
+                         behavior.category == "Other" ~ as.numeric(47),
+                         behavior.category == "Predator" ~ as.numeric(73),
+                         behavior.category == "Social" ~ as.numeric(12),
+                         behavior.category == "Stress" ~ as.numeric(8))) %>%
+      mutate(Mean = (total/Occurrences))
+    Blue_budget4$total<- NULL
+    Blue_budget4$Occurrences<- NULL
+
+    #Amy
+    Amy_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "AM") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop") %>%
+      mutate(ID = "AM")
+
+    Amy_budget4<- Amy_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(66),
+                         behavior.category == "Locomote" ~ as.numeric(58),
+                         behavior.category == "Other" ~ as.numeric(40),
+                         behavior.category == "Predator" ~ as.numeric(67),
+                         behavior.category == "Social" ~ as.numeric(12),
+                         behavior.category == "Stress" ~ as.numeric(12))) %>%
+      mutate(Mean = (total/Occurrences))
+    Amy_budget4$total<- NULL
+    Amy_budget4$Occurrences<- NULL
+
+    #Alex
+    Alex_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "AL") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Alex_budget4<- Alex_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(62),
+                         behavior.category == "Locomote" ~ as.numeric(60),
+                         behavior.category == "Other" ~ as.numeric(46),
+                         behavior.category == "Predator" ~ as.numeric(75),
+                         behavior.category == "Social" ~ as.numeric(15),
+                         behavior.category == "Stress" ~ as.numeric(14))) %>%
+      mutate(Mean = (total/Occurrences))
+    Alex_budget4$total<- NULL
+    Alex_budget4$Occurrences<- NULL
+
+    #Boo
+    Boo_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "BO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Boo_budget4<- Boo_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(47),
+                         behavior.category == "Locomote" ~ as.numeric(42),
+                         behavior.category == "Other" ~ as.numeric(30),
+                         behavior.category == "Predator" ~ as.numeric(49),
+                         behavior.category == "Social" ~ as.numeric(8),
+                         behavior.category == "Stress" ~ as.numeric(14))) %>%
+      mutate(Mean = (total/Occurrences))
+    Boo_budget4$total<- NULL
+    Boo_budget4$Occurrences<- NULL
+
+    #Big Mama
+    Bgm_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "BM") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Bgm_budget4<- Bgm_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(53),
+                         behavior.category == "Locomote" ~ as.numeric(51),
+                         behavior.category == "Other" ~ as.numeric(36),
+                         behavior.category == "Predator" ~ as.numeric(58),
+                         behavior.category == "Social" ~ as.numeric(5),
+                         behavior.category == "Stress" ~ as.numeric(7))) %>%
+      mutate(Mean = (total/Occurrences))
+    Bgm_budget4$total<- NULL
+    Bgm_budget4$Occurrences<- NULL
+
+    #Augustine
+    Aug_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "AU") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Aug_budget4<- Aug_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(56),
+                         behavior.category == "Locomote" ~ as.numeric(49),
+                         behavior.category == "Other" ~ as.numeric(49),
+                         behavior.category == "Predator" ~ as.numeric(66),
+                         behavior.category == "Social" ~ as.numeric(14),
+                         behavior.category == "Stress" ~ as.numeric(13))) %>%
+      mutate(Mean = (total/Occurrences))
+    Aug_budget4$total<- NULL
+    Aug_budget4$Occurrences<- NULL
+
+    #Eddy
+    Ed_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "ED") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Ed_budget4<- Ed_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(52),
+                         behavior.category == "Locomote" ~ as.numeric(54),
+                         behavior.category == "Other" ~ as.numeric(36),
+                         behavior.category == "Predator" ~ as.numeric(61),
+                         behavior.category == "Social" ~ as.numeric(19),
+                         behavior.category == "Stress" ~ as.numeric(16))) %>%
+      mutate(Mean = (total/Occurrences))
+    Ed_budget4$total<- NULL
+    Ed_budget4$Occurrences<- NULL
+
+    #Jack
+    Jack_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "JA") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Jack_budget4<- Jack_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(16),
+                         behavior.category == "Locomote" ~ as.numeric(20),
+                         behavior.category == "Other" ~ as.numeric(17),
+                         behavior.category == "Predator" ~ as.numeric(22),
+                         behavior.category == "Social" ~ as.numeric(2),
+                         behavior.category == "Stress" ~ as.numeric(3))) %>%
+      mutate(Mean = (total/Occurrences))
+    Jack_budget4$total<- NULL
+    Jack_budget4$Occurrences<- NULL
+
+    #Tinker
+    Tink_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "TI") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Tink_budget4<- Tink_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(41),
+                         behavior.category == "Locomote" ~ as.numeric(37),
+                         behavior.category == "Other" ~ as.numeric(33),
+                         behavior.category == "Predator" ~ as.numeric(43),
+                         behavior.category == "Social" ~ as.numeric(9),
+                         behavior.category == "Stress" ~ as.numeric(9))) %>%
+      mutate(Mean = (total/Occurrences))
+    Tink_budget4$total<- NULL
+    Tink_budget4$Occurrences<- NULL
+
+    #Kovu
+    Kovu_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "KO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Kovu_budget4<- Kovu_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(71),
+                         behavior.category == "Locomote" ~ as.numeric(59),
+                         behavior.category == "Other" ~ as.numeric(51),
+                         behavior.category == "Predator" ~ as.numeric(74),
+                         behavior.category == "Social" ~ as.numeric(8),
+                         behavior.category == "Stress" ~ as.numeric(20))) %>%
+      mutate(Mean = (total/Occurrences))
+    Kovu_budget4$total<- NULL
+    Kovu_budget4$Occurrences<- NULL
+
+    #Mango
+    Mango_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "MG") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Mango_budget4<- Mango_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(71),
+                         behavior.category == "Locomote" ~ as.numeric(59),
+                         behavior.category == "Other" ~ as.numeric(51),
+                         behavior.category == "Predator" ~ as.numeric(74),
+                         behavior.category == "Social" ~ as.numeric(8),
+                         behavior.category == "Stress" ~ as.numeric(20))) %>%
+      mutate(Mean = (total/Occurrences))
+    Mango_budget4$total<- NULL
+    Mango_budget4$Occurrences<- NULL
+
+    #Neville
+    Nev_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "NE") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Nev_budget4<- Nev_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(35),
+                         behavior.category == "Locomote" ~ as.numeric(35),
+                         behavior.category == "Other" ~ as.numeric(27),
+                         behavior.category == "Predator" ~ as.numeric(39),
+                         behavior.category == "Social" ~ as.numeric(0),
+                         behavior.category == "Stress" ~ as.numeric(3))) %>%
+      mutate(Mean = (total/Occurrences))
+    Nev_budget4$total<- NULL
+    Nev_budget4$Occurrences<- NULL
+
+    #Toni
+    Toni_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "TO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Toni_budget4<- Toni_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(30),
+                         behavior.category == "Locomote" ~ as.numeric(26),
+                         behavior.category == "Other" ~ as.numeric(23),
+                         behavior.category == "Predator" ~ as.numeric(39),
+                         behavior.category == "Social" ~ as.numeric(3),
+                         behavior.category == "Stress" ~ as.numeric(6))) %>%
+      mutate(Mean = (total/Occurrences))
+    Toni_budget4$total<- NULL
+    Toni_budget4$Occurrences<- NULL
+
+    #May
+    May_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "MA") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    May_budget4<- May_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(44),
+                         behavior.category == "Locomote" ~ as.numeric(42),
+                         behavior.category == "Other" ~ as.numeric(35),
+                         behavior.category == "Predator" ~ as.numeric(61),
+                         behavior.category == "Social" ~ as.numeric(18),
+                         behavior.category == "Stress" ~ as.numeric(16))) %>%
+      mutate(Mean = (total/Occurrences))
+    May_budget4$total<- NULL
+    May_budget4$Occurrences<- NULL
+
+    #Zip
+    Zip_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "ZI") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Zip_budget4<- Zip_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+              case_when(behavior.category == "Feeding" ~ as.numeric(16),
+                         behavior.category == "Locomote" ~ as.numeric(20),
+                         behavior.category == "Other" ~ as.numeric(17),
+                         behavior.category == "Predator" ~ as.numeric(22),
+                         behavior.category == "Social" ~ as.numeric(2),
+                         behavior.category == "Stress" ~ as.numeric(3))) %>%
+      mutate(Mean = (total/Occurrences))
+    Zip_budget4$total<- NULL
+    Zip_budget4$Occurrences<- NULL
+
+    #Cicero
+    Cic_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "CI") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Cic_budget4<- Cic_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(8),
+                         behavior.category == "Locomote" ~ as.numeric(10),
+                         behavior.category == "Other" ~ as.numeric(11),
+                         behavior.category == "Predator" ~ as.numeric(14),
+                         behavior.category == "Social" ~ as.numeric(2),
+                         behavior.category == "Stress" ~ as.numeric(6))) %>%
+      mutate(Mean = (total/Occurrences))
+    Cic_budget4$total<- NULL
+    Cic_budget4$Occurrences<- NULL
+
+    #Homer
+    Homer_budget3<- post_focals_budget %>%
+      filter(FOCAL.ID == "HO") %>%
+      group_by(MONTH,day,hour,behavior.category) %>%
+      summarize(count=n(), .groups = "drop")
+
+    Homer_budget4<- Homer_budget3 %>%
+      group_by(behavior.category) %>%
+      summarize(total= sum(count)) %>%
+      mutate(Occurrences = 
+               case_when(behavior.category == "Feeding" ~ as.numeric(15),
+                         behavior.category == "Locomote" ~ as.numeric(11),
+                         behavior.category == "Other" ~ as.numeric(6),
+                         behavior.category == "Predator" ~ as.numeric(16),
+                         behavior.category == "Social" ~ as.numeric(0),
+                         behavior.category == "Stress" ~ as.numeric(6))) %>%
+      mutate(Mean = (total/Occurrences))
+    Homer_budget4$total<- NULL
+    Homer_budget4$Occurrences<- NULL
+
+*Troop Mean Activity Budgets*
+
+    post_fullbudget<- Pops_budget4 %>%
+      full_join(Blue_budget4,by= "behavior.category") %>%
+      full_join(Amy_budget4,by= "behavior.category") %>%
+      full_join(Alex_budget4,by= "behavior.category") %>%
+      full_join(Boo_budget4,by= "behavior.category") %>%
+      full_join(Bgm_budget4,by= "behavior.category") %>%
+      full_join(Aug_budget4,by= "behavior.category") %>%
+      full_join(Ed_budget4,by= "behavior.category") %>%
+      full_join(Jack_budget4,by= "behavior.category") %>%
+      full_join(Tink_budget4,by= "behavior.category") %>%
+      full_join(Kovu_budget4,by= "behavior.category") %>%
+      full_join(Mango_budget4,by= "behavior.category") %>%
+      full_join(May_budget4,by= "behavior.category") %>%
+      full_join(Toni_budget4,by= "behavior.category") %>%
+      full_join(Nev_budget4,by= "behavior.category") %>%
+      rowwise() %>% #this allows us to work with row-wise dataframe where we want to look at each row individually
+      mutate(TroopMean = ((sum(c_across(2:16),na.rm=T))/15), #adding up all the means per category and dividing by 19 monkeys to get average
+            release= "post") #adding column to identify pre-release
+
+    post_fullbudget_reduced<- post_fullbudget[,c("behavior.category","TroopMean","release")] #these are the only columns I want to look at now
+    #post_fullbudget_reduced
+
+    #Different kind of table for this:
+    post_fullbudget_FULL<- bind_rows(Pops_budget4,Blue_budget4,Amy_budget4,Alex_budget4,Boo_budget4,Bgm_budget4,Aug_budget4,Ed_budget4,Jack_budget4,Tink_budget4,Kovu_budget4,Mango_budget4,May_budget4,Toni_budget4,Nev_budget4)
+
+#### Mean Activity Budget Tables and BarChart
+
+    combined_budget_table<- bind_rows(pre_fullbudget_reduced, post_fullbudget_reduced)
+    combined_budget_table<- combined_budget_table %>%
+      mutate(proportion= TroopMean/60)
+    combined_budget_table$release= factor(combined_budget_table$release, levels = c("pre", "post"), ordered = TRUE) #reordering the levels so that the bars appear on the barchart in pre-post order
+
+    #BarChart
+    full_budgetplot<- ggplot(data=combined_budget_table, aes(x=behavior.category, y=proportion, fill=release)) +
+      geom_bar(position="dodge", stat="identity") +
+      scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
+      scale_y_continuous(labels=scales::percent) +
+      theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turning labels on an angle
+      labs(x="Behavior Category",y="Mean Percentage Per Hour",fill= "Release Stage") +
+      theme(legend.box.background = element_rect(colour = "black")) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+    panel.background = element_blank(), axis.line = element_line(colour = "black")) +
+      scale_fill_manual(values = c("slategray3","slategray4"))
+    full_budgetplot
+
+    #ggsave("Pre&Post Troop AB Plot.pdf", width = 6, height = 4, last_plot())
+
+RESULTS: This figure shows the troop’s mean percentage of behavior
+occurrences in each category per hour pre- and post-release.
+
+#### Wilcoxon Tests
+
+##### Predator Category
+
+*Setting up Table*
+
+    pre_fullbudget_pred<- pre_fullbudget %>%
+      filter(behavior.category == "Predator") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "pre")
+    #pre_fullbudget_pred
+
+    post_fullbudget_pred<- post_fullbudget %>%
+      filter(behavior.category == "Predator") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "post")
+    #post_fullbudget_pred
+
+    fullbudget_pred<- bind_rows(pre_fullbudget_pred, post_fullbudget_pred)
+    fullbudget_pred$Means <- as.numeric(as.character((fullbudget_pred$Means)))
+
+    #Making an ID vector in the same exact order from post_fullbudget & pre_fullbudget
+    IDs<- c("Pops","Blue","Amy","Alex","Boo","BigMama","Aug","Eddy","Jack","Tinker","Kovu","Mango","May","Toni","Neville")
+
+    #Adding in another column called Focal IDs and repeating the names 2x (once for pre and once for post release)
+    fullbudget_pred$Focal.IDs<- rep(IDs, times = 2)
+
+*Running Wilcoxon Test*
+
+    #splitting into two vectors
+    pre_pred  <- fullbudget_pred$Means[fullbudget_pred$release == "pre"]
+    post_pred <- fullbudget_pred$Means[fullbudget_pred$release == "post"]
+
+    wilcox.test(pre_pred, post_pred, paired = TRUE)
+
+##### Social Category
+
+*Setting up Table*
+
+    pre_fullbudget_social<- pre_fullbudget %>%
+      filter(behavior.category == "Social") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "pre")
+    #pre_fullbudget_social
+
+    post_fullbudget_social<- post_fullbudget %>%
+      filter(behavior.category == "Social") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "post")
+    #post_fullbudget_social
+
+    fullbudget_social<- bind_rows(pre_fullbudget_social, post_fullbudget_social)
+    fullbudget_social$Means <- as.numeric(as.character((fullbudget_social$Means)))
+    fullbudget_social[30,1]<- as.numeric(0) #this spot has an NA which won't work for wilcoxon test so changing it to 0
+
+    #Adding in another column called Focal IDs and repeating the names 2x (once for pre and once for post release)
+    fullbudget_social$Focal.IDs<- rep(IDs, times = 2)
+
+*Running Wilcoxon Test*
+
+    #splitting into two vectors
+    pre_social  <- fullbudget_social$Means[fullbudget_social$release == "pre"]
+    post_social <- fullbudget_social$Means[fullbudget_social$release == "post"]
+
+    wilcox.test(pre_social, post_social, paired = TRUE)
+
+##### Stress Category
+
+*Setting up Table*
+
+    pre_fullbudget_stress<- pre_fullbudget %>%
+      filter(behavior.category == "Stress") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "pre")
+    #pre_fullbudget_stress
+
+    post_fullbudget_stress<- post_fullbudget %>%
+      filter(behavior.category == "Stress") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "post")
+    #post_fullbudget_stress
+
+    fullbudget_stress<- bind_rows(pre_fullbudget_stress, post_fullbudget_stress)
+    fullbudget_stress$Means <- as.numeric(as.character((fullbudget_stress$Means)))
+
+*Running Wilcoxon Test*
+
+    #splitting into two vectors
+    pre_stress <- fullbudget_stress$Means[fullbudget_stress$release == "pre"]
+    post_stress <- fullbudget_stress$Means[fullbudget_stress$release == "post"]
+
+    wilcox.test(pre_stress, post_stress, paired = TRUE)
+
+##### Feeding Category
+
+*Setting up Table*
+
+    pre_fullbudget_feed<- pre_fullbudget %>%
+      filter(behavior.category == "Feeding") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "pre")
+    #pre_fullbudget_feed
+
+    post_fullbudget_feed<- post_fullbudget %>%
+      filter(behavior.category == "Feeding") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "post")
+    #post_fullbudget_feed
+
+    fullbudget_feed<- bind_rows(pre_fullbudget_feed, post_fullbudget_feed)
+    fullbudget_feed$Means <- as.numeric(as.character((fullbudget_feed$Means)))
+
+*Running Wilcoxon Test*
+
+    #splitting into two vectors
+    pre_feed <- fullbudget_feed$Means[fullbudget_feed$release == "pre"]
+    post_feed <- fullbudget_feed$Means[fullbudget_feed$release == "post"]
+
+    wilcox.test(pre_feed, post_feed, paired = TRUE)
+
+##### Locomote Category
+
+*Setting up Table*
+
+    pre_fullbudget_loc<- pre_fullbudget %>%
+      filter(behavior.category == "Locomote") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "pre")
+    #pre_fullbudget_loc
+
+    post_fullbudget_loc<- post_fullbudget %>%
+      filter(behavior.category == "Locomote") %>%
+      t() %>%
+      as.data.frame() %>%
+      dplyr::slice(2:16) %>%
+      rename(Means = V1) %>%
+      mutate(release= "post")
+    #post_fullbudget_loc
+
+    fullbudget_loc<- bind_rows(pre_fullbudget_loc, post_fullbudget_loc)
+    fullbudget_loc$Means <- as.numeric(as.character((fullbudget_loc$Means)))
+
+*Running Wilcoxon Test*
+
+    #splitting into two vectors
+    pre_loc <- fullbudget_loc$Means[fullbudget_loc$release == "pre"]
+    post_loc <- fullbudget_loc$Means[fullbudget_loc$release == "post"]
+
+    wilcox.test(pre_loc, post_loc, paired = TRUE)
+
+    #higher post-release
+    aggregate(Means ~ release, data = fullbudget_loc, median)
+
+The troop moved significantly more post-release than pre-release.
+
+## **SHANNON DIVERSITY**
+
+### Purrr method
+
+    #PRE-RELEASE
+    # 1. Create a character vector of all the monkey IDs in your dataset:
+    MonkeyIDs_SD<-as.character(unique(pre_focals$FOCAL.ID))
+
+    # 2. Get a list of dataframes, subsetted by monkey ID:
+    monkey.prelim_SD<-lapply(MonkeyIDs_SD, function(x){pre_focals[pre_focals[["FOCAL.ID"]] == x, ]})
+    #head(monkey.prelim_SD)
+
+    # 3. Edit the dataframe: combine behavior columns into one, group by month & behavior, and count 
+    monkey.prelim_SD2 <-
+      monkey.prelim_SD %>% 
+      purrr::map(~gather(.,"Obs", "behavior", 22:23, na.rm = T)) %>%
+      purrr::map(~filter(.,!behavior %in% c("PO","AL","BL"))) %>%
+      purrr::map(~filter(.,!behavior %in% c("OS", ""))) %>%
+      purrr::map(~group_by(.,MONTH,behavior)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey.prelim_SD2) <- MonkeyIDs_SD 
+    #head(monkey.prelim_SD2)
+
+    #POST-RELEASE
+    # 1. Create a character vector of all the monkey IDs in your dataset:
+    MonkeyIDs_SD2<-as.character(unique(post_focals$FOCAL.ID))
+
+    #2. 
+    monkey.prelim_SD_post<-lapply(MonkeyIDs_SD2, function(x){post_focals[post_focals[["FOCAL.ID"]] == x, ]})
+    #head(monkey.prelim_SD_post)
+
+    # 3. Filter each by the behavior your want, group each by associate/recipient, and count behavior:
+    monkey.prelim_SD3 <-
+      monkey.prelim_SD_post %>% 
+      purrr::map(~gather(.,"Obs", "behavior", 19:20, na.rm = T)) %>%
+      purrr::map(~filter(.,behavior != ("ED"))) %>%
+      purrr::map(~filter(.,!behavior %in% c("OS", ""))) %>%
+      purrr::map(~group_by(.,MONTH,behavior)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey.prelim_SD3) <- MonkeyIDs_SD2 
+    #head(monkey.prelim_SD3)
+
+### Pre-release
+
+##### Pops
+
+*Filtering out Pops from the pre-focals dataset*
+
+    Pops<- pre_focals %>% filter(FOCAL.ID == "PO") %>%
+      filter(BEHAVIOUR != c("OS", "")) %>%
+      filter(!BEHAVIOUR.2 %in% c("OS", ""))
+    #head(Pops)
+    #n_distinct(Pops$FOCAL.REFERENCE.CODE)
+    #unique(Pops$FOCAL.REFERENCE.CODE)
+
+*Finding Pops SD for EACH MONTH during pre-release observation*
+
+    #Month 6
+    Pop_month6_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "6")
+    Pop_month6_SD<- diversity(Pop_month6_SD$count)
+
+    #Month 7
+    Pop_month7_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "7")
+    Pop_month7_SD<- diversity(Pop_month7_SD$count)
+
+    #Month 8
+    Pop_month8_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "8")
+    Pop_month8_SD<- diversity(Pop_month8_SD$count)
+
+    #Month 9
+    Pop_month9_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "9")
+    Pop_month9_SD<- diversity(Pop_month9_SD$count)
+
+    #Month 10
+    Pop_month10_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "10")
+    Pop_month10_SD<- diversity(Pop_month10_SD$count)
+
+    #Month 11
+    Pop_month11_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "11")
+    Pop_month11_SD<- diversity(Pop_month11_SD$count)
+
+    #Month 12
+    Pop_month12_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "12")
+    Pop_month12_SD<- diversity(Pop_month12_SD$count)
+
+    #Month 1
+    Pop_month1_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "1")
+    Pop_month1_SD<- diversity(Pop_month1_SD$count)
+
+    #Month 2
+    Pop_month2_SD<- monkey.prelim_SD2$PO %>%
+      filter(MONTH == "2")
+    Pop_month2_SD<- diversity(Pop_month2_SD$count)
+
+*Averaging the SDs across Pop’s months pre-release*
+
+    Pops_pre_allSDs<- c(Pop_month6_SD,Pop_month7_SD,Pop_month8_SD,Pop_month9_SD, Pop_month10_SD,Pop_month11_SD,Pop_month12_SD,Pop_month1_SD,Pop_month2_SD)
+    Pop_pre_avgSDs<- mean(Pops_pre_allSDs)
+    #Pop_pre_avgSDs #1.153
+
+##### ZIP
+
+*Filtering out Zip from the pre-focals dataset*
+
+    Zip<- pre_focals %>% filter(FOCAL.ID == "ZI") %>%
+      filter(BEHAVIOUR != c("OS", "")) %>%
+      filter(!BEHAVIOUR.2 %in% c("OS", ""))
+
+*Getting SD for each month for Zip during pre-release observations*
+
+    #Month 6
+    Zip_month6_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "6")
+    Zip_month6_SD<- diversity(Zip_month6_SD$count)
+
+    #Month 7
+    Zip_month7_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "7")
+    Zip_month7_SD<- diversity(Zip_month7_SD$count)
+
+    #Month 8
+    Zip_month8_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "8")
+    Zip_month8_SD<- diversity(Zip_month8_SD$count)
+
+    #Month 9
+    Zip_month9_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "9")
+    Zip_month9_SD<- diversity(Zip_month9_SD$count)
+
+    #Month 10
+    Zip_month10_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "10")
+    Zip_month10_SD<- diversity(Zip_month10_SD$count)
+
+    #Month 11
+    Zip_month11_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "11")
+    Zip_month11_SD<- diversity(Zip_month11_SD$count)
+
+    #Month 12
+    Zip_month12_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "12")
+    Zip_month12_SD<- diversity(Zip_month12_SD$count)
+
+    #Month 1
+    Zip_month1_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "1")
+    Zip_month1_SD<- diversity(Zip_month1_SD$count)
+
+    #Month 2
+    Zip_month2_SD<- monkey.prelim_SD2$ZI %>%
+      filter(MONTH == "2")
+    Zip_month2_SD<- diversity(Zip_month2_SD$count)
+
+*Averaging the SDs across Zip’s pre-release*
+
+    Zip_pre_allSDs<- c(Zip_month6_SD,Zip_month7_SD,Zip_month8_SD,Zip_month9_SD,Zip_month10_SD,Zip_month11_SD,Zip_month12_SD,Zip_month1_SD,Zip_month2_SD)
+    Zip_pre_avgSDs<- mean(Zip_pre_allSDs)
+    #Zip_pre_avgSDs
+
+##### JACK
+
+*Filtering out Jack from the pre-focals dataset*
+
+    Jack<- pre_focals %>% filter(FOCAL.ID == "JA") %>%
+      filter(BEHAVIOUR != c("OS", "")) %>%
+      filter(!BEHAVIOUR.2 %in% c("OS", ""))
+
+*Getting SD for each month for Jack during pre-release observations*
+
+    #Month 6
+    Jack_month6_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "6")
+    Jack_month6_SD<- diversity(Jack_month6_SD$count)
+
+    #Month 7
+    Jack_month7_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "7")
+    Jack_month7_SD<- diversity(Jack_month7_SD$count)
+
+    #Month 8
+    Jack_month8_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "8")
+    Jack_month8_SD<- diversity(Jack_month8_SD$count)
+
+    #Month 9
+    Jack_month9_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "9")
+    Jack_month9_SD<- diversity(Jack_month9_SD$count)
+
+    #Month 10
+    Jack_month10_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "10")
+    Jack_month10_SD<- diversity(Jack_month10_SD$count)
+
+    #Month 11
+    Jack_month11_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "11")
+    Jack_month11_SD<- diversity(Jack_month11_SD$count)
+
+    #Month 12
+    Jack_month12_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "12")
+    Jack_month12_SD<- diversity(Jack_month12_SD$count)
+
+    #Month 1
+    Jack_month1_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "1")
+    Jack_month1_SD<- diversity(Jack_month1_SD$count)
+
+    #Month 2
+    Jack_month2_SD<- monkey.prelim_SD2$JA %>%
+      filter(MONTH == "2")
+    Jack_month2_SD<- diversity(Jack_month2_SD$count)
+
+*Averaging the SDs across Jack’s pre-release*
+
+    Jack_pre_allSDs<- c(Jack_month6_SD,Jack_month7_SD,Jack_month8_SD,Jack_month9_SD,Jack_month10_SD,Jack_month11_SD,Jack_month12_SD,Jack_month1_SD,Jack_month2_SD)
+    Jack_pre_avgSDs<- mean(Jack_pre_allSDs)
+    #Jack_pre_avgSDs
+
+##### BLUE
+
+*Filtering out Blue from the pre-focals dataset*
+
+    Blue<- pre_focals %>% filter(FOCAL.ID == "BL") %>%
+      filter(BEHAVIOUR != c("OS", "")) %>%
+      filter(!BEHAVIOUR.2 %in% c("OS", ""))
+
+*Getting SD for each month for Blue during pre-release observations*
+
+    #Month 6
+    Blue_month6_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "6")
+    Blue_month6_SD<- diversity(Blue_month6_SD$count)
+
+    #Month 7
+    Blue_month7_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "7")
+    Blue_month7_SD<- diversity(Blue_month7_SD$count)
+
+    #Month 8
+    Blue_month8_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "8")
+    Blue_month8_SD<- diversity(Blue_month8_SD$count)
+
+    #Month 9
+    Blue_month9_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "9")
+    Blue_month9_SD<- diversity(Blue_month9_SD$count)
+
+    #Month 10
+    Blue_month10_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "10")
+    Blue_month10_SD<- diversity(Blue_month10_SD$count)
+
+    #Month 11
+    Blue_month11_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "11")
+    Blue_month11_SD<- diversity(Blue_month11_SD$count)
+
+    #Month 12
+    Blue_month12_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "12")
+    Blue_month12_SD<- diversity(Blue_month12_SD$count)
+
+    #Month 1
+    Blue_month1_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "1")
+    Blue_month1_SD<- diversity(Blue_month1_SD$count)
+
+    #Month 2
+    Blue_month2_SD<- monkey.prelim_SD2$BL %>%
+      filter(MONTH == "2")
+    Blue_month2_SD<- diversity(Blue_month2_SD$count)
+
+*Averaging the SDs across Blue’s pre-release*
+
+    Blue_pre_allSDs<- c(Blue_month6_SD,Blue_month7_SD,Blue_month8_SD,Blue_month9_SD,Blue_month10_SD,Blue_month11_SD,Blue_month12_SD,Blue_month1_SD,Blue_month2_SD)
+    Blue_pre_avgSDs<- mean(Blue_pre_allSDs)
+    #Blue_pre_avgSDs
+
+##### ALEX
+
+*Filtering out Alex from the pre-focals dataset*
+
+    Alex<- pre_focals %>% filter(FOCAL.ID == "AL") %>%
+      filter(BEHAVIOUR != c("OS", "")) %>%
+      filter(!BEHAVIOUR.2 %in% c("OS", ""))
+
+*Getting SD for each month for Alex during pre-release observations*
+
+    #Month 6
+    Alex_month6_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "6")
+    Alex_month6_SD<- diversity(Alex_month6_SD$count)
+
+    #Month 7
+    Alex_month7_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "7")
+    Alex_month7_SD<- diversity(Alex_month7_SD$count)
+
+    #Month 8
+    Alex_month8_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "8")
+    Alex_month8_SD<- diversity(Alex_month8_SD$count)
+
+    #Month 9
+    Alex_month9_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "9")
+    Alex_month9_SD<- diversity(Alex_month9_SD$count)
+
+    #Month 10
+    Alex_month10_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "10")
+    Alex_month10_SD<- diversity(Alex_month10_SD$count)
+
+    #Month 11
+    Alex_month11_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "11")
+    Alex_month11_SD<- diversity(Alex_month11_SD$count)
+
+    #Month 12
+    Alex_month12_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "12")
+    Alex_month12_SD<- diversity(Alex_month12_SD$count)
+
+    #Month 1
+    Alex_month1_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "1")
+    Alex_month1_SD<- diversity(Alex_month1_SD$count)
+
+    #Month 2
+    Alex_month2_SD<- monkey.prelim_SD2$AL %>%
+      filter(MONTH == "2")
+    Alex_month2_SD<- diversity(Alex_month2_SD$count)
+
+*Averaging the SDs across Alex’s pre-release*
+
+    Alex_pre_allSDs<- c(Alex_month6_SD,Alex_month7_SD,Alex_month8_SD,Alex_month9_SD,Alex_month10_SD,Alex_month11_SD,Alex_month12_SD,Alex_month1_SD,Alex_month2_SD)
+    Alex_pre_avgSDs<- mean(Alex_pre_allSDs)
+    #Alex_pre_avgSDs
+
+##### BART
+
+*Getting SD for each month for Bart during pre-release observations*
+
+    #Month 6
+    Bart_month6_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "6")
+    Bart_month6_SD<- diversity(Bart_month6_SD$count)
+
+    #Month 7
+    Bart_month7_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "7")
+    Bart_month7_SD<- diversity(Bart_month7_SD$count)
+
+    #Month 8
+    Bart_month8_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "8")
+    Bart_month8_SD<- diversity(Bart_month8_SD$count)
+
+    #Month 9
+    Bart_month9_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "9")
+    Bart_month9_SD<- diversity(Bart_month9_SD$count)
+
+    #Month 10
+    Bart_month10_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "10")
+    Bart_month10_SD<- diversity(Bart_month10_SD$count)
+
+    #Month 11
+    Bart_month11_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "11")
+    Bart_month11_SD<- diversity(Bart_month11_SD$count)
+
+    #Month 12
+    Bart_month12_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "12")
+    Bart_month12_SD<- diversity(Bart_month12_SD$count)
+
+    #Month 1
+    Bart_month1_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "1")
+    Bart_month1_SD<- diversity(Bart_month1_SD$count)
+
+    #Month 2
+    Bart_month2_SD<- monkey.prelim_SD2$BA %>%
+      filter(MONTH == "2")
+    Bart_month2_SD<- diversity(Bart_month2_SD$count)
+
+*Averaging the SDs across Bart’s pre-release*
+
+    Bart_pre_allSDs<- c(Bart_month6_SD,Bart_month7_SD,Bart_month8_SD,Bart_month9_SD,Bart_month10_SD,Bart_month11_SD,Bart_month12_SD,Bart_month1_SD,Bart_month2_SD)
+    Bart_pre_avgSDs<- mean(Bart_pre_allSDs)
+    Bart_pre_avgSDs #1.38
+
+##### Neville
+
+*Getting SD for each month for Neville during pre-release observations*
+
+    #Month 6
+    Nev_month6_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "6")
+    Nev_month6_SD<- diversity(Nev_month6_SD$count)
+
+    #Month 7
+    Nev_month7_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "7")
+    Nev_month7_SD<- diversity(Nev_month7_SD$count)
+
+    #Month 8
+    Nev_month8_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "8")
+    Nev_month8_SD<- diversity(Nev_month8_SD$count)
+
+    #Month 9
+    Nev_month9_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "9")
+    Nev_month9_SD<- diversity(Nev_month9_SD$count)
+
+    #Month 10
+    Nev_month10_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "10")
+    Nev_month10_SD<- diversity(Nev_month10_SD$count)
+
+    #Month 11
+    Nev_month11_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "11")
+    Nev_month11_SD<- diversity(Nev_month11_SD$count)
+
+    #Month 12
+    Nev_month12_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "12")
+    Nev_month12_SD<- diversity(Nev_month12_SD$count)
+
+    #Month 1
+    Nev_month1_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "1")
+    Nev_month1_SD<- diversity(Nev_month1_SD$count)
+
+    #Month 2
+    Nev_month2_SD<- monkey.prelim_SD2$NE %>%
+      filter(MONTH == "2")
+    Nev_month2_SD<- diversity(Nev_month2_SD$count)
+
+*Averaging the SDs across Nev’s pre-release*
+
+    Nev_pre_allSDs<- c(Nev_month6_SD,Nev_month7_SD,Nev_month8_SD,Nev_month9_SD,Nev_month10_SD,Nev_month11_SD,Nev_month12_SD,Nev_month1_SD,Nev_month2_SD)
+    Nev_pre_avgSDs<- mean(Nev_pre_allSDs)
+    #Nev_pre_avgSDs
+
+##### AUGUSTINE
+
+*Getting SD for each month for Aug during pre-release observations*
+
+    #Month 6
+    Aug_month6_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "6")
+    Aug_month6_SD<- diversity(Aug_month6_SD$count)
+
+    #Month 7
+    Aug_month7_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "7")
+    Aug_month7_SD<- diversity(Aug_month7_SD$count)
+
+    #Month 8
+    Aug_month8_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "8")
+    Aug_month8_SD<- diversity(Aug_month8_SD$count)
+
+    #Month 9
+    Aug_month9_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "9")
+    Aug_month9_SD<- diversity(Aug_month9_SD$count)
+
+    #Month 10
+    Aug_month10_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "10")
+    Aug_month10_SD<- diversity(Aug_month10_SD$count)
+
+    #Month 11
+    Aug_month11_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "11")
+    Aug_month11_SD<- diversity(Aug_month11_SD$count)
+
+    #Month 12
+    Aug_month12_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "12")
+    Aug_month12_SD<- diversity(Aug_month12_SD$count)
+
+    #Month 1
+    Aug_month1_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "1")
+    Aug_month1_SD<- diversity(Aug_month1_SD$count)
+
+    #Month 2
+    Aug_month2_SD<- monkey.prelim_SD2$AU %>%
+      filter(MONTH == "2")
+    Aug_month2_SD<- diversity(Aug_month2_SD$count)
+
+*Averaging the SDs across Aug’s pre-release*
+
+    Aug_pre_allSDs<- c(Aug_month6_SD,Aug_month7_SD,Aug_month8_SD,Aug_month9_SD,Aug_month10_SD,Aug_month11_SD,Aug_month12_SD,Aug_month1_SD,Aug_month2_SD)
+    Aug_pre_avgSDs<- mean(Aug_pre_allSDs)
+    #Aug_pre_avgSDs 
+
+##### AMY
+
+*Getting SD for each month for Amy during pre-release observations*
+
+    #Month 6
+    Amy_month6_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "6")
+    Amy_month6_SD<- diversity(Amy_month6_SD$count)
+
+    #Month 7
+    Amy_month7_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "7")
+    Amy_month7_SD<- diversity(Amy_month7_SD$count)
+
+    #Month 8
+    Amy_month8_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "8")
+    Amy_month8_SD<- diversity(Amy_month8_SD$count)
+
+    #Month 9
+    Amy_month9_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "9")
+    Amy_month9_SD<- diversity(Amy_month9_SD$count)
+
+    #Month 10
+    Amy_month10_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "10")
+    Amy_month10_SD<- diversity(Amy_month10_SD$count)
+
+    #Month 11
+    Amy_month11_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "11")
+    Amy_month11_SD<- diversity(Amy_month11_SD$count)
+
+    #Month 12
+    Amy_month12_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "12")
+    Amy_month12_SD<- diversity(Amy_month12_SD$count)
+
+    #Month 1
+    Amy_month1_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "1")
+    Amy_month1_SD<- diversity(Amy_month1_SD$count)
+
+    #Month 2
+    Amy_month2_SD<- monkey.prelim_SD2$AM %>%
+      filter(MONTH == "2")
+    Amy_month2_SD<- diversity(Amy_month2_SD$count)
+
+*Averaging the SDs across Amy’s 4 months pre-release*
+
+    Amy_pre_allSDs<- c(Amy_month6_SD,Amy_month7_SD,Amy_month8_SD,Amy_month9_SD,Amy_month10_SD,Amy_month12_SD,Amy_month11_SD,Amy_month1_SD,Amy_month2_SD)
+    Amy_pre_avgSDs<- mean(Amy_pre_allSDs)
+    #Amy_pre_avgSDs
+
+##### MAY
+
+*Getting SD for each month for May during pre-release observations*
+
+    #Month 6
+    May_month6_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "6")
+    May_month6_SD<- diversity(May_month6_SD$count)
+
+    #Month 7
+    May_month7_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "7")
+    May_month7_SD<- diversity(May_month7_SD$count)
+
+    #Month 8
+    May_month8_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "8")
+    May_month8_SD<- diversity(May_month8_SD$count)
+
+    #Month 9
+    May_month9_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "9")
+    May_month9_SD<- diversity(May_month9_SD$count)
+
+    #Month 10
+    May_month10_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "10")
+    May_month10_SD<- diversity(May_month10_SD$count)
+
+    #Month 11
+    May_month11_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "11")
+    May_month11_SD<- diversity(May_month11_SD$count)
+
+    #Month 12
+    May_month12_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "12")
+    May_month12_SD<- diversity(May_month12_SD$count)
+
+    #Month 1
+    May_month1_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "1")
+    May_month1_SD<- diversity(May_month1_SD$count)
+
+    #Month 2
+    May_month2_SD<- monkey.prelim_SD2$MA %>%
+      filter(MONTH == "2")
+    May_month2_SD<- diversity(May_month2_SD$count)
+
+*Averaging the SDs across May’s pre-release*
+
+    May_pre_allSDs<- c(May_month6_SD,May_month7_SD,May_month8_SD,May_month9_SD,May_month10_SD,May_month11_SD,May_month12_SD,May_month1_SD,May_month2_SD)
+    May_pre_avgSDs<- mean(May_pre_allSDs)
+    #May_pre_avgSDs
+
+##### TONI
+
+*Getting SD for each month for Toni during pre-release observations*
+
+    #Month 6
+    Toni_month6_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "6")
+    Toni_month6_SD<- diversity(Toni_month6_SD$count)
+
+    #Month 7
+    Toni_month7_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "7")
+    Toni_month7_SD<- diversity(Toni_month7_SD$count)
+
+    #Month 8
+    Toni_month8_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "8")
+    Toni_month8_SD<- diversity(Toni_month8_SD$count)
+
+    #Month 9
+    Toni_month9_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "9")
+    Toni_month9_SD<- diversity(Toni_month9_SD$count)
+
+    #Month 10
+    Toni_month10_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "10")
+    Toni_month10_SD<- diversity(Toni_month10_SD$count)
+
+    #Month 11
+    Toni_month11_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "11")
+    Toni_month11_SD<- diversity(Toni_month11_SD$count)
+
+    #Month 12
+    Toni_month12_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "12")
+    Toni_month12_SD<- diversity(Toni_month12_SD$count)
+
+    #Month 1
+    Toni_month1_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "1")
+    Toni_month1_SD<- diversity(Toni_month1_SD$count)
+
+    #Month 2
+    Toni_month2_SD<- monkey.prelim_SD2$TO %>%
+      filter(MONTH == "2")
+    Toni_month2_SD<- diversity(Toni_month2_SD$count)
+
+*Averaging the SDs across Toni’s pre-release*
+
+    Toni_pre_allSDs<- c(Toni_month6_SD,Toni_month7_SD,Toni_month8_SD,Toni_month9_SD,Toni_month10_SD,Toni_month11_SD,Toni_month12_SD,Toni_month1_SD,Toni_month2_SD)
+    Toni_pre_avgSDs<- mean(Toni_pre_allSDs)
+    #Toni_pre_avgSDs
+
+##### BOO
+
+*Getting SD for each month for Boo during pre-release observations*
+
+    #Month 6
+    Boo_month6_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "6")
+    Boo_month6_SD<- diversity(Boo_month6_SD$count)
+
+    #Month 7
+    Boo_month7_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "7")
+    Boo_month7_SD<- diversity(Boo_month7_SD$count)
+
+    #Month 8
+    Boo_month8_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "8")
+    Boo_month8_SD<- diversity(Boo_month8_SD$count)
+
+    #Month 9
+    Boo_month9_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "9")
+    Boo_month9_SD<- diversity(Boo_month9_SD$count)
+
+    #Month 10
+    Boo_month10_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "10")
+    Boo_month10_SD<- diversity(Boo_month10_SD$count)
+
+    #Month 11
+    Boo_month11_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "11")
+    Boo_month11_SD<- diversity(Boo_month11_SD$count)
+
+    #Month 12
+    Boo_month12_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "12")
+    Boo_month12_SD<- diversity(Boo_month12_SD$count)
+
+    #Month 1
+    Boo_month1_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "1")
+    Boo_month1_SD<- diversity(Boo_month1_SD$count)
+
+    #Month 2
+    Boo_month2_SD<- monkey.prelim_SD2$BO %>%
+      filter(MONTH == "2")
+    Boo_month2_SD<- diversity(Boo_month2_SD$count)
+
+*Averaging the SDs across Boo’s 4 months pre-release*
+
+    Boo_pre_allSDs<- c(Boo_month6_SD,Boo_month7_SD,Boo_month8_SD,Boo_month9_SD,Boo_month10_SD,Boo_month11_SD,Boo_month12_SD,Boo_month1_SD,Boo_month2_SD)
+    Boo_pre_avgSDs<- mean(Boo_pre_allSDs)
+    #Boo_pre_avgSDs
+
+##### BIG MAMA
+
+*Getting SD for each month for Bgm during pre-release observations*
+
+    #Month 6
+    Bgm_month6_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "6")
+    Bgm_month6_SD<- diversity(Bgm_month6_SD$count)
+
+    #Month 7
+    Bgm_month7_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "7")
+    Bgm_month7_SD<- diversity(Bgm_month7_SD$count)
+
+    #Month 8
+    Bgm_month8_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "8")
+    Bgm_month8_SD<- diversity(Bgm_month8_SD$count)
+
+    #Month 9
+    Bgm_month9_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "9")
+    Bgm_month9_SD<- diversity(Bgm_month9_SD$count)
+
+    #Month 10
+    Bgm_month10_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "10")
+    Bgm_month10_SD<- diversity(Bgm_month10_SD$count)
+
+    #Month 11
+    Bgm_month11_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "11")
+    Bgm_month11_SD<- diversity(Bgm_month11_SD$count)
+
+    #Month 12
+    Bgm_month12_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "12")
+    Bgm_month12_SD<- diversity(Bgm_month12_SD$count)
+
+    #Month 1
+    Bgm_month1_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "1")
+    Bgm_month1_SD<- diversity(Bgm_month1_SD$count)
+
+    #Month 2
+    Bgm_month2_SD<- monkey.prelim_SD2$BM %>%
+      filter(MONTH == "2")
+    Bgm_month2_SD<- diversity(Bgm_month2_SD$count)
+
+*Averaging the SDs across Bgm’s pre-release*
+
+    Bgm_pre_allSDs<- c(Bgm_month6_SD,Bgm_month7_SD,Bgm_month8_SD,Bgm_month9_SD,Bgm_month10_SD,Bgm_month11_SD,Bgm_month12_SD,Bgm_month1_SD,Bgm_month2_SD)
+    Bgm_pre_avgSDs<- mean(Bgm_pre_allSDs)
+    #Bgm_pre_avgSDs
+
+##### KOVU
+
+*Getting SD for each month for Kovu during pre-release observations*
+
+    #Month 6
+    Kovu_month6_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "6")
+    Kovu_month6_SD<- diversity(Kovu_month6_SD$count)
+
+    #Month 7
+    Kovu_month7_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "7")
+    Kovu_month7_SD<- diversity(Kovu_month7_SD$count)
+
+    #Month 8
+    Kovu_month8_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "8")
+    Kovu_month8_SD<- diversity(Kovu_month8_SD$count)
+
+    #Month 9
+    Kovu_month9_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "9")
+    Kovu_month9_SD<- diversity(Kovu_month9_SD$count)
+
+    #Month 10
+    Kovu_month10_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "10")
+    Kovu_month10_SD<- diversity(Kovu_month10_SD$count)
+
+    #Month 11
+    Kovu_month11_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "11")
+    Kovu_month11_SD<- diversity(Kovu_month11_SD$count)
+
+    #Month 12
+    Kovu_month12_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "12")
+    Kovu_month12_SD<- diversity(Kovu_month12_SD$count)
+
+    #Month 1
+    Kovu_month1_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "1")
+    Kovu_month1_SD<- diversity(Kovu_month1_SD$count)
+
+    #Month 2
+    Kovu_month2_SD<- monkey.prelim_SD2$KO %>%
+      filter(MONTH == "2")
+    Kovu_month2_SD<- diversity(Kovu_month2_SD$count)
+
+*Averaging the SDs across Kovu’s pre-release*
+
+    Kovu_pre_allSDs<- c(Kovu_month6_SD,Kovu_month7_SD,Kovu_month8_SD,Kovu_month9_SD,Kovu_month10_SD,Kovu_month11_SD,Kovu_month12_SD,Kovu_month1_SD,Kovu_month2_SD)
+    Kovu_pre_avgSDs<- mean(Kovu_pre_allSDs)
+    #Kovu_pre_avgSDs
+
+##### EDDY
+
+*Getting SD for each month for Eddy during pre-release observations*
+
+    #Month 6
+    Ed_month6_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "6")
+    Ed_month6_SD<- diversity(Ed_month6_SD$count)
+
+    #Month 7
+    Ed_month7_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "7")
+    Ed_month7_SD<- diversity(Ed_month7_SD$count)
+
+    #Month 8
+    Ed_month8_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "8")
+    Ed_month8_SD<- diversity(Ed_month8_SD$count)
+
+    #Month 9
+    Ed_month9_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "9")
+    Ed_month9_SD<- diversity(Ed_month9_SD$count)
+
+    #Month 10
+    Ed_month10_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "10")
+    Ed_month10_SD<- diversity(Ed_month10_SD$count)
+
+    #Month 11
+    Ed_month11_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "11")
+    Ed_month11_SD<- diversity(Ed_month11_SD$count)
+
+    #Month 12
+    Ed_month12_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "12")
+    Ed_month12_SD<- diversity(Ed_month12_SD$count)
+
+    #Month 1
+    Ed_month1_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "1")
+    Ed_month1_SD<- diversity(Ed_month1_SD$count)
+
+    #Month 2
+    Ed_month2_SD<- monkey.prelim_SD2$ED %>%
+      filter(MONTH == "2")
+    Ed_month2_SD<- diversity(Ed_month2_SD$count)
+
+*Averaging the SDs across Eddy’s pre-release*
+
+    Ed_pre_allSDs<- c(Ed_month6_SD,Ed_month7_SD,Ed_month8_SD,Ed_month9_SD,Ed_month10_SD,Ed_month11_SD,Ed_month12_SD,Ed_month1_SD,Ed_month2_SD)
+    Ed_pre_avgSDs<- mean(Ed_pre_allSDs)
+    #Ed_pre_avgSDs
+
+##### TINKER
+
+*Getting SD for each month for Tinker during pre-release observations*
+
+    #Month 6
+    Tink_month6_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "6")
+    Tink_month6_SD<- diversity(Tink_month6_SD$count)
+
+    #Month 7
+    Tink_month7_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "7")
+    Tink_month7_SD<- diversity(Tink_month7_SD$count)
+
+    #Month 8
+    Tink_month8_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "8")
+    Tink_month8_SD<- diversity(Tink_month8_SD$count)
+
+    #Month 9
+    Tink_month9_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "9")
+    Tink_month9_SD<- diversity(Tink_month9_SD$count)
+
+    #Month 10
+    Tink_month10_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "10")
+    Tink_month10_SD<- diversity(Tink_month10_SD$count)
+
+    #Month 11
+    Tink_month11_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "11")
+    Tink_month11_SD<- diversity(Tink_month11_SD$count)
+
+    #Month 12
+    Tink_month12_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "12")
+    Tink_month12_SD<- diversity(Tink_month12_SD$count)
+
+    #Month 1
+    Tink_month1_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "1")
+    Tink_month1_SD<- diversity(Tink_month1_SD$count)
+
+    #Month 2
+    Tink_month2_SD<- monkey.prelim_SD2$TI %>%
+      filter(MONTH == "2")
+    Tink_month2_SD<- diversity(Tink_month2_SD$count)
+
+*Averaging the SDs across Tinker’s pre-release*
+
+    Tink_pre_allSDs<- c(Tink_month6_SD,Tink_month7_SD,Tink_month8_SD,Tink_month9_SD,Tink_month10_SD,Tink_month11_SD,Tink_month12_SD,Tink_month1_SD,Tink_month2_SD)
+    Tink_pre_avgSDs<- mean(Tink_pre_allSDs)
+    #Tink_pre_avgSDs
+
+##### BATMAN
+
+*Getting SD for each month for Batman during pre-release observations*
+
+    #Month 6
+    Bat_month6_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "6")
+    Bat_month6_SD<- diversity(Bat_month6_SD$count)
+
+    #Month 7
+    Bat_month7_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "7")
+    Bat_month7_SD<- diversity(Bat_month7_SD$count)
+
+    #Month 8
+    Bat_month8_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "8")
+    Bat_month8_SD<- diversity(Bat_month8_SD$count)
+
+    #Month 9
+    Bat_month9_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "9")
+    Bat_month9_SD<- diversity(Bat_month9_SD$count)
+
+    #Month 10
+    Bat_month10_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "10")
+    Bat_month10_SD<- diversity(Bat_month10_SD$count)
+
+    #Month 11
+    Bat_month11_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "11")
+    Bat_month11_SD<- diversity(Bat_month11_SD$count)
+
+    #Month 12
+    Bat_month12_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "12")
+    Bat_month12_SD<- diversity(Bat_month12_SD$count)
+
+    #Month 1
+    Bat_month1_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "1")
+    Bat_month1_SD<- diversity(Bat_month1_SD$count)
+
+    #Month 2
+    Bat_month2_SD<- monkey.prelim_SD2$BT %>%
+      filter(MONTH == "2")
+    Bat_month2_SD<- diversity(Bat_month2_SD$count)
+
+*Averaging the SDs across Batman’s pre-release*
+
+    Bat_pre_allSDs<- c(Bat_month6_SD,Bat_month7_SD,Bat_month8_SD,Bat_month9_SD,Bat_month10_SD,Bat_month11_SD,Bat_month12_SD,Bat_month1_SD,Bat_month2_SD)
+    Bat_pre_avgSDs<- mean(Bat_pre_allSDs)
+    #Bat_pre_avgSDs
+
+##### MANGO
+
+*Getting SD for each month for Mango during pre-release observations*
+
+    #Month 6
+    Mango_month6_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "6")
+    Mango_month6_SD<- diversity(Mango_month6_SD$count)
+
+    #Month 7
+    Mango_month7_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "7")
+    Mango_month7_SD<- diversity(Mango_month7_SD$count)
+
+    #Month 8
+    Mango_month8_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "8")
+    Mango_month8_SD<- diversity(Mango_month8_SD$count)
+
+    #Month 9
+    Mango_month9_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "9")
+    Mango_month9_SD<- diversity(Mango_month9_SD$count)
+
+    #Month 10
+    Mango_month10_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "10")
+    Mango_month10_SD<- diversity(Mango_month10_SD$count)
+
+    #Month 11
+    Mango_month11_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "11")
+    Mango_month11_SD<- diversity(Mango_month11_SD$count)
+
+    #Month 12
+    Mango_month12_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "12")
+    Mango_month12_SD<- diversity(Mango_month12_SD$count)
+
+    #Month 1
+    Mango_month1_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "1")
+    Mango_month1_SD<- diversity(Mango_month1_SD$count)
+
+    #Month 2
+    Mango_month2_SD<- monkey.prelim_SD2$MG %>%
+      filter(MONTH == "2")
+    Mango_month2_SD<- diversity(Mango_month2_SD$count)
+
+*Averaging the SDs across Mango’s pre-release*
+
+    Mango_pre_allSDs<- c(Mango_month6_SD,Mango_month7_SD,Mango_month8_SD,Mango_month9_SD,Mango_month10_SD,Mango_month11_SD,Mango_month12_SD,Mango_month1_SD,Mango_month2_SD)
+    Mango_pre_avgSDs<- mean(Mango_pre_allSDs)
+    #Mango_pre_avgSDs
+
+### Post-release
+
+##### Pops
+
+*Getting SD for each month for Pops during post-release observations*
+
+    #Month 6
+    Pops_month6_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "6")
+    Pops_month6_SD2<- diversity(Pops_month6_SD2$count)
+
+    #Month 7
+    Pops_month7_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "7")
+    Pops_month7_SD2<- diversity(Pops_month7_SD2$count)
+
+    #Month 8
+    Pops_month8_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "8")
+    Pops_month8_SD2<- diversity(Pops_month8_SD2$count)
+
+    #Month 9
+    Pops_month9_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "9")
+    Pops_month9_SD2<- diversity(Pops_month9_SD2$count)
+
+    #Month 10
+    Pops_month10_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "10")
+    Pops_month10_SD2<- diversity(Pops_month10_SD2$count)
+
+    #Month 11
+    Pops_month11_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "11")
+    Pops_month11_SD2<- diversity(Pops_month11_SD2$count)
+
+    #Month 3
+    Pops_month3_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "3")
+    Pops_month3_SD2<- diversity(Pops_month3_SD2$count)
+
+    #Month 4
+    Pops_month4_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "4")
+    Pops_month4_SD2<- diversity(Pops_month4_SD2$count)
+
+    #Month 5
+    Pops_month5_SD2<- monkey.prelim_SD3$PO %>%
+      filter(MONTH == "5")
+    Pops_month5_SD2<- diversity(Pops_month5_SD2$count)
+
+*Averaging the SDs across Pop’s release*
+
+    Pops_post_allSDs<- c(Pops_month6_SD2,Pops_month7_SD2,Pops_month8_SD2,Pops_month9_SD2,Pops_month10_SD2,Pops_month11_SD2,Pops_month3_SD2,Pops_month4_SD2,Pops_month5_SD2)
+    Pops_post_avgSDs<- mean(Pops_post_allSDs)
+    #Pops_post_avgSDs #1.486
+
+##### Blue
+
+*Getting SD for each month for Blue during post-release observations*
+
+    #Month 6
+    Blue_month6_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "6")
+    Blue_month6_SD2<- diversity(Blue_month6_SD2$count)
+
+    #Month 7
+    Blue_month7_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "7")
+    Blue_month7_SD2<- diversity(Blue_month7_SD2$count)
+
+    #Month 8
+    Blue_month8_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "8")
+    Blue_month8_SD2<- diversity(Blue_month8_SD2$count)
+
+    #Month 9
+    Blue_month9_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "9")
+    Blue_month9_SD2<- diversity(Blue_month9_SD2$count)
+
+    #Month 10
+    Blue_month10_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "10")
+    Blue_month10_SD2<- diversity(Blue_month10_SD2$count)
+
+    #Month 11
+    Blue_month11_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "11")
+    Blue_month11_SD2<- diversity(Blue_month11_SD2$count)
+
+    #Month 3
+    Blue_month3_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "3")
+    Blue_month3_SD2<- diversity(Blue_month3_SD2$count)
+
+    #Month 4
+    Blue_month4_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "4")
+    Blue_month4_SD2<- diversity(Blue_month4_SD2$count)
+
+    #Month 5
+    Blue_month5_SD2<- monkey.prelim_SD3$BL %>%
+      filter(MONTH == "5")
+    Blue_month5_SD2<- diversity(Blue_month5_SD2$count)
+
+*Averaging the SDs across Blue’s release*
+
+    Blue_post_allSDs<- c(Blue_month6_SD2,Blue_month7_SD2,Blue_month8_SD2,Blue_month9_SD2,Blue_month10_SD2,Blue_month11_SD2,Blue_month3_SD2,Blue_month4_SD2,Blue_month5_SD2)
+    Blue_post_avgSDs<- mean(Blue_post_allSDs)
+    #Blue_post_avgSDs
+
+##### Alex
+
+*Getting SD for each month for Alex during post-release observations*
+
+    #Month 6
+    Alex_month6_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "6")
+    Alex_month6_SD2<- diversity(Alex_month6_SD2$count)
+
+    #Month 7
+    Alex_month7_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "7")
+    Alex_month7_SD2<- diversity(Alex_month7_SD2$count)
+
+    #Month 8
+    Alex_month8_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "8")
+    Alex_month8_SD2<- diversity(Alex_month8_SD2$count)
+
+    #Month 9
+    Alex_month9_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "9")
+    Alex_month9_SD2<- diversity(Alex_month9_SD2$count)
+
+    #Month 10
+    Alex_month10_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "10")
+    Alex_month10_SD2<- diversity(Alex_month10_SD2$count)
+
+    #Month 11
+    Alex_month11_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "11")
+    Alex_month11_SD2<- diversity(Alex_month11_SD2$count)
+
+    #Month 3
+    Alex_month3_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "3")
+    Alex_month3_SD2<- diversity(Alex_month3_SD2$count)
+
+    #Month 4
+    Alex_month4_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "4")
+    Alex_month4_SD2<- diversity(Alex_month4_SD2$count)
+
+    #Month 5
+    Alex_month5_SD2<- monkey.prelim_SD3$AL %>%
+      filter(MONTH == "5")
+    Alex_month5_SD2<- diversity(Alex_month5_SD2$count)
+
+### Averaging the SDs across Alex’s release
+
+    Alex_post_allSDs<- c(Alex_month6_SD2,Alex_month7_SD2,Alex_month8_SD2,Alex_month9_SD2,Alex_month10_SD2,Alex_month11_SD2,Alex_month3_SD2,Alex_month4_SD2,Alex_month5_SD2)
+    Alex_post_avgSDs<- mean(Alex_post_allSDs)
+    #Alex_post_avgSDs
+
+##### Neville
+
+*Getting SD for each month for Neville during post-release observations*
+
+    #Month 6
+    Nev_month6_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "6")
+    Nev_month6_SD2<- diversity(Nev_month6_SD2$count)
+
+    #Month 7
+    Nev_month7_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "7")
+    Nev_month7_SD2<- diversity(Nev_month7_SD2$count)
+
+    #Month 8
+    Nev_month8_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "8")
+    Nev_month8_SD2<- diversity(Nev_month8_SD2$count)
+
+    #Month 9
+    Nev_month9_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "9")
+    Nev_month9_SD2<- diversity(Nev_month9_SD2$count)
+
+    #Month 10
+    Nev_month10_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "10")
+    Nev_month10_SD2<- diversity(Nev_month10_SD2$count)
+
+    #Month 11
+    Nev_month11_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "11")
+    Nev_month11_SD2<- diversity(Nev_month11_SD2$count)
+
+    #Month 3
+    Nev_month3_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "3")
+    Nev_month3_SD2<- diversity(Nev_month3_SD2$count)
+
+    #Month 4
+    Nev_month4_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "4")
+    Nev_month4_SD2<- diversity(Nev_month4_SD2$count)
+
+    #Month 5
+    Nev_month5_SD2<- monkey.prelim_SD3$NE %>%
+      filter(MONTH == "5")
+    Nev_month5_SD2<- diversity(Nev_month5_SD2$count)
+
+*Averaging the SDs across Nev’s postrelease*
+
+    Nev_post_allSDs<- c(Nev_month6_SD2,Nev_month7_SD2,Nev_month8_SD2,Nev_month3_SD2,Nev_month4_SD2,Nev_month5_SD2)
+    Nev_post_avgSDs<- mean(Nev_post_allSDs)
+    #Nev_post_avgSDs
+
+##### AUGUSTINE
+
+*Getting SD for each month for Aug during post-release observations*
+
+    #Month 6
+    Aug_month6_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "6")
+    Aug_month6_SD2<- diversity(Aug_month6_SD2$count)
+
+    #Month 7
+    Aug_month7_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "7")
+    Aug_month7_SD2<- diversity(Aug_month7_SD2$count)
+
+    #Month 8
+    Aug_month8_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "8")
+    Aug_month8_SD2<- diversity(Aug_month8_SD2$count)
+
+    #Month 9
+    Aug_month9_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "9")
+    Aug_month9_SD2<- diversity(Aug_month9_SD2$count)
+
+    #Month 10
+    Aug_month10_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "10")
+    Aug_month10_SD2<- diversity(Aug_month10_SD2$count)
+
+    #Month 11
+    Aug_month11_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "11")
+    Aug_month11_SD2<- diversity(Aug_month11_SD2$count)
+
+    #Month 3
+    Aug_month3_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "3")
+    Aug_month3_SD2<- diversity(Aug_month3_SD2$count)
+
+    #Month 4
+    Aug_month4_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "4")
+    Aug_month4_SD2<- diversity(Aug_month4_SD2$count)
+
+    #Month 5
+    Aug_month5_SD2<- monkey.prelim_SD3$AU %>%
+      filter(MONTH == "5")
+    Aug_month5_SD2<- diversity(Aug_month5_SD2$count)
+
+*Averaging the SDs across Aug’s post-release*
+
+    Aug_post_allSDs<- c(Aug_month6_SD2,Aug_month7_SD2,Aug_month8_SD2,Aug_month9_SD2,Aug_month10_SD2,Aug_month11_SD2,Aug_month3_SD2,Aug_month4_SD2,Aug_month5_SD2)
+    Aug_post_avgSDs<- mean(Aug_post_allSDs)
+    #Aug_post_avgSDs 
+
+##### AMY
+
+*Getting SD for each month for Amy during post-release observations*
+
+    #Month 6
+    Amy_month6_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "6")
+    Amy_month6_SD2<- diversity(Amy_month6_SD2$count)
+
+    #Month 7
+    Amy_month7_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "7")
+    Amy_month7_SD2<- diversity(Amy_month7_SD2$count)
+
+    #Month 8
+    Amy_month8_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "8")
+    Amy_month8_SD2<- diversity(Amy_month8_SD2$count)
+
+    #Month 9
+    Amy_month9_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "9")
+    Amy_month9_SD2<- diversity(Amy_month9_SD2$count)
+
+    #Month 10
+    Amy_month10_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "10")
+    Amy_month10_SD2<- diversity(Amy_month10_SD2$count)
+
+    #Month 11
+    Amy_month11_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "11")
+    Amy_month11_SD2<- diversity(Amy_month11_SD2$count)
+
+    #Month 3
+    Amy_month3_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "3")
+    Amy_month3_SD2<- diversity(Amy_month3_SD2$count)
+
+    #Month 4
+    Amy_month4_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "4")
+    Amy_month4_SD2<- diversity(Amy_month4_SD2$count)
+
+    #Month 5
+    Amy_month5_SD2<- monkey.prelim_SD3$AM %>%
+      filter(MONTH == "5")
+    Amy_month5_SD2<- diversity(Amy_month5_SD2$count)
+
+*Averaging the SDs across Amy’s post-release*
+
+    Amy_post_allSDs<- c(Amy_month6_SD2,Amy_month7_SD2,Amy_month8_SD2,Amy_month9_SD2,Amy_month10_SD2,Amy_month3_SD2,Amy_month11_SD2,Amy_month4_SD2,Amy_month5_SD2)
+    Amy_post_avgSDs<- mean(Amy_post_allSDs)
+    #Amy_post_avgSDs
+
+##### MAY
+
+*Getting SD for each month for May during post-release observations*
+
+    #Month 6
+    May_month6_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "6")
+    May_month6_SD2<- diversity(May_month6_SD2$count)
+
+    #Month 7
+    May_month7_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "7")
+    May_month7_SD2<- diversity(May_month7_SD2$count)
+
+    #Month 8
+    May_month8_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "8")
+    May_month8_SD2<- diversity(May_month8_SD2$count)
+
+    #Month 9
+    May_month9_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "9")
+    May_month9_SD2<- diversity(May_month9_SD2$count)
+
+    #Month 10
+    May_month10_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "10")
+    May_month10_SD2<- diversity(May_month10_SD2$count)
+
+    #Month 11
+    May_month11_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "11")
+    May_month11_SD2<- diversity(May_month11_SD2$count)
+
+    #Month 3
+    May_month3_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "3")
+    May_month3_SD2<- diversity(May_month3_SD2$count)
+
+    #Month 4
+    May_month4_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "4")
+    May_month4_SD2<- diversity(May_month4_SD2$count)
+
+    #Month 5
+    May_month5_SD2<- monkey.prelim_SD3$MA %>%
+      filter(MONTH == "5")
+    May_month5_SD2<- diversity(May_month5_SD2$count)
+
+*Averaging the SDs across May post-release*
+
+    May_post_allSDs<- c(May_month6_SD2,May_month7_SD2,May_month8_SD2,May_month9_SD2,May_month10_SD2,May_month3_SD2,May_month11_SD2,May_month4_SD2,May_month5_SD2)
+    May_post_avgSDs<- mean(May_post_allSDs)
+    #May_post_avgSDs
+
+##### TONI
+
+*Getting SD for each month for Toni during post-release observations*
+
+    #Month 6
+    Toni_month6_SD2<- monkey.prelim_SD3$TO %>%
+      filter(MONTH == "6")
+    Toni_month6_SD2<- diversity(Toni_month6_SD2$count)
+
+    #Month 7
+    Toni_month7_SD2<- monkey.prelim_SD3$TO %>%
+      filter(MONTH == "7")
+    Toni_month7_SD2<- diversity(Toni_month7_SD2$count)
+
+    #Month 8
+    Toni_month8_SD2<- monkey.prelim_SD3$TO %>%
+      filter(MONTH == "8")
+    Toni_month8_SD2<- diversity(Toni_month8_SD2$count)
+
+    #Month 3
+    Toni_month3_SD2<- monkey.prelim_SD3$TO %>%
+      filter(MONTH == "3")
+    Toni_month3_SD2<- diversity(Toni_month3_SD2$count)
+
+    #Month 4
+    Toni_month4_SD2<- monkey.prelim_SD3$TO %>%
+      filter(MONTH == "4")
+    Toni_month4_SD2<- diversity(Toni_month4_SD2$count)
+
+    #Month 5
+    Toni_month5_SD2<- monkey.prelim_SD3$TO %>%
+      filter(MONTH == "5")
+    Toni_month5_SD2<- diversity(Toni_month5_SD2$count)
+
+*Averaging the SDs across Toni’s post-release*
+
+    Toni_post_allSDs<- c(Toni_month6_SD2,Toni_month7_SD2,Toni_month8_SD2,Toni_month3_SD2,Toni_month4_SD2,Toni_month5_SD2)
+    Toni_post_avgSDs<- mean(Toni_post_allSDs)
+    #Toni_post_avgSDs
+
+##### BOO
+
+*Getting SD for each month for Boo during post-release observations*
+
+    #Month 6
+    Boo_month6_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "6")
+    Boo_month6_SD2<- diversity(Boo_month6_SD2$count)
+
+    #Month 7
+    Boo_month7_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "7")
+    Boo_month7_SD2<- diversity(Boo_month7_SD2$count)
+
+    #Month 8
+    Boo_month8_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "8")
+    Boo_month8_SD2<- diversity(Boo_month8_SD2$count)
+
+    #Month 9
+    Boo_month9_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "9")
+    Boo_month9_SD2<- diversity(Boo_month9_SD2$count)
+
+    #Month 10
+    Boo_month10_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "10")
+    Boo_month10_SD2<- diversity(Boo_month10_SD2$count)
+
+    #Month 3
+    Boo_month3_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "3")
+    Boo_month3_SD2<- diversity(Boo_month3_SD2$count)
+
+    #Month 4
+    Boo_month4_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "4")
+    Boo_month4_SD2<- diversity(Boo_month4_SD2$count)
+
+    #Month 5
+    Boo_month5_SD2<- monkey.prelim_SD3$BO %>%
+      filter(MONTH == "5")
+    Boo_month5_SD2<- diversity(Boo_month5_SD2$count)
+
+*Averaging the SDs across Boo’s post-release*
+
+    Boo_post_allSDs<- c(Boo_month6_SD2,Boo_month7_SD2,Boo_month8_SD2,Boo_month9_SD2,Boo_month10_SD2,Boo_month3_SD2,Boo_month4_SD2,Boo_month5_SD2)
+    Boo_post_avgSDs<- mean(Boo_post_allSDs)
+    #Boo_post_avgSDs
+
+##### BIG MAMA
+
+*Getting SD for each month for Bgm during post-release observations*
+
+    #Month 6
+    Bgm_month6_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "6")
+    Bgm_month6_SD2<- diversity(Bgm_month6_SD2$count)
+
+    #Month 7
+    Bgm_month7_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "7")
+    Bgm_month7_SD2<- diversity(Bgm_month7_SD2$count)
+
+    #Month 8
+    Bgm_month8_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "8")
+    Bgm_month8_SD2<- diversity(Bgm_month8_SD2$count)
+
+    #Month 9
+    Bgm_month9_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "9")
+    Bgm_month9_SD2<- diversity(Bgm_month9_SD2$count)
+
+    #Month 3
+    Bgm_month3_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "3")
+    Bgm_month3_SD2<- diversity(Bgm_month3_SD2$count)
+
+    #Month 4
+    Bgm_month4_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "4")
+    Bgm_month4_SD2<- diversity(Bgm_month4_SD2$count)
+
+    #Month 5
+    Bgm_month5_SD2<- monkey.prelim_SD3$BM %>%
+      filter(MONTH == "5")
+    Bgm_month5_SD2<- diversity(Bgm_month5_SD2$count)
+
+*Averaging the SDs across Bgms post-release*
+
+    Bgm_post_allSDs<- c(Bgm_month6_SD2,Bgm_month7_SD2,Bgm_month8_SD2,Bgm_month9_SD2,Bgm_month3_SD2,Bgm_month4_SD2,Bgm_month5_SD2)
+    Bgm_post_avgSDs<- mean(Bgm_post_allSDs)
+    #Bgm_post_avgSDs
+
+##### KOVU
+
+*Getting SD for each month for Kovu during post-release observations*
+
+    #Month 6
+    Kovu_month6_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "6")
+    Kovu_month6_SD2<- diversity(Kovu_month6_SD2$count)
+
+    #Month 7
+    Kovu_month7_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "7")
+    Kovu_month7_SD2<- diversity(Kovu_month7_SD2$count)
+
+    #Month 8
+    Kovu_month8_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "8")
+    Kovu_month8_SD2<- diversity(Kovu_month8_SD2$count)
+
+    #Month 9
+    Kovu_month9_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "9")
+    Kovu_month9_SD2<- diversity(Kovu_month9_SD2$count)
+
+    #Month 10
+    Kovu_month10_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "10")
+    Kovu_month10_SD2<- diversity(Kovu_month10_SD2$count)
+
+    #Month 11
+    Kovu_month11_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "11")
+    Kovu_month11_SD2<- diversity(Kovu_month11_SD2$count)
+
+    #Month 3
+    Kovu_month3_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "3")
+    Kovu_month3_SD2<- diversity(Kovu_month3_SD2$count)
+
+    #Month 4
+    Kovu_month4_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "4")
+    Kovu_month4_SD2<- diversity(Kovu_month4_SD2$count)
+
+    #Month 5
+    Kovu_month5_SD2<- monkey.prelim_SD3$KO %>%
+      filter(MONTH == "5")
+    Kovu_month5_SD2<- diversity(Kovu_month5_SD2$count)
+
+*Averaging the SDs across Kovus post-release*
+
+    Kovu_post_allSDs<- c(Kovu_month6_SD2,Kovu_month7_SD2,Kovu_month8_SD2,Kovu_month9_SD2,Kovu_month10_SD2,Kovu_month3_SD2,Kovu_month11_SD2,Kovu_month4_SD2,Kovu_month5_SD2)
+    Kovu_post_avgSDs<- mean(Kovu_post_allSDs)
+    #Kovu_post_avgSDs
+
+##### EDDY
+
+*Getting SD for each month for Eddy during post-release observations*
+
+    #Month 6
+    Ed_month6_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "6")
+    Ed_month6_SD2<- diversity(Ed_month6_SD2$count)
+
+    #Month 7
+    Ed_month7_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "7")
+    Ed_month7_SD2<- diversity(Ed_month7_SD2$count)
+
+    #Month 8
+    Ed_month8_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "8")
+    Ed_month8_SD2<- diversity(Ed_month8_SD2$count)
+
+    #Month 9
+    Ed_month9_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "9")
+    Ed_month9_SD2<- diversity(Ed_month9_SD2$count)
+
+    #Month 10
+    Ed_month10_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "10")
+    Ed_month10_SD2<- diversity(Ed_month10_SD2$count)
+
+    #Month 11
+    Ed_month11_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "11")
+    Ed_month11_SD2<- diversity(Ed_month11_SD2$count)
+
+    #Month 3
+    Ed_month3_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "3")
+    Ed_month3_SD2<- diversity(Ed_month3_SD2$count)
+
+    #Month 4
+    Ed_month4_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "4")
+    Ed_month4_SD2<- diversity(Ed_month4_SD2$count)
+
+    #Month 5
+    Ed_month5_SD2<- monkey.prelim_SD3$ED %>%
+      filter(MONTH == "5")
+    Ed_month5_SD2<- diversity(Ed_month5_SD2$count)
+
+*Averaging the SDs across Eddys post-release*
+
+    Ed_post_allSDs<- c(Ed_month6_SD2,Ed_month7_SD2,Ed_month8_SD2,Ed_month9_SD2,Ed_month10_SD2,Ed_month3_SD2,Ed_month11_SD2,Ed_month4_SD2,Ed_month5_SD2)
+    Ed_post_avgSDs<- mean(Ed_post_allSDs)
+    #Ed_post_avgSDs
+
+##### TINKER
+
+*Getting SD for each month for Tinker during post-release observations*
+
+    #Month 6
+    Tink_month6_SD2<- monkey.prelim_SD3$TI %>%
+      filter(MONTH == "6")
+    Tink_month6_SD2<- diversity(Tink_month6_SD2$count)
+
+    #Month 7
+    Tink_month7_SD2<- monkey.prelim_SD3$TI %>%
+      filter(MONTH == "7")
+    Tink_month7_SD2<- diversity(Tink_month7_SD2$count)
+
+    #Month 8
+    Tink_month8_SD2<- monkey.prelim_SD3$TI %>%
+      filter(MONTH == "8")
+    Tink_month8_SD2<- diversity(Tink_month8_SD2$count)
+
+    #Month 3
+    Tink_month3_SD2<- monkey.prelim_SD3$TI %>%
+      filter(MONTH == "3")
+    Tink_month3_SD2<- diversity(Tink_month3_SD2$count)
+
+    #Month 4
+    Tink_month4_SD2<- monkey.prelim_SD3$TI %>%
+      filter(MONTH == "4")
+    Tink_month4_SD2<- diversity(Tink_month4_SD2$count)
+
+    #Month 5
+    Tink_month5_SD2<- monkey.prelim_SD3$TI %>%
+      filter(MONTH == "5")
+    Tink_month5_SD2<- diversity(Tink_month5_SD2$count)
+
+*Averaging the SDs across Tinker post-release*
+
+    Tink_post_allSDs<- c(Tink_month6_SD2,Tink_month7_SD2,Tink_month8_SD2,Tink_month3_SD2,Tink_month4_SD2,Tink_month5_SD2)
+    Tink_post_avgSDs<- mean(Tink_post_allSDs)
+    #Tink_post_avgSDs
+
+##### MANGO
+
+*Getting SD for each month for Mango during post-release observations*
+
+    #Month 6
+    Mango_month6_SD2<- monkey.prelim_SD3$MG %>%
+      filter(MONTH == "6")
+    Mango_month6_SD2<- diversity(Mango_month6_SD2$count)
+
+    #Month 7
+    Mango_month7_SD2<- monkey.prelim_SD3$MG %>%
+      filter(MONTH == "7")
+    Mango_month7_SD2<- diversity(Mango_month7_SD2$count)
+
+    #Month 8
+    Mango_month8_SD2<- monkey.prelim_SD3$MG %>%
+      filter(MONTH == "8")
+    Mango_month8_SD2<- diversity(Mango_month8_SD2$count)
+
+    #Month 3
+    Mango_month3_SD2<- monkey.prelim_SD3$MG %>%
+      filter(MONTH == "3")
+    Mango_month3_SD2<- diversity(Mango_month3_SD2$count)
+
+    #Month 4
+    Mango_month4_SD2<- monkey.prelim_SD3$MG %>%
+      filter(MONTH == "4")
+    Mango_month4_SD2<- diversity(Mango_month4_SD2$count)
+
+    #Month 5
+    Mango_month5_SD2<- monkey.prelim_SD3$MG %>%
+      filter(MONTH == "5")
+    Mango_month5_SD2<- diversity(Mango_month5_SD2$count)
+
+*Averaging the SDs across Mango post-release*
+
+    Mango_post_allSDs<- c(Mango_month6_SD2,Mango_month7_SD2,Mango_month8_SD2,Mango_month3_SD2,Mango_month4_SD2,Mango_month5_SD2)
+    Mango_post_avgSDs<- mean(Mango_post_allSDs)
+    #Mango_post_avgSDs
+
+##### Jack
+
+*Getting SD for each month for Jack during post-release observations*
+
+    #Month 3
+    Jack_month3_SD2<- monkey.prelim_SD3$JA %>%
+      filter(MONTH == "3")
+    Jack_month3_SD2<- diversity(Jack_month3_SD2$count)
+
+    #Month 4
+    Jack_month4_SD2<- monkey.prelim_SD3$JA %>%
+      filter(MONTH == "4")
+    Jack_month4_SD2<- diversity(Jack_month4_SD2$count)
+
+    #Month 5
+    Jack_month5_SD2<- monkey.prelim_SD3$JA %>%
+      filter(MONTH == "5")
+    Jack_month5_SD2<- diversity(Jack_month5_SD2$count)
+
+*Averaging the SDs across Jack’s post-release*
+
+    Jack_post_allSDs<- c(Jack_month3_SD2,Jack_month4_SD2,Jack_month5_SD2)
+    Jack_post_avgSDs<- mean(Jack_post_allSDs)
+    #Jack_post_avgSDs
+
+#### Full Troop SD DF and Plot
+
+    #PRE-RELEASE
+    #Creating a matrix
+    pre_SDs_table<- matrix(c(Pop_pre_avgSDs, Zip_pre_avgSDs, Jack_pre_avgSDs, Blue_pre_avgSDs, Alex_pre_avgSDs, Bart_pre_avgSDs, Nev_pre_avgSDs, Aug_pre_avgSDs, Amy_pre_avgSDs, May_pre_avgSDs, Toni_pre_avgSDs, Boo_pre_avgSDs, Bgm_pre_avgSDs, Kovu_pre_avgSDs, Ed_pre_avgSDs, Tink_pre_avgSDs, Mango_pre_avgSDs), ncol = 1, byrow = 17)
+    #head(pre_SDs_table)
+
+    #Turning into dataframe and adding new columns
+    pre_SDs_table<- as.data.frame(pre_SDs_table) %>%
+      rename(SD.Index = V1) %>%
+      add_column(IDs = c("Pops","Zip","Jack", "Blue", "Alex", "Bart", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Mango")) %>%
+      add_column(release = "pre")
+
+    #using ggplot
+    SD_plot<- ggplot(data= pre_SDs_table,aes(x=IDs, y=SD.Index)) +
+      geom_bar(position="dodge", stat="identity") +
+      theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+    #POST-RELEASE
+    #Creating a matrix
+    post_SDs_table<- matrix(c(Pops_post_avgSDs, Jack_post_avgSDs, Blue_post_avgSDs, Alex_post_avgSDs, Nev_post_avgSDs, Aug_post_avgSDs, Amy_post_avgSDs, May_post_avgSDs, Toni_post_avgSDs, Boo_post_avgSDs, Bgm_post_avgSDs, Kovu_post_avgSDs, Ed_post_avgSDs, Tink_post_avgSDs, Mango_post_avgSDs), ncol = 1, byrow = 15)
+    #post_SDs_table
+
+    #Turning into dataframe and adding new columns
+    post_SDs_table<- as.data.frame(post_SDs_table) %>%
+      rename(SD.Index = V1) %>%
+      add_column(IDs = c("Pops","Jack", "Blue", "Alex", "Neville", "Augustine", "Amy", "May", "Toni", "Boo", "Big Mama", "Kovu", "Eddy", "Tinker", "Mango")) %>%
+      add_column(release = "post")
+
+    #using ggplot
+    post_SD_plot<- ggplot(data= post_SDs_table,aes(x=IDs, y=SD.Index)) +
+      geom_bar(position="dodge", stat="identity") +
+      theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), panel.background = element_blank(), axis.line = element_line(colour = "black"))
+
+*Combined SD Plot and Graph*
+
+    SD_combined<- bind_rows(pre_SDs_table,post_SDs_table)
+    SD_combined$release= factor(SD_combined$release, levels = c("pre", "post"), ordered = TRUE)
+    SD_combined<- SD_combined %>%
+      mutate(IDs = fct_relevel(IDs, 
+                "Pops","Blue", "Amy", "Alex", "Toni", "Augustine", "Boo", "Jack", "Mango", "Eddy", "May", "Big Mama", "Neville","Kovu", "Tinker","Bart","Zip"))
+
+    full_SD_plot<- ggplot(data=SD_combined, aes(x=IDs, y=SD.Index, fill=release)) +
+      geom_bar(stat = "identity", width = 0.7, position = "dodge") +
+      #scale_fill_discrete(name = "Release Stage", labels = c("Pre", "Post")) +
+      ylim(0,2) +
+      scale_fill_manual(values = c("midnightblue","slategray2")) +
+      theme(axis.text.x = element_text(angle = 45, hjust =1)) + #turning labels on an angle
+      xlab("Individual") +
+      ylab("Shannon-Weaver Index (H)") +
+      labs(fill = "Release Stage") +
+      stat_summary(geom = 'text', label = c("","","","","","","","","","","","","","","","","","","","","","","","","","","","","","","*","*"), fun = max, vjust = 0, color = "black", size= 7) +
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank(), #removing gridlines and background 
+    panel.background = element_blank(), axis.line = element_line(colour = "black"))
+    #full_SD_plot
+
+    #ggsave("Full SD Plot.pdf", width= 7, height= 5, last_plot())
+
+*Running Wilcoxon Test*
+
+    SD_combined2<- SD_combined %>%
+      filter(!IDs %in% c("Zip","Bart")) #removing Zip and Bart because they have no post-release data
+
+    #Testing for normality first
+    #ggdensity(SD_combined2$SD.Index)
+    #ggqqplot(SD_combined2$SD.Index)
+    #shapiro.test(SD_combined2$SD.Index)
+
+    #Running log10 transformations to see if that changes distribution: It's still not normal
+    log_SD<- log10(SD_combined2$SD.Index)
+    shapiro.test(log_SD)
+    #ggdensity(log_SD)
+    #ggqqplot(log_SD)
+
+    #Making sure each ID has exactly one pre and one post so I can do a paired test
+    wide<- SD_combined2 %>%
+      select(IDs, release, SD.Index) %>%
+      tidyr::pivot_wider(names_from = release, values_from = SD.Index)
+
+    #Running a paired wilcox test and seeing if the pre is sig greater than post
+    wilcox.test(wide$pre, wide$post,
+                paired = TRUE,
+                alternative = "greater")
+
+RESULTS: The troop’s mean Shannon Diversity pre-release is significantly
+greater than the troop’s mean Shannon Diversity post-release (V= 105,
+p=0.008362, n=15).
+
+*Adding in Sex, Age, and Rank into Shannon Diversity Tables*
+
+    # Pre-Release
+    pre_SDs_table<- pre_SDs_table %>%
+      mutate(sex = 
+              case_when(IDs %in% c("Pops","Jack","Neville","Mango","Zip","Bart")~ as.character("M"), 
+                        IDs %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+             age = 
+               case_when(IDs %in% c("Pops","Jack","Bart", "Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker","Zip")~ as.character("A"),
+                         IDs == "Mango" ~ as.character("SA"),
+                         IDs %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+             rank = as.numeric(c(12.48,9.11,9.47,13.92,11.27,10.72,5.18,9.63,11.57,4.88,9.85,7.88,6.26,3.94,6.90,4.42,7.36))) #david's scores
+
+    # Post-Release
+    post_SDs_table<- post_SDs_table %>%
+      mutate(sex = 
+              case_when(IDs %in% c("Pops","Jack","Neville","Mango")~ as.character("M"), 
+                        IDs %in% c("Blue","Alex","Augustine","Amy","May","Toni","Boo","Big Mama","Kovu","Eddy","Tinker")~ as.character("F")),
+             age = 
+               case_when(IDs %in% c("Pops","Jack","Blue","Alex","Augustine","Amy","Toni","Boo","Big Mama","Tinker")~ as.character("A"),
+                         IDs == "Mango" ~ as.character("SA"),
+                         IDs %in% c("Neville","Kovu","May","Eddy")~ as.character("J")),
+             rank = as.numeric(c(9.85,8.18,8.93,8.68,7.82,7.40,8.69,7.35,8.21,7.27,8.13,6.43,7.51,0,7.69))) #david's scores
+
+*Kruskal-Wallis & Wilcoxon Test for Age, Sex, Rank*
+
+    #Pre-release
+    wilcox.test(SD.Index ~ sex, data= pre_SDs_table, alternative = "greater") #SEX
+    kruskal.test(SD.Index ~ age, data= pre_SDs_table) #AGE
+    kruskal.test(SD.Index ~ rank, data= pre_SDs_table) #RANK
+
+    #Post-release
+    wilcox.test(SD.Index ~ sex, data= post_SDs_table, alternative = "greater") #SEX
+    kruskal.test(SD.Index ~ age, data= post_SDs_table) #AGE
+
+    post_SDs_table_KT<- post_SDs_table %>% #have to filer out Tinker for the rank analysis because she didn't have enough data to get a david's score
+      filter(IDs != "Tinker")
+
+    kruskal.test(SD.Index ~ rank, data= post_SDs_table_KT) #RANK
+
+    #Seeing that juveniles have higher behavioral diversity (but not significant)
+    aggregate(SD.Index ~ age, data = post_SDs_table, median)
+
+## **DOMINANCE HIERARCHY**
+
+### Pre-release Dataset
+
+    #Importing the FULL pre-continuous dataset
+    pre_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_pre-release_cont_FULL.csv")
+    pre_cont<- read.csv(pre_cont, header=T, na.strings=c(""," ","NA"))
+
+    # 1. Create a character vector of all the monkey IDs in your dataset:
+    MonkeyIDs<-as.character(unique(pre_cont$FOCAL.ID))
+
+    # 2. Get a list of dataframes, subsetted by monkey ID:
+    monkey.prelim<-lapply(MonkeyIDs, function(x){pre_cont[pre_cont[["FOCAL.ID"]] == x, ]})
+    #head(monkey.prelim)
+
+#### Making Place+ Matrix (focal displaces the other individual)
+
+    monkey_MP.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR=="MP+")) %>%
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_MP.prelim) <- MonkeyIDs
+
+    monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
+    filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+    combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+
+    combo_MP<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_MP.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_MP.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      select(-absent1,-absent2)
+
+    MP1<-combo_MP %>% 
+      mutate(makeplace = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_MP.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    MP1
+
+    MP_matrix<-spread(MP1,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #MP_matrix
+
+#### Making Place- Matrix (focal gets displaced)
+
+    monkey_MP2.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR=="MP-")) %>%
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_MP2.prelim) <- MonkeyIDs
+
+    monkeylist<-list(actor=MonkeyIDs,recipient=MonkeyIDs) #create list of all possible actors/recipients
+    filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+    combo <- monkeylist %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+
+    combo_MP2<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_MP2.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_MP2.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    MP2<-combo_MP2 %>% 
+      mutate(makeplace = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_MP2.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    MP2
+
+    MP_matrix2<-spread(MP2,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #MP_matrix2
+
+#### Aggression+ Matrix with conflict outcome= 1 (focal acts aggressively or recieves aggression and WINS)
+
+    monkey_A.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),conflict.outcome=="1")) %>% #adding in a second filter so that I can pull out interactions where the focal won
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_A.prelim) <- MonkeyIDs
+
+    combo_A<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_A.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_A.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      select(-absent1,-absent2)
+
+    A1<-combo_A %>% 
+      mutate(aggress = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_A.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    A1
+
+    A_matrix<-spread(A1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #A_matrix
+
+#### Aggression Matrix with conflict outcome= 2 (focal acts aggressively or recieves aggression and LOSES)
+
+    monkey_loseA.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),conflict.outcome=="2")) %>% #adding in a second filter so that I can pull out interactions where the focal loses
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_loseA.prelim) <- MonkeyIDs
+
+    combo_loseA<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_loseA.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_loseA.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    loseA1<-combo_loseA %>% 
+      mutate(aggress = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_loseA.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    loseA1
+
+    loseA_matrix<-spread(loseA1,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #loseA_matrix
+
+#### Threat Matrix with conflict outcome= 1 (focal threatens or recieves threat and WINS)
+
+    monkey_TH.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),conflict.outcome=="1")) %>% 
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_TH.prelim) <- MonkeyIDs
+
+    combo_TH<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_TH.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_TH.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      select(-absent1,-absent2)
+
+    TH1<-combo_TH %>% 
+      mutate(threaten = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_TH.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    TH1
+
+    TH_matrix<-spread(TH1,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #TH_matrix
+
+#### Threat Matrix with conflict outcome= 2 (focal threatens or recieves threat and LOSES)
+
+    monkey_loseTH.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),conflict.outcome=="2")) %>% 
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_loseTH.prelim) <- MonkeyIDs
+
+    combo_loseTH<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_loseTH.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_loseTH.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    TH2<-combo_loseTH %>% 
+      mutate(threaten = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_loseTH.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    TH2
+
+    loseTH_matrix<-spread(TH2,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #loseTH_matrix
+
+#### Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
+
+    monkey_ALL.prelim<-
+      monkey.prelim %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),conflict.outcome=="1")) %>% 
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_ALL.prelim) <- MonkeyIDs
+
+    combo_ALL<-
+      combo %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_ALL.prelim),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_ALL.prelim[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    ALL1<-combo_ALL %>% 
+      mutate(interaction = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_ALL.prelim %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    #ALL1
+
+    ALL_matrix<-spread(ALL1,recipient,interaction) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #ALL_matrix
+
+#### All dominance matrices
+
+    #MP_matrix #focal wins, displaces the other
+    #MP_matrix2 #focal gets displaced
+    #A_matrix #focal wins any aggression interaction
+    #loseA_matrix #focal loses any aggression interaction
+    #TH_matrix #focal wins any threat interaction
+    #loseTH_matrix #focal loses any threat interaction
+    #ALL_matrix #combination of displacement, threats, and aggression where focal wins
+
+*Calculating David’s Scores*
+
+    #First have to make all NAs into 0s for the davids scores
+    ALL_matrix_DavidScore<- ALL_matrix
+    ALL_matrix_DavidScore[is.na(ALL_matrix_DavidScore)] <- 0
+
+    pre_ds_results<- DS(ALL_matrix_DavidScore)#This uses the EloRating package
+    pre_ds_results
+
+### Post-release Dataset
+
+    #continuous dataset
+    post_cont<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_cont_FULL.csv")
+    post_cont<- read.csv(post_cont, header=T, na.strings=c(""," ","NA"))
+    post_cont = post_cont[-1,] #the first row in this DF is NAs so I'm deleting it here
+    head(post_cont)
+
+    # 1. Create a character vector of all the monkey IDs in your dataset:
+    MonkeyIDs_post<-as.character(unique(post_cont$FOCAL.ID))
+    MonkeyIDs_post
+
+    # 2. Get a list of dataframes, subsetted by monkey ID:
+    monkey.prelim_post<-lapply(MonkeyIDs_post, function(x){post_cont[post_cont[["FOCAL.ID"]] == x, ]})
+    #head(monkey.prelim_post)
+
+    # 3. Set up your pairwise combinations of interacting monkeys:
+    monkeylist_post<-list(actor=MonkeyIDs_post,recipient=MonkeyIDs_post) #create list of all possible actors/recipients
+    filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+    combo_post <- monkeylist_post %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+    #head(combo_post)
+
+#### Making Place+ Matrix (focal displaces the other individual)
+
+    monkey_MP.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,BEHAVIOUR=="MP+")) %>%
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_MP.prelim_post) <- MonkeyIDs_post
+
+    combo_MP_post<-
+      combo_post %>% #from grooming matrix
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_MP.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_MP.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    MP1_post<-combo_MP_post %>% 
+      mutate(makeplace = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_MP.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    #MP1_post
+
+    MP_matrix_post<-spread(MP1_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #MP_matrix_post
+
+#### Making Place- Matrix (focal gets displaced) for CONTINUOUS DATASET
+
+    monkey_MP2.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,BEHAVIOUR=="MP-")) %>%
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_MP2.prelim_post) <- MonkeyIDs_post
+
+    combo_MP2_post<-
+      combo_post %>% #from grooming matrix
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_MP2.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_MP2.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    MP2_post<-combo_MP2_post %>% 
+      mutate(makeplace = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_MP2.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    #MP2_post
+
+    MP_matrix2_post<-spread(MP2_post,recipient,makeplace) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #MP_matrix2_post
+
+#### Aggression+ Matrix with conflict outcome= 1 (focal acts aggressively or recieves aggression and WINS)
+
+    monkey_A.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),CONFLICT.OUTCOME== "1")) %>% #adding in a second filter so that I can pull out interactions where the focal won
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_A.prelim_post) <- MonkeyIDs_post
+
+    combo_A_post<-
+      combo_post %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_A.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_A.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    A1_post<-combo_A_post %>% 
+      mutate(aggress = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_A.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    A1_post
+
+    A_matrix_post<-spread(A1_post,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #A_matrix_post
+
+    post_cont %>% filter(BEHAVIOUR %in% c("A+","A-"), CONFLICT.OUTCOME == "1") #two entries here don't show up in the matrix because MT is an infant who is never "focal.id" and PA is an immigrated male who also is never "focal.id" 
+
+#### Aggression Matrix with conflict outcome= 2 (focal acts aggressively or receives aggression and LOSES)
+
+    monkey_loseA.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("A+","A-"),CONFLICT.OUTCOME=="2")) %>% #adding in a second filter so that I can pull out interactions where the focal loses
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_loseA.prelim_post) <- MonkeyIDs_post
+
+    combo_loseA_post<-
+      combo_post %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_loseA.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_loseA.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    loseA1_post<-combo_loseA_post %>% 
+      mutate(aggress = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_loseA.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    #loseA1_post
+
+    loseA_matrix_post<-spread(loseA1_post,recipient,aggress) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #loseA_matrix_post
+
+#### Threat Matrix with conflict outcome= 1 (focal threatens or receives threat and WINS)
+
+    monkey_TH.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_TH.prelim_post) <- MonkeyIDs_post
+
+    combo_TH_post<-
+      combo_post %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_TH.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_TH.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    TH1_post<-combo_TH_post %>% 
+      mutate(threaten = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_TH.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    #TH1_post
+
+    TH_matrix_post<-spread(TH1_post,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #TH_matrix_post
+
+#### Threat Matrix with conflict outcome= 2 (focal threatens or receives threat and LOSES)
+
+    monkey_loseTH.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,BEHAVIOUR %in% c("TH+","TH-"),CONFLICT.OUTCOME=="2")) %>% 
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_loseTH.prelim_post) <- MonkeyIDs_post
+
+    combo_loseTH_post<-
+      combo_post %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_loseTH.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_loseTH.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    TH2_post<-combo_loseTH_post %>% 
+      mutate(threaten = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_loseTH.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    #TH2_post
+
+    loseTH_matrix_post<-spread(TH2_post,recipient,threaten) %>% column_to_rownames(var="actor") %>% data.matrix()
+    #loseTH_matrix_post
+
+#### Combining displacement, agression, and threat into one matrix (focal WINS all of these interactions)
+
+    monkey_ALL.prelim_post<-
+      monkey.prelim_post %>%
+      purrr::map(~filter(.,FOCAL.ID=="CI", BEHAVIOUR %in% c("A+","A-","MP+", "TH+","TH-"),CONFLICT.OUTCOME=="1")) %>% 
+      purrr::map(~group_by(.,ASSOCIATION)) %>%
+      purrr::map(~summarize(.,count=n()))
+    names(monkey_ALL.prelim_post) <- MonkeyIDs_post
+
+    combo_ALL_post<-
+      combo_post %>%
+      mutate(absent1 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.x %in% names(monkey_ALL.prelim_post),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        actor,
+        recipient,
+        ~if_else(.y %in% monkey_ALL.prelim_post[[.x]]$ASSOCIATION,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    ALL1_post<-combo_ALL_post %>% 
+      mutate(interaction = map2_int(
+        actor, 
+        recipient, 
+        ~monkey_ALL.prelim_post %>% pluck(.x) %>% filter(ASSOCIATION==.y) %>% as.data.frame(.) %>% .[,2]))
+    ALL1_post
+
+    #I noticed that the actor (row names) and recipient (column names) didn't match
+    # 1. Make sure both actor and recipient are factors with the same levels
+    all_ids_post <- union(ALL1_post$actor, ALL1_post$recipient)
+
+    ALL1_post <- ALL1_post %>%
+      mutate(
+        actor = factor(actor, levels = all_ids_post),
+        recipient = factor(recipient, levels = all_ids_post)
+      )
+
+    # 2. Use complete() to ensure all actor–recipient pairs exist
+    ALL1_post_complete <- ALL1_post %>%
+      tidyr::complete(actor, recipient, fill = list(interaction = 0))
+
+    # 3. Build a proper square matrix
+    ALL_matrix_post <- ALL1_post_complete %>%
+      tidyr::pivot_wider(names_from = recipient, values_from = interaction) %>%
+      tibble::column_to_rownames(var = "actor") %>%
+      as.matrix()
+
+    ALL_matrix_post
+
+*Calculating David’s Scores*
+
+    post_ds_results<- DS(ALL_matrix_post) #using EloRating package
+    post_ds_results
+
+## **SOCIAL NETWORK**
+
+### Pre-release Social Proximity
+
+    pre_socnet<- curl("https://raw.githubusercontent.com/nickmikulski/Spring2021/main/Pre-release_Social%20Proximity_csv.csv")
+    pre_socnet<- read.csv(pre_socnet, header = T, na.strings=c(""," ","NA"))
+    #head(pre_socnet)
+
+    pre_socnet_close<- pre_socnet %>% #creating a new dataframe called pre_socnet_close using data from the original pre_socnet dataframe
+      filter(Focal.ID != "BT", #this code REMOVES all data that has Batman has the focal ID (BT is wild male from pre-release)
+             Association != "BT", #this code REMOVES all data that has Batman in association column
+             Proximity.Code %in% c("1","2")) #this code only keeps proximity codes 1,2 (excluding 3,4) because we are focusing on closer proximity) 
+    #head(pre_socnet_close)
+
+#### Creating a matrix
+
+    # 1. Create a character vector of all the focal IDs in your dataset:
+    pre_sn_closeIDs<-as.character(unique(pre_socnet_close$Focal.ID))
+
+    # 2. Get a list of dataframes, subsetted by monkey ID:
+    pre_sn_monkeylist<-lapply(pre_sn_closeIDs, function(x){pre_socnet_close[pre_socnet_close[["Focal.ID"]] == x, ]})
+    #head(pre_sn_monkeylist) #this will load the first 6 lists, take a look at them and see that each is for an individual monkey
+
+    # 3. Group each by focal/associate, and count how many times they are observed close together:
+    pre_sn_grouped<-
+      pre_sn_monkeylist %>%
+      purrr::map(~group_by(.,Association)) %>%
+      purrr::map(~summarize(.,count=n())) 
+    names(pre_sn_grouped) <- pre_sn_closeIDs #this will give each grouped list the name of the Focal ID
+
+    # 4. Set up your pairwise combinations of interacting monkeys:
+    pre_sn_monkeycombos<-list(focal=pre_sn_closeIDs, associate=pre_sn_closeIDs) #create list of all possible focals/associates
+    pre_sn_filt<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+    pre_sn_combo<- pre_sn_monkeycombos %>% cross_df(.,.filter=pre_sn_filt) #get the filtered combined list as a dataframe
+    head(pre_sn_combo)
+
+    pre_sn_combo2<-
+      pre_sn_combo %>%
+      mutate(absent1 = map2_chr(
+        focal,
+        associate,
+        ~if_else(.x %in% names(pre_sn_grouped),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        focal,
+        associate,
+        ~if_else(.y %in% pre_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2)
+
+    pre_sn_combo3<- pre_sn_combo2 %>% 
+      mutate(proximity = map2_int(
+        focal, 
+        associate, 
+        ~pre_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+    #pre_sn_combo3
+
+    pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% as.matrix()
+    #pre_sn_matrix #social proximity matrix between focal and associate 
+
+    pre_sn_codes <- sort(pre_sn_closeIDs)
+
+    pre_sn_df <- as.data.frame(pre_sn_matrix, stringsAsFactors = TRUE) #creating the matrix data frame
+
+#### Adding the total number of focal follows in which proximity info was collected
+
+    pre_socnet_TOTALS<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/refs/heads/main/Pre-release_Social%20Proximity.csv")
+    pre_socnet_TOTALS<- read.csv(pre_socnet_TOTALS, header = T, na.strings=c(""," ","NA")) #loading in data
+    head(pre_socnet_TOTALS)
+
+*Doing it for each individual separately*
+
+    pre_socnet_TOTALS_AM<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "AM") %>% 
+      filter(Association != "OS") %>% #fitering out "out of sight"
+      filter(Association != "UK") %>% #filtering out "unknown"
+      filter(Association != "BT") %>% #filtering out Batman, the wild male because we remove him from the pairwise matrix above
+      mutate(total = n_distinct(FOCAL.REFERENCE)) #adding in new column with the number of distinct focal references for that individual
+
+    pre_socnet_TOTALS_ZI<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "ZI") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_BA<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "BA") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_PO<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "PO") %>%
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_AL<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "AL") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_BL<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "BL") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_TO<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "TO") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_AU<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "AU") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_BO<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "BO") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_JA<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "JA") %>%
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_MG<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "MG") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_ED<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "ED") %>%
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_MA<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "MA") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_BM<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "BM") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_NE<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "NE") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_KO<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "KO") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_TI<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "TI") %>% 
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    pre_socnet_TOTALS_PA<- pre_socnet_TOTALS %>%
+      filter(Focal.ID == "PA") %>%
+      filter(Association != "OS") %>%
+      filter(Association != "UK") %>%
+      filter(Association != "BT") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+#### Making a matrix with Focial ID, Proximity Association & Total follows
+
+    pre_socnet_TOTALs_combined<- bind_rows(pre_socnet_TOTALS_AL, pre_socnet_TOTALS_AM, pre_socnet_TOTALS_AU, pre_socnet_TOTALS_BA, pre_socnet_TOTALS_BL, pre_socnet_TOTALS_BM, pre_socnet_TOTALS_BO, pre_socnet_TOTALS_ED, pre_socnet_TOTALS_JA, pre_socnet_TOTALS_KO, pre_socnet_TOTALS_MA, pre_socnet_TOTALS_MG, pre_socnet_TOTALS_NE, pre_socnet_TOTALS_PO,  pre_socnet_TOTALS_TI, pre_socnet_TOTALS_TO, pre_socnet_TOTALS_ZI) #combining the individual dfs
+
+    pre_socnet_TOTALs_clean <- pre_socnet_TOTALs_combined %>%
+      distinct(Focal.ID, Association, total) #have the clean out the Focal ID /Association duplicates from the table because the total focal number will be the same throughout so we don't need the duplicates
+
+    pre_socnet_TOTALs_matrix <- pre_socnet_TOTALs_clean %>% #making it into a pairwise table
+      pivot_wider(
+        names_from = Association,
+        values_from = total,
+        values_fill = 0    # fill missing with 0 instead of NA
+      )
+
+    pre_socnet_TOTALs_matrix <- pre_socnet_TOTALs_matrix %>% 
+      column_to_rownames('Focal.ID') #changing Focal ID column into row names
+
+    pre_socnet_TOTALs_matrix <- pre_socnet_TOTALs_matrix %>%
+      dplyr::select(AL,AM,AU,BA,BL,BM,BO,ED,JA,KO,MA,MG,NE,PO,TI,TO,ZI) # Specify the new order of column name
+
+    #turning it into a matrix, has to come after all the other adjustments to the df
+    pre_socnet_TOTALs_matrix<- as.matrix(pre_socnet_TOTALs_matrix) 
+
+#### Weighting the proximity counts by the total number of focal follows
+
+    #Now dividing the proximity matrix by the total number of focals matrix to account for focal count
+    pre_proximity_rate_matrix <- pre_sn_matrix / pre_socnet_TOTALs_matrix
+    pre_proximity_rate_matrix[pre_socnet_TOTALs_matrix == 0] <- NA
+
+#### Eigenvector centrality using undirected data
+
+    pre_proximity_rate_clean <- pre_proximity_rate_matrix
+    pre_proximity_rate_clean[is.na(pre_proximity_rate_clean)] <- 0 #turning NAs into 0s
+
+    pre_proximity_rate_undirect <- (pre_proximity_rate_clean + t(pre_proximity_rate_clean)) / 2 
+    #t() takes the transpose of the matrix so the roles of focal and associate are swapped
+    #we add the original matrix and the transposed matrix together 
+    #divide by 2 to get the average of the two directional values to reflect the mutual association strength between individuals, rather than two directional rates
+
+    pre_proximity_rate_graph_undirect <- graph_from_adjacency_matrix(
+      pre_proximity_rate_undirect, mode = "undirected", weighted = TRUE, diag = FALSE)
+
+    #calculating post-release eigenvector centrality with UNDIRECTED relationships (doesn't matter who is focal and who is associate)
+    pre_eigen_centrality_undirect <- eigen_centrality(pre_proximity_rate_graph_undirect, directed = FALSE, weights = E(pre_proximity_rate_graph_undirect)$weight)
+
+    #extracting the scores
+    pre_eigen_centrality_scores_undirect <- pre_eigen_centrality_undirect$vector
+    #pre_eigen_centrality_scores_undirect
+
+    #putting eigenvector scores back into a df
+    pre_eigen_centrality_df_undirect <- data.frame(
+      Focal.ID = names(pre_eigen_centrality_scores_undirect),
+      eigenvector_centrality = pre_eigen_centrality_scores_undirect
+    )
+    pre_eigen_centrality_df_undirect
+
+### Post-release social proximity
+
+    post_socnet<- curl("https://raw.githubusercontent.com/nickmikulski/Spring2021/main/Post-release_Social%20Proximity_CSV.csv")
+    post_socnet<- read.csv(post_socnet, header = T, na.strings=c(""," ","NA"))
+    #head(post_socnet)
+
+    post_socnet_close<- post_socnet %>% #creating a new dataframe called post_socnet_close using data from the original post_socnet dataframe
+      filter(Focal.ID != c("BT"), #this code REMOVES all data that has Batman as the focal ID (BT is wild male from prerelease)
+             Association != c("BT"), #this code REMOVES all data that has Batman in association column
+             Proximity.Code %in% c("1","2") #this code only keeps proximity codes 1,2 (excluding 3,4) because we are focusing on closer proximity
+      ) 
+    #head(post_socnet_close)
+
+#### Creating the Matrix
+
+    # 1. Create a character vector of all the focal IDs in dataset:
+    post_sn_IDs<-sort(as.character(unique(post_socnet_close$Focal.ID)))
+    #post_sn_IDs
+
+    # 2. Get a list of dataframes, subsetted by monkey ID:
+    post_sn_monkeylist<-lapply(post_sn_IDs, function(x){post_socnet_close[post_socnet_close[["Focal.ID"]] == x, ]})
+    # It is creating a separate dataframe for each individual based on their focal id
+    #head(post_sn_monkeylist)
+
+    # 3. Group each by focal/associate, and count how many times they are observed close together:
+    post_sn_grouped<-
+      post_sn_monkeylist %>%
+      purrr::map(~group_by(.,Association)) %>%
+      purrr::map(~summarize(.,count=n())) 
+    #post_sn_grouped
+
+    names(post_sn_grouped) <- post_sn_IDs #this gives each grouped list the name of the Focal ID
+    #post_sn_grouped
+
+    # 4. Set up pairwise combinations of interacting monkeys:
+    post_sn_monkeycombos<-list(focal=post_sn_IDs, associate=post_sn_IDs) #create list of all possible focals/associates
+    post_sn_filtf<- function(x, y) {x == y} #create function to filter out same-monkey pairs ("PO is close to PO")
+    post_sn_combo<- post_sn_monkeycombos %>% cross_df(.,.filter=post_sn_filtf) #get the filtered combined list as a dataframe
+    #post_sn_combo
+
+    # 5. Create new dataframes with specific criteria
+    post_sn_combo2<-
+      post_sn_combo %>%
+      mutate(absent1 = map2_chr( #new column called "absent1"
+        focal,
+        associate,
+        ~if_else(.x %in% names(post_sn_grouped),true="TRUE",false="FALSE"))) %>%
+        mutate(absent2 = map2_chr(
+        focal,
+        associate,
+        ~if_else(.y %in% post_sn_grouped[[.x]]$Association,true="TRUE",false="FALSE"))) %>%
+      filter(absent1 == "TRUE") %>%
+      filter(absent2 == "TRUE") %>%
+      dplyr::select(-absent1,-absent2) #this removes those two new columns you made so you're just left with the ID names
+
+    post_sn_combo3<- post_sn_combo2 %>% 
+      mutate(proximity = map2_int( #new column called "proximity" that is the count for when proximity code = 1 or 2
+        focal, 
+        associate, 
+        ~post_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
+    head(post_sn_combo3)
+
+    # 6. Create your matrix
+    post_sn_matrix<-spread(post_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
+    #post_sn_matrix
+
+    post_sn_codes <- sort(post_sn_IDs)
+
+    post_sn_df <- as.data.frame(post_sn_matrix, stringsAsFactors = TRUE) #creating the matrix data frame
+
+#### Adding the total number of focal follows in which proximity info was collected
+
+    post_socnet_TOTALS<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/refs/heads/main/Post-release%20Social%20Proxmity%20TOTALS.csv")
+    post_socnet_TOTALS<- read.csv(post_socnet_TOTALS, header = T, na.strings=c(""," ","NA")) #loading in data
+    head(post_socnet_TOTALS)
+
+*Doing it for each individual separately*
+
+    post_socnet_TOTALS_AM<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "AM") %>% 
+      filter(Association != "OS") %>% #fitering out "out of sight"
+      mutate(total = n_distinct(FOCAL.REFERENCE)) #adding in new column with the number of distinct focal references for that individual
+
+    post_socnet_TOTALS_ZI<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "ZI") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_PO<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "PO") %>%
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_AL<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "AL") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_BL<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "BL") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_TO<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "TO") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_AU<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "AU") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_BO<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "BO") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_JA<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "JA") %>%
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_MG<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "MG") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_RE<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "RE") %>%
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_ED<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "ED") %>%
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_MA<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "MA") %>% 
+      filter(Association != c("OS","I")) %>% #filtering out "I" for infant
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_SK<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "SK") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_BM<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "BM") %>% 
+      filter(Association != c("OS","I")) %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_NE<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "NE") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_KO<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "KO") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_TI<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "TI") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_CI<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "CI") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_HO<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "HO") %>% 
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+    post_socnet_TOTALS_PA<- post_socnet_TOTALS %>%
+      filter(Focal.ID == "PA") %>%
+      filter(Association != "OS") %>%
+      mutate(total = n_distinct(FOCAL.REFERENCE)) 
+
+#### Making a matrix with Focial ID, Proximity Association & Total follows
+
+    post_socnet_TOTALs_combined<- bind_rows(post_socnet_TOTALS_AL, post_socnet_TOTALS_AM, post_socnet_TOTALS_AU, post_socnet_TOTALS_BL, post_socnet_TOTALS_BM, post_socnet_TOTALS_BO, post_socnet_TOTALS_CI, post_socnet_TOTALS_ED, post_socnet_TOTALS_HO, post_socnet_TOTALS_JA, post_socnet_TOTALS_KO, post_socnet_TOTALS_MA, post_socnet_TOTALS_MG, post_socnet_TOTALS_NE, post_socnet_TOTALS_PA, post_socnet_TOTALS_PO, post_socnet_TOTALS_RE, post_socnet_TOTALS_SK, post_socnet_TOTALS_TI, post_socnet_TOTALS_TO, post_socnet_TOTALS_ZI) #combining the individual dfs
+
+    post_socnet_TOTALs_clean <- post_socnet_TOTALs_combined %>%
+      distinct(Focal.ID, Association, total) #have the clean out the Focal ID /Association duplicates from the table because the total focal number will be the same throughout so we don't need the duplicates
+
+    post_socnet_TOTALs_matrix <- post_socnet_TOTALs_clean %>% #making it into a pairwise table
+      pivot_wider(
+        names_from = Association,
+        values_from = total,
+        values_fill = 0    # fill missing with 0 instead of NA
+      )
+
+    post_socnet_TOTALs_matrix <- post_socnet_TOTALs_matrix %>% 
+      column_to_rownames('Focal.ID') #changing Focal ID column into row names
+
+    post_socnet_TOTALs_matrix <- post_socnet_TOTALs_matrix %>%
+      dplyr::select(AL,AM,AU,BL,BM,BO,CI,ED,HO,JA,KO,MA,MG,NE,PA,PO,RE,SK,TI,TO,ZI) # Specify the new order of column name
+
+    post_socnet_TOTALs_matrix<- as.matrix(post_socnet_TOTALs_matrix) #turning it into a matrix, has to come after all the other adjustments to the df
+
+#### Trying to account for SURVIVAL OVERLAP across indiviudals in order to make accurate social proximity scores
+
+    #Now I have to do the matrix math but I need to tell it that if there's an NA in the post_sn_matrix, then it should give an NA in the final matrix 
+
+    #creating a daily_effort df: columns with focal ID, date, and n_follows for each focal reference number
+    post_socnet_TOTALs_combined_withdate<- post_socnet_TOTALs_combined %>%
+      mutate(date = as.Date(paste(Year, Month, Day, sep = "-"))) %>% #
+      group_by(Focal.ID, date) %>%
+      summarise(
+        n_follows = n_distinct(FOCAL.REFERENCE),
+        .groups = "drop"
+      )
+
+    #checking to see the total number of focal follows per individual 
+    post_socnet_TOTALs_combined_withdate %>%
+      group_by(Focal.ID) %>%
+      summarise(total_follows = sum(n_follows))
+
+    # df_alive: ID, start_date, end_date
+    post_socnet_TOTALs_alive<- post_socnet_TOTALs_combined_withdate %>%
+      group_by(Focal.ID) %>%
+      summarise(
+        start_date = as.Date("2016-3-18"),
+        end_date   = max(date),
+        .groups = "drop"
+      )
+
+    post_socnet_TOTALs_alive <- post_socnet_TOTALs_alive %>% #manually editing the end date for the indiviudals based on whether they survived or died (got this date from supp material table)
+      mutate(
+        end_date = case_when(
+          Focal.ID %in% c("PO","BL","AM","ED","KO","MA","MY","CI","HO") ~ as.Date("2016-12-15"),  
+          Focal.ID == "AL" ~ as.Date("2016-11-18"),
+          Focal.ID == "TO" ~ as.Date("2016-08-23"),
+          Focal.ID == "ZI" ~ as.Date("2016-03-22"),
+          Focal.ID == "AU" ~ as.Date("2016-12-08"),
+          Focal.ID == "BO" ~ as.Date("2016-10-08"),
+          Focal.ID == "JA" ~ as.Date("2016-06-11"),
+          Focal.ID == "MG" ~ as.Date("2016-08-23"),
+          Focal.ID == "RE" ~ as.Date("2016-10-14"),
+          Focal.ID == "SK" ~ as.Date("2016-11-23"),
+          Focal.ID == "BM" ~ as.Date("2016-09-30"),
+          Focal.ID == "NE" ~ as.Date("2016-08-13"),
+          Focal.ID == "TI" ~ as.Date("2016-08-30"),
+          Focal.ID == "PA" ~ as.Date("2016-10-25"),
+        )
+      )
+
+    #1. create pairwise table (focal, associate)
+    ids <- post_socnet_TOTALs_alive$Focal.ID
+    pairs <- expand.grid(focal = ids, associate = ids, stringsAsFactors = FALSE) %>% as_tibble()
+
+    #2. join associate alive-range to daily effort rows and filter dates when associate is alive
+    # First ensure daily effort df has Focal.ID and date
+    denom_by_pair <- post_socnet_TOTALs_combined_withdate %>%
+      rename(focal = Focal.ID) %>%
+      # join pairs to allow filtering by each associate's alive range:
+      left_join(pairs, by = "focal") %>%          # now each row repeats for each associate
+      left_join(post_socnet_TOTALs_alive %>% rename(associate = Focal.ID,
+                                   assoc_start = start_date,
+                                   assoc_end = end_date),
+                by = "associate") %>%
+      filter(date >= assoc_start & date <= assoc_end) %>%
+      group_by(focal, associate) %>%
+      summarise(total_focal_follows_when_assoc_alive = sum(n_follows, na.rm = TRUE), .groups = "drop")
+
+    #3. turn into matrix aligned to our proximity matrix (post_sn_matrix)
+    denom_mat2 <- denom_by_pair %>%
+      pivot_wider(names_from = associate, values_from = total_focal_follows_when_assoc_alive, values_fill = 0) %>%
+      column_to_rownames("focal") %>%
+      as.matrix()
+
+    #Now dividing the proximity matrix by our "days alive overlap" matrix
+    proximity_rate_matrix <- post_sn_matrix / denom_mat2
+    proximity_rate_matrix[denom_mat2 == 0] <- NA
+
+The rate (or probability) that associate individual was seen in close
+proximity during a focal follow of X individual, conditional on both
+being alive at the same time (the wild immigrant males are still part of
+both of these matrices but we are not getting eigenvector scores for
+them).
+
+#### Calculating Post-Release Eigenvector Centrality Scores (using proximity rate data) using undirected data
+
+    proximity_rate_clean <- proximity_rate_matrix
+    proximity_rate_clean[is.na(proximity_rate_clean)] <- 0 #turning NAs into 0s
+
+    proximity_rate_undirect <- (proximity_rate_clean + t(proximity_rate_clean)) / 2 
+    #t() takes the transpose of the matrix so the roles of focal and associate are swapped
+    #we add the original matrix and the transposed matrix together 
+    #divide by 2 to get the average of the two directional values to reflect the mutual association strength between individuals, rather than two directional rates
+
+    proximity_rate_graph_undirect <- graph_from_adjacency_matrix(
+      proximity_rate_undirect, mode = "undirected", weighted = TRUE, diag = FALSE)
+
+    #calculating post-release eigenvector centrality with UNDIRECTED relationships (doesn't matter who is focal and who is associate)
+    post_eigen_centrality_undirect <- eigen_centrality(proximity_rate_graph_undirect, directed = FALSE, weights = E(proximity_rate_graph_undirect)$weight)
+
+    #extracting the scores
+    post_eigen_centrality_scores_undirect <- post_eigen_centrality_undirect$vector
+    #post_eigen_centrality_scores_undirect
+
+    #putting eigenvector scores back into a df
+    post_eigen_centrality_df_undirect <- data.frame(
+      Focal.ID = names(post_eigen_centrality_scores_undirect),
+      eigenvector_centrality = post_eigen_centrality_scores_undirect
+    )
+    post_eigen_centrality_df_undirect
+
+The edge in this undirected case means “relationship” rather than
+“interaction direction” because we want a pairwise association strength,
+not a directional interaction.
+
+#### Social Network Figures - PRE RELEASE
+
+    #Pre release
+    pre_sortprox<- pre_sn_combo3[order(pre_sn_combo3$proximity),]
+
+    pre_sn_edges<- pre_sn_df
+    pre_sn_vertices<- c(pre_sn_codes)
+    pre_sn_df2<- as.data.frame(pre_sortprox, stringsAsFactors = TRUE, row.names = pre_sn_vertices)
+    pre_sn_graph<- graph_from_data_frame(d=pre_sn_df2, vertices = pre_sn_vertices, directed = FALSE)
+
+    pre_sn_proximity<- as.numeric(unlist(dplyr::select(pre_sn_combo3, "proximity")))
+
+*social network figure*
+
+    #making those with higher eigen values larger nodes
+    layout_fr <- layout_with_fr(pre_sn_graph)  # Fruchterman-Reingold
+    plot(pre_sn_graph,
+         layout = layout_fr,
+         vertex.size = 10 + 20 * pre_eigen_centrality_df_undirect$eigenvector_centrality,
+         vertex.color = "lightgrey",
+         vertex.label.color = "black",
+         edge.width = ((1/50) * pre_sn_proximity),
+         edge.curved = 0.25)
+
+#### Social Network Figures - POST RELEASE
+
+    post_sortprox<- post_sn_combo3[order(post_sn_combo3$proximity),]
+
+    post_sn_edges<- post_sn_df
+    post_sn_vertices<- c(post_sn_codes)
+    post_sn_df2<- as.data.frame(post_sortprox, stringsAsFactors = TRUE, row.names = post_sn_vertices)
+    post_sn_graph<- graph_from_data_frame(d=post_sn_df2, vertices = post_sn_vertices, directed = FALSE)
+
+    post_sn_proximity<- as.numeric(unlist(dplyr::select(post_sn_combo3, "proximity")))
+
+*social network figure*
+
+    #eigenvector values reflect size of node
+    layout_fr <- layout_with_fr(post_sn_graph)  # Fruchterman-Reingold
+    plot(post_sn_graph,
+         layout = layout_fr,
+         vertex.size = 10 + 20 * post_eigen_centrality_df_undirect$eigenvector_centrality,
+         vertex.color = "lightgrey",
+         vertex.label.color = "black",
+         edge.width = ((1/50) * post_sn_proximity),
+         edge.curved = 0.25)
+
+## **SURVIVAL ANALYSIS**
+
+### Post-release only (no deaths pre-release)
+
+    #STEP 1:
+    post_focals_surv<- curl("https://raw.githubusercontent.com/langley1/LWTdata2016/main/2016_post-release_focals_SURV.csv") #inputting my post focals dataset with data in my "Date End" column 
+    post_focals_surv<- read.csv(post_focals_surv, header = T, na.strings=c(""," ","NA"))
+
+    #STEP 2:
+    post_focals_surv$Date.End <- as.Date(post_focals_surv$Date.End, format = "%Y-%m-%d") #telling R that my "Date End" column is in the y-m-d format and that it needs to be read as "Date" rather than "Factor"
+
+    post_focals_surv<- post_focals_surv %>% 
+      unite(Date, c(DAY, MONTH, YEAR), sep = "-", remove = FALSE) %>% #Creating a new column called "Date" using unite(), which combines Day, Month, and Year columns with - as separator
+      mutate(Date = as.Date(Date, format = "%d-%m-%Y")) #using mutate() to turn my date column into acceptable "date" format. NOTE: the format I use in this code is what format my original column IS in...R then turns it into standard Y-M-D format, which will match my "Date End" column 
+
+    #STEP 3:
+    post_focals_surv<- post_focals_surv %>% filter(!FOCAL.ID %in% c("CI","HO","PA","ZI")) %>% #filtering out these individuals because they are wild males
+      droplevels() %>% #takes the IDs I want to remove from the levels as well 
+      group_by(FOCAL.ID) %>%
+      mutate( #creating a new column called "days_surv"
+        days_surv = 
+          as.numeric( 
+            difftime(Date.End[1], #only selecting the first cell in "Date.End" and "Date" so that it calcultes the difference from the first day of data collection to the day I entered into "Date.End", which is the last day they were observed
+                     Date[1],
+                     units = "days"))) #number of days survived
+
+    #STEP 4: status 1 = survived or emigrated; status 2 = confirmed or assumed dead
+    post_focals_surv<- post_focals_surv %>% 
+      mutate(status = #creating a new column called "status" to label individuals who die vs those who survive
+        case_when(FOCAL.ID %in% c("PO","MG","BL","AM","KO","ED","MA") ~ as.numeric(1), #for these individuals status=1
+                  FOCAL.ID %in% c("JA","NE","AL","TO","AU","BO","BM","TI","SK","RE") ~ as.numeric(2))) #for these individuals status=2
+
+    #STEP 5: select only the first row for each focal ID and clean up dataframe
+    post_surv_edited<-
+    post_focals_surv %>% 
+      group_by(FOCAL.ID) %>% 
+      filter(row_number()==1) #only takes the first row
+
+    drop <- c("ASSOCIATION", "OBSERVER.1","OBSERVER.2","WEATHER","TEMP","ESTRUS","FOCAL.PERIOD","FOCAL.MINUTE","BEHAVIOUR","BEHAVIOUR.2","FOOD.TYPE","FOOD.Type.2","POSITION.IN.CANOPY","Position2","Position3","PLANT.SPECIES","PLANT.SPECIES.SAT.ON","G.P.S..Location","X","NOteS") #these are all the extra columns I just don't need
+    post_surv_edited = post_surv_edited[,!(names(post_surv_edited) %in% drop)]
+
+    post_surv_edited[17,14] = as.numeric(228) #manually changing Skittles days_surv number since he only has one focal in April, so his number needed to be changed
+
+*Adding in Centrality Scores*
+
+    post_surv_edited_with_centrality<- post_surv_edited %>%
+      mutate(Date = as.Date("2016-03-18")) %>% #the start of the post-release period
+      mutate(Date.End = #adding in the unique end date for each individual (death, emigration, or end of study)
+               case_when(FOCAL.ID == "PO" ~ as.Date("2016-12-15"),
+                         FOCAL.ID == "BL" ~ as.Date("2016-12-15"),
+                         FOCAL.ID == "AM" ~ as.Date("2016-12-15"),
+                         FOCAL.ID == "ED" ~ as.Date("2016-12-15"),
+                         FOCAL.ID == "MA" ~ as.Date("2016-12-15"),
+                         FOCAL.ID == "KO" ~ as.Date("2016-12-15"),
+                         FOCAL.ID == "AL" ~ as.Date("2016-11-18"),
+                         FOCAL.ID == "TO" ~ as.Date("2016-08-23"),
+                         FOCAL.ID == "AU" ~ as.Date("2016-12-08"),
+                         FOCAL.ID == "BO" ~ as.Date("2016-10-08"),
+                         FOCAL.ID == "JA" ~ as.Date("2016-06-11"),
+                         FOCAL.ID == "MG" ~ as.Date("2016-08-23"),
+                         FOCAL.ID == "RE" ~ as.Date("2016-10-04"),
+                         FOCAL.ID == "SK" ~ as.Date("2016-11-23"),
+                         FOCAL.ID == "BM" ~ as.Date("2016-09-30"),
+                         FOCAL.ID == "NE" ~ as.Date("2016-08-13"),
+                         FOCAL.ID == "TI" ~ as.Date("2016-08-30"))) %>%
+      mutate(David_scores_post = #Adding in a column for the post_release david's scores
+               case_when(FOCAL.ID == "PO" ~ as.numeric(9.854), #from post_ds_results
+                  FOCAL.ID == "BL" ~ as.numeric(8.932),
+                  FOCAL.ID == "AM" ~ as.numeric(8.696),
+                  FOCAL.ID == "AL" ~ as.numeric(8.691),
+                  FOCAL.ID == "TO" ~ as.numeric(8.211),
+                  FOCAL.ID == "AU" ~ as.numeric(7.404),
+                  FOCAL.ID == "BO" ~ as.numeric(7.270),
+                  FOCAL.ID == "JA" ~ as.numeric(8.181),
+                  FOCAL.ID == "MG" ~ as.numeric(7.696),
+                  FOCAL.ID == "RE" ~ as.numeric(7.672),
+                  FOCAL.ID == "ED" ~ as.numeric(7.518),
+                  FOCAL.ID == "MA" ~ as.numeric(7.357),
+                  #FOCAL.ID == "SK" ~ as.character("NA"),
+                  FOCAL.ID == "BM" ~ as.numeric(8.132),
+                  FOCAL.ID == "NE" ~ as.numeric(7.826),
+                  FOCAL.ID == "KO" ~ as.numeric(6.434)),
+                  #FOCAL.ID == "TI" ~ as.numeric()),
+             proxcent_number = 
+               case_when(FOCAL.ID == "PO" ~ as.numeric(39),
+                  FOCAL.ID == "BL" ~ as.numeric(38),
+                  FOCAL.ID == "AM" ~ as.numeric(40),
+                  FOCAL.ID == "AL" ~ as.numeric(39),
+                  FOCAL.ID == "TO" ~ as.numeric(37),
+                  FOCAL.ID == "AU" ~ as.numeric(40),
+                  FOCAL.ID == "BO" ~ as.numeric(36),
+                  FOCAL.ID == "JA" ~ as.numeric(34),
+                  FOCAL.ID == "MG" ~ as.numeric(38),
+                  FOCAL.ID == "RE" ~ as.numeric(32),
+                  FOCAL.ID == "ED" ~ as.numeric(39),
+                  FOCAL.ID == "MA" ~ as.numeric(38),
+                  FOCAL.ID == "SK" ~ as.numeric(27),
+                  FOCAL.ID == "BM" ~ as.numeric(36),
+                  FOCAL.ID == "NE" ~ as.numeric(37),
+                  FOCAL.ID == "KO" ~ as.numeric(39),
+                  FOCAL.ID == "TI" ~ as.numeric(36)),
+             proxcent_number2 = 
+               case_when(FOCAL.ID == "PO" ~ as.numeric(1.00),
+                  FOCAL.ID == "BL" ~ as.numeric(0.924),
+                  FOCAL.ID == "AM" ~ as.numeric(0.928),
+                  FOCAL.ID == "AL" ~ as.numeric(0.874),
+                  FOCAL.ID == "TO" ~ as.numeric(0.461),
+                  FOCAL.ID == "AU" ~ as.numeric(0.904),
+                  FOCAL.ID == "BO" ~ as.numeric(0.682),
+                  FOCAL.ID == "JA" ~ as.numeric(0.199),
+                  FOCAL.ID == "MG" ~ as.numeric(0.566),
+                  FOCAL.ID == "RE" ~ as.numeric(0.400),
+                  FOCAL.ID == "ED" ~ as.numeric(0.841),
+                  FOCAL.ID == "MA" ~ as.numeric(0.727),
+                  FOCAL.ID == "SK" ~ as.numeric(0.401),
+                  FOCAL.ID == "BM" ~ as.numeric(0.715),
+                  FOCAL.ID == "NE" ~ as.numeric(0.486),
+                  FOCAL.ID == "KO" ~ as.numeric(0.895),
+                  FOCAL.ID == "TI" ~ as.numeric(0.418)),
+            NEW_eigencent_scores_2025 = 
+               case_when(FOCAL.ID == "PO" ~ as.numeric(0.7986232), #manually adding in the new eigenvector centrality scores from post_eigen_centrality_df_undirect
+                  FOCAL.ID == "BL" ~ as.numeric(0.8880804),
+                  FOCAL.ID == "AM" ~ as.numeric(0.9748237),
+                  FOCAL.ID == "AL" ~ as.numeric(0.8409673),
+                  FOCAL.ID == "TO" ~ as.numeric(0.6292328),
+                  FOCAL.ID == "AU" ~ as.numeric(1.0000000),
+                  FOCAL.ID == "BO" ~ as.numeric(0.7488248),
+                  FOCAL.ID == "JA" ~ as.numeric(0.3612819),
+                  FOCAL.ID == "MG" ~ as.numeric(0.4971380),
+                  FOCAL.ID == "RE" ~ as.numeric(0.5718587),
+                  FOCAL.ID == "ED" ~ as.numeric(0.8666694),
+                  FOCAL.ID == "MA" ~ as.numeric(0.7496980),
+                  FOCAL.ID == "SK" ~ as.numeric(0.4391937),
+                  FOCAL.ID == "BM" ~ as.numeric(0.7950169),
+                  FOCAL.ID == "NE" ~ as.numeric(0.5963072),
+                  FOCAL.ID == "KO" ~ as.numeric(0.9478891),
+                  FOCAL.ID == "TI" ~ as.numeric(0.5414905)))
+
+    #Adding Zip into the df manually because he got filterd out by accident prior
+    post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
+      ungroup() %>%
+      add_row(RELEASE = "POST", Date = as.Date("2016-03-18"), FOCAL.ID = "ZI", SEX = "M", AGE = "A", Date.End = as.Date("2016-03-22"), status = as.numeric(1), NEW_eigencent_scores_2025 = as.numeric(0.2907479))
+
+    post_surv_edited_with_centrality <- post_surv_edited_with_centrality %>%
+      mutate(NEW_days_alive = as.numeric(Date.End - Date) + 1) #calculating a new # of days survived column
+
+#### Survival Probability and curves with Kaplan-Meier
+
+    Surv(post_surv_edited_with_centrality$NEW_days_alive, post_surv_edited_with_centrality$status)[1:18] #Surv() creates a survival object for use as the response in a model formula. There will be one entry for each subject that is the survival time, which is followed by a + if the subject was censored (in this case, survived or emigrated)
+
+    #Survival curves
+    survfit_all_NEW <- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
+
+    #To get median survival days
+    survfit_all<- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #The median survival days is 251
+    #names(survfit_all) #important names are "surv" and "time"
+    summary(survfit_all)
+
+    #Now let's check the probability of surviving until the end of the observations
+    summary(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), times = 273) #shows us that the probability of survival at the end of data collection is 38%
+
+    #Now let's check the probability of surviving halfway through
+    summary(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), times = 136) #shows us that the probability of surviving halfway is 94%
+
+    #Now let's plot survfit object: Horizontal lines represent survival duration for the interval, The height of vertical lines show the change in cumulative probability, Censored observations are indicated by tick marks
+    plot(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), mark.time = TRUE, 
+         xlab = "Days", 
+         ylab = "Overall survival probability")
+
+    ggsurvplot(
+        fit = survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), 
+        xlab = "Days", 
+        ylab = "Overall survival probability")
+
+    SURVIVAL_PLOT<- ggsurvplot(survfit_all,
+              pval = TRUE, conf.int = TRUE,
+              risk.table = TRUE, # Add risk table
+              risk.table.col = "strata", # Change risk table color by groups
+              #linetype = "strata", # Change line type by groups
+              surv.median.line = "hv", # Specify median survival
+              ggtheme = theme_bw()) # Change ggplot2 theme
+              #palette = c("#E7B800", "#2E9FDF"))
+    #ggsave("SURVIVAL_PLOT.pdf", height = 3, width = 7, last_plot())
+
+    #Survfit across Sex
+    survfit_sex<- survfit(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
+    #survfit_sex
+    #summary(survfit_sex) #median survival time for females is 256 and 251 for males
+    summary(survfit_sex)$table
+
+*Log-Rank Test*
+
+    #Differences in survival times between sexes
+    survdiff_SEX<- survdiff(Surv(NEW_days_alive, status) ~ SEX, data = post_surv_edited_with_centrality)
+
+    #Differences in survival times between ages
+    survdiff_AGE<- survdiff(Surv(NEW_days_alive, status) ~ AGE, data = post_surv_edited_with_centrality)
+
+*Cox Multiple regression*
+
+    #Cox proportional hazards for davids scores
+    coxph_RANK<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post, data = post_surv_edited_with_centrality)
+
+    #Cox proportional hazards for eigenvector centrality
+    coxph_CENT<- coxph(Surv(NEW_days_alive, status) ~ NEW_eigencent_scores_2025, data = post_surv_edited_with_centrality)
+    coxph_CENT #significant p-value
+
+    #Cox multiple for davids, sex, and age
+    NEW_cox_multi1<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE, data= post_surv_edited_with_centrality)
+    summary(NEW_cox_multi1)
+
+    #Adding in social prox eigenvector scores
+    NEW_cox_multi2<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
+    summary(NEW_cox_multi2)
+
+    #Need to create a predator vigilance df
+    NEW_surv_pred<- post_surv_edited %>%
+      filter(!FOCAL.ID %in% c("RE","SK")) %>% #these two have very little behavior data post-release so removing them
+      droplevels() %>%
+      mutate(pred_post = 
+               case_when(FOCAL.ID == "PO" ~ as.numeric(7.41), #Taking the mean predator counts from Pops_budget4 df and inputting them here manually
+                         FOCAL.ID == "BL" ~ as.numeric(6.78),
+                         FOCAL.ID == "AM" ~ as.numeric(6.99),
+                         FOCAL.ID == "AL" ~ as.numeric(5.77),
+                         FOCAL.ID == "BO" ~ as.numeric(6.82),
+                         FOCAL.ID == "BM" ~ as.numeric(6.91),
+                         FOCAL.ID == "AU" ~ as.numeric(5.77),
+                         FOCAL.ID == "ED" ~ as.numeric(6.10),
+                         FOCAL.ID == "JA" ~ as.numeric(7.32),
+                         FOCAL.ID == "TI" ~ as.numeric(5.79),
+                         FOCAL.ID == "KO" ~ as.numeric(5.27),
+                         FOCAL.ID == "MG" ~ as.numeric(4.07),
+                         FOCAL.ID == "MA" ~ as.numeric(5.36),
+                         FOCAL.ID == "TO" ~ as.numeric(6.13),
+                         FOCAL.ID == "NE" ~ as.numeric(7.82),
+                         FOCAL.ID == "ZI" ~ as.numeric(0.682)),
+             pred_pre = #taking the mean predator counts from Pops_budget2 df and putting them here
+               case_when(FOCAL.ID == "PO" ~ as.numeric(12.23),
+                         FOCAL.ID == "BL" ~ as.numeric(9.22),
+                         FOCAL.ID == "AM" ~ as.numeric(9.32),
+                         FOCAL.ID == "AL" ~ as.numeric(8.76),
+                         FOCAL.ID == "BO" ~ as.numeric(9.33),
+                         FOCAL.ID == "BM" ~ as.numeric(9.88),
+                         FOCAL.ID == "AU" ~ as.numeric(8.83),
+                         FOCAL.ID == "ED" ~ as.numeric(8.17),
+                         FOCAL.ID == "JA" ~ as.numeric(9.84),
+                         FOCAL.ID == "TI" ~ as.numeric(8.66),
+                         FOCAL.ID == "KO" ~ as.numeric(8.04),
+                         FOCAL.ID == "MG" ~ as.numeric(8.53),
+                         FOCAL.ID == "MA" ~ as.numeric(7.23),
+                         FOCAL.ID == "TO" ~ as.numeric(8.89),
+                         FOCAL.ID == "NE" ~ as.numeric(8.35),
+                         FOCAL.ID == "ZI" ~ as.numeric(10.17)))
+
+    #Adding in the pred column in NEW_surv_pred into post_surv_edited_with_centrality
+    post_surv_edited_with_centrality_with_pred <- post_surv_edited_with_centrality %>%
+      left_join(NEW_surv_pred %>% dplyr::select(FOCAL.ID, pred_post, pred_pre), by = "FOCAL.ID")
+
+    #Not sure why Zip's pred_pre is still showing NA even though I assigned him a number, just going to do it manually: 
+    post_surv_edited_with_centrality_with_pred[nrow(post_surv_edited_with_centrality_with_pred), ncol(post_surv_edited_with_centrality_with_pred)] <- 10.17
+
+    #Cox proportional hazards for anti-predator behaviors
+    coxph_PRED_pre<- coxph(Surv(NEW_days_alive, status) ~ pred_pre, data = post_surv_edited_with_centrality_with_pred)
+    #summary(coxph_PRED_pre)
+
+    coxph_PRED_post<- coxph(Surv(NEW_days_alive, status) ~ pred_post, data = post_surv_edited_with_centrality_with_pred)
+    #summary(coxph_PRED_post)
+
+    #Cox multiple for Davids scores, sex, age, and predator POST, and social proximity
+    NEW_cox_multi3<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + SEX + AGE + pred_post + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
+    #summary(NEW_cox_multi3)
+
+    #Trying the cox multiple regression models without sex: 
+    NEW_cox_multi4<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + AGE + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality)
+    summary(NEW_cox_multi4)
+
+    NEW_cox_multi5<- coxph(Surv(NEW_days_alive, status) ~ David_scores_post + AGE + pred_post + NEW_eigencent_scores_2025, data= post_surv_edited_with_centrality_with_pred )
+    summary(NEW_cox_multi5)
+    #The significant results are the same 
+
+*Proportional Hazards Assumption Test and other statistical tests*
+
+    #Testing for proportional hazards (PH) assumption:
+    NEW_test.ph<- cox.zph(NEW_cox_multi2) #this includes sex as a covariate
+    #NEW_test.ph #great, model as a whole meets assumption but sex does not meet assumption
+
+    #Now testing the model WITHOUT sex
+    NEW_test.ph_2<- cox.zph(NEW_cox_multi4) #model and all covariates meet assumption
+
+    #Testing influential observations 
+
+    #Specifying the argument type = “dfbeta”, plots the estimated changes in the regression coefficients upon deleting each observation in turn
+    NEW_InfluenceObs<- ggcoxdiagnostics(NEW_cox_multi2, type = "dfbeta",
+                     linear.predictions = FALSE, ggtheme = theme_bw()) #I think sex is slightly influential because it appears to have an outlier 
+    #ggsave("InfluenceObs.pdf", width = 8, height= 5, last_plot())
+
+    #The deviance residual is a normalized transform of the martingale residual. These residuals should be roughly symmetrically distributed about zero with a standard deviation of 1. Positive values correspond to individuals that “died too soon” compared to expected survival times. Negative values correspond to individual that “lived too long”. Very large or small values are outliers, which are poorly predicted by the model.
+    ggcoxdiagnostics(NEW_cox_multi4, type = "deviance",
+                     linear.predictions = FALSE, ggtheme = theme_bw()) #this looks fairly symmetrical around 0 but not perfect
+
+METHODS: Proportional hazards (PH) assumption was tested for the model
+as a whole as well as each covariate based on scaled Schoenfeld
+residuals to test for independence between residuals and time.
+Influential observations were also observed graphically using df beta.
+
+RESULTS: The PH assumption test is not statistically significance for
+the global test. A graphed diagnostic, which shows graphs of the scaled
+Schoenfeld residuals against the transformed time, shows no trend in the
+covariates across time. Therefore, we can assume proportional hazards.
+
+## **FOREST STRATA ANALYSIS**
+
+### Post-release (insufficient data to do analysis pre-release)
+
+    # Looking at position in canopy (PIC) grouped by sex (M/F)
+    PIC_plot<- post_focals %>% 
+      drop_na(POSITION.IN.CANOPY) %>% #removing all NAs in this column so they don't show up on graph
+      mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>% #This is to re-order the x-axis so that I can have MMS and NS at the end rather than right in the middle 
+        ggplot( aes(POSITION.IN.CANOPY, group = SEX)) +
+        geom_bar(aes(y = ..prop..), stat="count") + 
+        scale_y_continuous(labels=scales::percent) +
+        theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+        ylab("Percentage Recorded in Canopy Position") +
+        xlab("Position in Canopy") +
+        facet_grid(~SEX)
+    #PIC_plot
+
+    # Looking at position in canopy grouped by age (A/SA/J)
+    age_PIC_plot<- post_focals %>% 
+      drop_na(POSITION.IN.CANOPY) %>% #removing all NAs in this column so they don't show up on graph
+      filter(AGE != "I") %>% #removing infants
+      mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>% #This is to re-order the x-axis so that I can have MMS and NS at the end rather than right in the middle 
+        ggplot( aes(POSITION.IN.CANOPY, group = AGE)) +
+        geom_bar(aes(y = ..prop..), stat="count") + 
+        theme(axis.text.x = element_text(angle = 45, hjust =1)) +
+        scale_y_continuous(labels=scales::percent) +
+        ylab("Percentage Recorded in Canopy Position") +
+        xlab("Position in Canopy") +
+        facet_grid(~AGE)
+    #age_PIC_plot
+
+    #Pops, Jack, Mango (adult/SA males) from March-May because Jack dies in June
+    Males_canopy_test<- post_focals %>% filter(FOCAL.ID %in% c("PO","JA","MG"), MONTH %in% c("3","4","5")) %>% drop_na(POSITION.IN.CANOPY) %>% mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1"))
+    #str(Males_canopy_test)                                                                   
+
+RESULTS: Overall, both males and females were most frequently positioned
+on the ground during post-release monitoring (Figure PIC\_plot). They
+were also located in the lower and middle tree canopies more often than
+top canopies (Figure PIC\_plot). Out of the three canopy levels
+(LC,MC,TC), all individuals were located in the lowest height category
+(1) most often, remaining 5m or less above the ground, and were rarely
+seen higher up in the canopy (2,3).
+
+RESULTS: All age groups of both sexes were most frequently positioned on
+the ground and in lower and middle tree canopies less than 5m above the
+ground (Figure age\_PIC\_plot). Out of the three canopy levels, all
+individuals across age groups were positioned in the top canopy least
+often and rarely moved up higher than 5m above the ground in any canopy
+level (Figure age\_PIC\_plot).
+
+*Density Plots*
+
+    #Density plot with adult females only
+    fems_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "F", AGE == "A")) %>%
+      mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%
+      drop_na(POSITION.IN.CANOPY), aes(x = POSITION.IN.CANOPY)) +  
+      geom_density(aes(group = FOCAL.ID, 
+                       colour = FOCAL.ID, 
+                       fill = FOCAL.ID),
+                   alpha = 0.2) +
+      xlab("Position in Canopy") +
+      ylab("Density") +
+      labs(colour = "Focal Individual", fill = "Focal Individual") + #changing legend title name
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    fems_denPIC_plot
+    #ggsave("Fems PICDensity Plot.pdf", width= 7, height= 4, last_plot())
+
+    #density plot with adult males only:
+    males_denPIC_plot<- ggplot((post_focals %>% filter(SEX == "M",AGE == "A",FOCAL.ID != "PA") %>% #Taking out Patches because he only had 2 focals
+      mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%                         
+      drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
+      geom_density(aes(group = FOCAL.ID, 
+                       colour = FOCAL.ID, 
+                       fill = FOCAL.ID),
+                   show.legend = T,
+                   alpha = 0.2) +
+      xlab("Position in Canopy") +
+      ylab("Density") +
+      labs(colour = "Focal Individual", fill = "Focal Individual") + #changing legend title name
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+    males_denPIC_plot
+    #ggsave("Males PICDensity Plot.pdf", width = 7, height = 4, last_plot())
+
+    #Density plot with subadult and juveniles (males/fems)
+    age_denPIC_plot<- ggplot((post_focals %>% filter(AGE %in% c("SA","J"), FOCAL.ID != "RE") %>% #Taking out Red because she only had 2 focal observations
+      mutate(POSITION.IN.CANOPY = fct_relevel(POSITION.IN.CANOPY, "G", "LC1", "LC2", "MC1", "MC2", "TC1", "TC2", "TC3", "MMS", "NS1")) %>%
+      drop_na(POSITION.IN.CANOPY)), aes(x = POSITION.IN.CANOPY)) +  
+      geom_density(aes(group = FOCAL.ID, 
+                       colour = FOCAL.ID, 
+                       fill = FOCAL.ID),
+                   alpha = 0.2) +
+      xlab("Position in Canopy") +
+      ylab("Density") +
+      labs(colour = "Focal Individual", fill = "Focal Individual") + #changing legend title name
+      theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank()) +
+      scale_x_discrete(drop = FALSE) #keeping all positions even if there is no data for them (TC3) so they show up in the x-axis
+    age_denPIC_plot
+    #ggsave("SA&J PICDensity Plot.pdf", width = 7, height = 4, last_plot())
+
+    #par(mfrow=c(3,1))
+    #fems_denPIC_plot
+    #males_denPIC_plot
+    #age_denPIC_plot
+    #ggsave("Full PICDensity Plot.pdf", last_plot())
+
+METHODS: Density plots were created in ggplot to show the probability
+density of each indiviudals position in the canopy throughout the
+post-release stage.
+
+RESULTS: Cicero and Homer, the two wild males that joined the troop for
+some time, were positioned in the top canopy more than all other adult
+males (Figure males\_denPIC\_plot). Cicero was positioned higher up in
+the top canopy (5-10m off the ground) more often than all other adult
+males and was positioned on the ground less than all other adult males
+(Figure).
+
+*GLMM For PIC*
+
+    #Filter out all individuals we don't want for this glmm
+    post_focals_glmm<- post_focals %>%
+      filter(AGE != "I", !FOCAL.ID %in% c("RE","PA","SK","CI","HO","ZI"), !POSITION.IN.CANOPY %in% c("MMS","NS1")) %>%
+      droplevels() %>%
+      rename(sex = SEX, #renaming these columns 
+             age = AGE,
+             PIC = POSITION.IN.CANOPY,
+             ID = FOCAL.ID) %>%
+      drop_na(PIC)
+
+    post_focals_glmm<- as.data.frame(unclass(post_focals_glmm)) #turning all character columns into factors
+    post_focals_glmm$age<- as.factor(post_focals_glmm$age) #turning age in factors
+    post_focals_glmm$sex<- as.factor(post_focals_glmm$sex) #turning sex into factors
+
+*Ordinal Logistic Regression*
+
+    post_focals_glmm$PIC <- ordered(post_focals_glmm$PIC)
+    #str(post_focals_glmm)
+
+    #Cumulative link mixed model function (ordinal regression with random effects)
+    fm2<- clmm(PIC~ sex + age + (1|ID), data = post_focals_glmm, link="probit", threshold = "equidistant")
+    summary(fm2)
+    #lsmeans(fm2, pairwise~sex, adjust="tukey", mode = "mean.class")

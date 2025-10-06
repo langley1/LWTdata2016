@@ -1,3 +1,8 @@
+---
+output:
+  html_document: default
+  pdf_document: default
+---
 
 # **NEW ORGANIZED CODE FOR 2025 MANUSCRIPT**
 
@@ -18,9 +23,10 @@ install.packages("formattable")
 install.packages("purrr")
 install.packages("igraph")
 install.packages("EloRating)
-install.packages("igraph")
 install.packages("ggraph")
 install.packages("ordinal")
+install.packages("survival")
+install.packages("survminer")
 
 *Load in packages*
 ```{r}
@@ -30,16 +36,17 @@ library(tidyverse)
 library(gplots)
 library(corrplot)
 library(ggplot2)
-library(vegan)
 library(data.table)
 library(tidyr)
 library(formattable)
-library(igraph)
 library(purrr)
 library(EloRating)
 library(igraph)
 library(ggraph)
 library(ordinal)
+library(vegan)
+library(survival)
+library(survminer)
 ```
 
 ## **Main Pre-release Focal Follow dataset**
@@ -3377,6 +3384,12 @@ MonkeyIDs_post
 # 2. Get a list of dataframes, subsetted by monkey ID:
 monkey.prelim_post<-lapply(MonkeyIDs_post, function(x){post_cont[post_cont[["FOCAL.ID"]] == x, ]})
 head(monkey.prelim_post)
+
+# 3. Set up your pairwise combinations of interacting monkeys:
+monkeylist_post<-list(actor=MonkeyIDs_post,recipient=MonkeyIDs_post) #create list of all possible actors/recipients
+filt <- function(x, y) {x == y} #create function to filter out same-monkey pairs ("FZ grooms FZ")
+combo_post <- monkeylist_post %>% cross_df(.,.filter=filt) #get the filtered combined list as a dataframe
+#head(combo_post)
 ```
 
 #### Making Place+ Matrix (focal displaces the other individual)
@@ -3700,8 +3713,8 @@ pre_sn_combo3<- pre_sn_combo2 %>%
     ~pre_sn_grouped %>% pluck(.x) %>% filter(Association==.y) %>% as.data.frame(.) %>% .[,2]))
 #pre_sn_combo3
 
-pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% data.matrix()
-pre_sn_matrix #social proximity matrix between focal and associate 
+pre_sn_matrix<-spread(pre_sn_combo3,associate,proximity) %>% column_to_rownames(var="focal") %>% as.matrix()
+#pre_sn_matrix #social proximity matrix between focal and associate 
 ```
 
 ```{r}
@@ -3733,9 +3746,6 @@ pre_social_network_fig<- plot(pre_sn_graph,
       edge.curved = 0.25)
 #pre_social_network_fig
 ```
-
-
-
 
 #### Adding the total number of focal follows in which proximity info was collected
 ```{r}
@@ -3865,7 +3875,7 @@ pre_socnet_TOTALS_TI<- pre_socnet_TOTALS %>%
   filter(Association != "BT") %>%
   mutate(total = n_distinct(FOCAL.REFERENCE)) 
 
-pre_socnet_TOTALS_BA<- pre_socnet_TOTALS %>%
+pre_socnet_TOTALS_PA<- pre_socnet_TOTALS %>%
   filter(Focal.ID == "PA") %>%
   filter(Association != "OS") %>%
   filter(Association != "UK") %>%
@@ -3891,9 +3901,10 @@ pre_socnet_TOTALs_matrix <- pre_socnet_TOTALs_matrix %>%
   column_to_rownames('Focal.ID') #changing Focal ID column into row names
 
 pre_socnet_TOTALs_matrix <- pre_socnet_TOTALs_matrix %>%
-  select(AL,AM,AU,BA,BL,BM,BO,ED,JA,KO,MA,MG,NE,PO,TI,TO,ZI) # Specify the new order of column name
+  dplyr::select(AL,AM,AU,BA,BL,BM,BO,ED,JA,KO,MA,MG,NE,PO,TI,TO,ZI) # Specify the new order of column name
 
-pre_socnet_TOTALs_matrix<- as.matrix(pre_socnet_TOTALs_matrix) #turning it into a matrix, has to come after all the other adjustments to the df
+#turning it into a matrix, has to come after all the other adjustments to the df
+pre_socnet_TOTALs_matrix<- as.matrix(pre_socnet_TOTALs_matrix) 
 ```
 
 #### Weighting the proximity counts by the total number of focal follows
@@ -4430,11 +4441,11 @@ Surv(post_surv_edited_with_centrality$NEW_days_alive, post_surv_edited_with_cent
 
 #Survival curves
 survfit_all_NEW <- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #Survfit() creates survival curves based on a formula. Let’s generate the overall survival curve for the entire cohort and look at the names
-names(survfit_all) #important names are "surv" and "time"
-summary(survfit_all)
 
 #To get median survival days
 survfit_all<- survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality) #The median survival days is 251
+#names(survfit_all) #important names are "surv" and "time"
+summary(survfit_all)
 
 #Now let's check the probability of surviving until the end of the observations
 summary(survfit(Surv(NEW_days_alive, status) ~ 1, data = post_surv_edited_with_centrality), times = 273) #shows us that the probability of survival at the end of data collection is 38%
@@ -4711,7 +4722,7 @@ post_focals_glmm$PIC <- ordered(post_focals_glmm$PIC)
 #Cumulative link mixed model function (ordinal regression with random effects)
 fm2<- clmm(PIC~ sex + age + (1|ID), data = post_focals_glmm, link="probit", threshold = "equidistant")
 summary(fm2)
-lsmeans(fm2, pairwise~sex, adjust="tukey", mode = "mean.class")
+#lsmeans(fm2, pairwise~sex, adjust="tukey", mode = "mean.class")
 
 ```
 
